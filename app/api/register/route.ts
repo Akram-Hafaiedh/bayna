@@ -7,11 +7,18 @@ import { Role } from "@/app/generated/prisma/enums"
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const { email, password, name, role } = body
+        const { email, password, name } = body
 
         if (!email || !password) {
             return NextResponse.json(
                 { error: "Email and password are required" },
+                { status: 400 }
+            )
+        }
+
+        if (password.length < 6) {
+            return NextResponse.json(
+                { error: "Password must be at least 6 characters" },
                 { status: 400 }
             )
         }
@@ -30,25 +37,15 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcrypt.hash(password, 12)
 
+        // Always create as CLIENT — never trust role from the client
         const user = await prisma.user.create({
             data: {
                 email,
                 name: name || null,
                 password: hashedPassword,
-                role: role === "PROVIDER" ? Role.PROVIDER : Role.BUYER,
+                role: Role.CLIENT,
             },
         })
-
-        // If registering as provider, create empty Provider profile
-        if (user.role === Role.PROVIDER) {
-            await prisma.provider.create({
-                data: {
-                    userId: user.id,
-                    businessName: name || "My Shop",
-                    city: "Tunis", // temporary default
-                },
-            })
-        }
 
         return NextResponse.json(
             { message: "User created successfully", userId: user.id },

@@ -51,19 +51,102 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }),
     ],
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, trigger }) {
+            // Fresh sign-in
             if (user) {
                 token.id = user.id
-                token.role = (user as any).role
+                token.role = (user as { role?: Role }).role
+
+                try {
+                    const loginSession = await prisma.loginSession.create({
+                        data: {
+                            userId: user.id as string,
+                            deviceLabel: "Web browser",
+                        },
+                    })
+                    token.loginSessionId = loginSession.id
+                } catch {
+                    // don't block login if LoginSession fails
+                }
             }
+
+            // ALWAYS refresh role from DB (this is the fix)
+            if (token.id) {
+                try {
+                    const dbUser = await prisma.user.findUnique({
+                        where: { id: token.id as string },
+                        select: { role: true },
+                    })
+                    if (dbUser?.role) {
+                        token.role = dbUser.role
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
+            // Validate login session if present
+            if (token.loginSessionId) {
+                try {
+                    const loginSession = await prisma.loginSession.findUnique({
+                        where: { id: token.loginSessionId as string },
+                    })
+
+                    if (!loginSession || loginSession.revokedAt) {
+                        return {
+                            ...token,
+                            id: undefined,
+                            role: undefined,
+                            loginSessionId: undefined,
+                        }
+                    }
+
+                    if (trigger !== "signIn") {
+                        await prisma.loginSession
+                            .update({
+                                where: { id: loginSession.id },
+                                data: { lastActiveAt: new Date() },
+                            })
+                            .catch(() => { })
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+
             return token
         },
         async session({ session, token }) {
             if (session.user) {
+                if (!token.id) {
+                    return {
+                        ...session,
+                        user: {
+                            ...session.user,
+                            id: "",
+                            role: undefined as unknown as Role,
+                        },
+                    }
+                }
                 session.user.id = token.id as string
                 session.user.role = token.role as Role
+                    ; (session as { loginSessionId?: string }).loginSessionId =
+                        token.loginSessionId as string
             }
             return session
+        },
+    },
+    events: {
+        async signOut(message) {
+            const token = "token" in message ? message.token : null
+            if (token?.loginSessionId) {
+                await prisma.loginSession
+                    .update({
+                        where: { id: token.loginSessionId as string },
+                        data: { revokedAt: new Date() },
+                    })
+                    .catch(() => { })
+            }
         },
     },
 })

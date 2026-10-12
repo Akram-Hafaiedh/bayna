@@ -10,7 +10,6 @@ export default function RegisterPage() {
         name: "",
         email: "",
         password: "",
-        role: "BUYER",
     })
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
@@ -34,6 +33,7 @@ export default function RegisterPage() {
                 return
             }
 
+            // After successful registration → go to login
             router.push("/login")
         } catch {
             setError("Something went wrong")
@@ -74,7 +74,7 @@ export default function RegisterPage() {
                     <input
                         id="name"
                         type="text"
-                        placeholder="Your name or shop name"
+                        placeholder="Your name"
                         className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -118,37 +118,6 @@ export default function RegisterPage() {
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />
-                </div>
-
-                <div className="space-y-1.5">
-                    <label
-                        htmlFor="role"
-                        className="block text-sm font-medium text-zinc-700"
-                    >
-                        I am a
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setForm({ ...form, role: "BUYER" })}
-                            className={`h-11 rounded-lg border text-sm font-medium transition ${form.role === "BUYER"
-                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                    : "border-zinc-250 bg-white text-zinc-700 hover:border-zinc-400"
-                                }`}
-                        >
-                            Buyer
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setForm({ ...form, role: "PROVIDER" })}
-                            className={`h-11 rounded-lg border text-sm font-medium transition ${form.role === "PROVIDER"
-                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                    : "border-zinc-250 bg-white text-zinc-700 hover:border-zinc-400"
-                                }`}
-                        >
-                            Provider
-                        </button>
-                    </div>
                 </div>
 
                 {error && (
@@ -199,6 +168,13 @@ export default function RegisterPage() {
                 >
                     Log in
                 </Link>
+            </p>
+
+            <p className="mt-4 text-center text-xs text-zinc-400">
+                Want to sell on Bayna?{" "}
+                <span className="text-zinc-500">
+                    Create an account first, then apply to become a Provider.
+                </span>
             </p>
         </div>
     )

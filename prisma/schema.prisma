@@ -8,26 +8,28 @@ datasource db {
 }
 
 enum Role {
-  BUYER
+  CLIENT
   PROVIDER
   ADMIN
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  phone         String?
-  password      String? // for email/password login
-  role          Role      @default(BUYER)
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  phone             String?
+  password          String? // for email/password login
+  role              Role      @default(CLIENT)
+  emailVerified     DateTime?
+  image             String?
+  passwordChangedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  accounts Account[]
-  sessions Session[]
-  provider Provider?
+  accounts      Account[]
+  sessions      Session[]
+  loginSessions LoginSession[]
+  provider      Provider?
 }
 
 model Provider {
@@ -120,4 +122,32 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model LoginSession {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Client info
+  userAgent   String?
+  ip          String?
+  deviceLabel String? // e.g. "Chrome on Windows"
+
+  // Lifecycle
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+  revokedAt    DateTime?
+
+  @@index([userId])
 }

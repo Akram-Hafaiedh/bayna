@@ -1,36 +1,126 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bayna
+
+**Local price comparison + commerce platform for Tunisia**
+
+Bayna helps clients find the best real price for products (including travel cost), and gives local providers a simple dashboard to manage stock, prices, and orders.
+
+**Current focus:** Auto parts (MVP)  
+**Market:** Tunisia  
+**Languages (planned):** French + Arabic
+
+---
+
+## Vision
+
+Most price comparison tools only show "cheaper 200 km away".  
+Bayna answers the real question:
+
+> “Is it actually worth going there?”
+
+We combine:
+- Real local prices + stock
+- Distance + estimated travel cost
+- Simple ordering (pickup / COD)
+- Provider tools for stock & sales management
+
+---
+
+## Tech Stack
+
+| Layer       | Technology                          |
+|-------------|-------------------------------------|
+| Frontend    | Next.js 16 (App Router) + Tailwind  |
+| Auth        | NextAuth.js v5 (Credentials)        |
+| Database    | PostgreSQL + Prisma 7               |
+| Hosting     | Vercel (frontend) + Railway/Supabase (DB) |
+
+---
+
+## Project Structure
+
+```
+app/
+├── (auth)/              # Login / Register
+├── (public)/            # Landing, search, product pages
+├── (client)/            # CLIENT dashboard (/dashboard)
+├── (provider)/          # PROVIDER dashboard (/provider/...)
+├── (admin)/             # ADMIN dashboard (/admin/...)
+├── api/                 # API routes
+└── generated/           # Prisma client
+
+components/
+lib/
+  ├── prisma.ts
+  └── session.ts         # getCurrentUser, requireRole helpers
+prisma/
+types/
+```
+
+---
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# 1. Install dependencies
+npm install
+
+# 2. Setup environment
+cp .env.example .env
+# Fill in DATABASE_URL and AUTH_SECRET
+
+# 3. Generate Prisma client + run migrations
+npx prisma generate
+npx prisma migrate dev
+
+# 4. Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Role System
 
-## Learn More
+| Role         | How assigned                                      | Dashboard URL            |
+|--------------|---------------------------------------------------|--------------------------|
+| **CLIENT**   | Default on registration                           | `/dashboard`             |
+| **PROVIDER** | Apply after being CLIENT (+ optional admin approval) | `/provider/dashboard` |
+| **ADMIN**    | Manual / promoted only                            | `/admin/dashboard`       |
 
-To learn more about Next.js, take a look at the following resources:
+**Rules:**
+- Every new user is created as **CLIENT** by default
+- Users can later apply to become a **PROVIDER** (separate flow)
+- **ADMIN** is never self-assigned
+- Never let users freely choose their role on the registration form
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Current Status
 
-## Deploy on Vercel
+| Phase | Status |
+|-------|--------|
+| Phase 0 – Foundation | Done |
+| Phase 1 – Core Data Model | Done |
+| Phase 2 – Authentication & Roles | In progress |
+| Phase 3 – Provider Side | Not started |
+| Phase 4 – Client Side | Not started |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+See **[TODO.md](./TODO.md)** for the full prioritized checklist.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## How to create an Admin
+
+Admins are never self-assigned. Promote a user manually:
+
+```bash
+npx prisma studio
+```
+
+Or:
+
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
