@@ -1,9 +1,9 @@
 import { Suspense } from "react"
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { requireRole } from "@/lib/session"
 import { Role } from "@/app/generated/prisma/enums"
+import { connection } from "next/server"
 
 export default function ProviderDashboardPage() {
     return (
@@ -32,6 +32,7 @@ export default function ProviderDashboardPage() {
 
 async function ProviderStats() {
 
+    await connection()
     const user = await requireRole([Role.PROVIDER])
 
     const provider = await prisma.provider.findUnique({
