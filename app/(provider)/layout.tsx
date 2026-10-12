@@ -1,24 +1,11 @@
-import { Suspense } from "react"
-import { requireRole } from "@/lib/session"
-import { Role } from "@/app/generated/prisma/enums"
 import Navbar from "@/components/Navbar"
-import { DashboardLoading, SubNav } from "@/components/DashboardShell"
+import { SubNav } from "@/components/DashboardShell"
 
 export default function ProviderLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    return (
-        <Suspense fallback={<DashboardLoading />}>
-            <ProviderAuth>{children}</ProviderAuth>
-        </Suspense>
-    )
-}
-
-async function ProviderAuth({ children }: { children: React.ReactNode }) {
-    await requireRole([Role.PROVIDER])
-
     return (
         <div className="min-h-screen bg-zinc-50">
             <Navbar />

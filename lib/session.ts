@@ -7,7 +7,7 @@ import { redirect } from "next/navigation"
 
 export async function getCurrentUser() {
     const session = await auth()
-    return session?.user ?? null
+    return session?.user?.id ? session.user : null
 }
 
 export async function requireAuth() {

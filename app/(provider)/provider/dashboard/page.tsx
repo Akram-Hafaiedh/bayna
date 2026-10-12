@@ -2,6 +2,8 @@ import { Suspense } from "react"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
+import { requireRole } from "@/lib/session"
+import { Role } from "@/app/generated/prisma/enums"
 
 export default function ProviderDashboardPage() {
     return (
@@ -29,13 +31,13 @@ export default function ProviderDashboardPage() {
 }
 
 async function ProviderStats() {
-    const session = await auth()
-    const provider = session?.user?.id
-        ? await prisma.provider.findUnique({
-            where: { userId: session.user.id },
-            include: { _count: { select: { products: true } } },
-        })
-        : null
+
+    const user = await requireRole([Role.PROVIDER])
+
+    const provider = await prisma.provider.findUnique({
+        where: { userId: user.id },
+        include: { _count: { select: { products: true } } },
+    })
 
     const productCount = provider?._count.products ?? 0
     const lowStock = provider

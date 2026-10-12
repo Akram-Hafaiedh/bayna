@@ -2,6 +2,7 @@ import { Suspense } from "react"
 import { auth } from "@/auth"
 import { redirect } from "next/navigation"
 import { Role } from "@/app/generated/prisma/enums"
+import { connection } from "next/server"
 
 async function Year() {
     "use cache"
@@ -21,9 +22,10 @@ export default function AuthLayout({
 }
 
 async function AuthGate({ children }: { children: React.ReactNode }) {
+    await connection()
     const session = await auth()
 
-    if (session?.user) {
+    if (session?.user?.id) {
         const role = session.user.role as Role
         if (role === Role.ADMIN) redirect("/admin/dashboard")
         if (role === Role.PROVIDER) redirect("/provider/dashboard")
