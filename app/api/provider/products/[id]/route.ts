@@ -1,32 +1,32 @@
 // app/api/provider/products/[id]/route.ts
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Role } from "@/app/generated/prisma/enums"
+import type { Prisma } from "@/app/generated/prisma/client"
+import { getVerifiedProvider } from "@/lib/provider-auth"
+import {
+    parseMinOrderQty,
+    parsePrice,
+    parseStock,
+    parseText,
+    parseUnit,
+} from "@/lib/product-input"
+
+const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
 async function getOwnedProduct(productId: string) {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== Role.PROVIDER) {
-        return { error: "Unauthorized", status: 401 as const }
-    }
-
-    const provider = await prisma.provider.findUnique({
-        where: { userId: session.user.id },
-    })
-
-    if (!provider || !provider.isVerified) {
-        return { error: "Provider not found or not verified", status: 403 as const }
-    }
+    const guard = await getVerifiedProvider()
+    if (!guard.ok) return { ok: false as const, error: guard.error, status: guard.status }
 
     const product = await prisma.product.findFirst({
-        where: { id: productId, providerId: provider.id },
+        where: { id: productId, providerId: guard.provider.id },
+        include: {
+            category: { select: { id: true, name: true } },
+            catalogItem: { select: { id: true, name: true, slug: true } },
+        },
     })
+    if (!product) return { ok: false as const, error: "Product not found", status: 404 as const }
 
-    if (!product) {
-        return { error: "Product not found", status: 404 as const }
-    }
-
-    return { product, provider }
+    return { ok: true as const, product }
 }
 
 export async function GET(
@@ -36,19 +36,11 @@ export async function GET(
     try {
         const { id } = await params
         const result = await getOwnedProduct(id)
-        if ("error" in result && result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
-            )
-        }
-        return NextResponse.json({ product: (result as { product: unknown }).product })
+        if (!result.ok) return bad(result.error, result.status)
+        return NextResponse.json({ product: result.product })
     } catch (error) {
         console.error("Get product error:", error)
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        )
+        return bad("Something went wrong", 500)
     }
 }
 
@@ -59,60 +51,85 @@ export async function PATCH(
     try {
         const { id } = await params
         const result = await getOwnedProduct(id)
-        if ("error" in result && result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
-            )
-        }
+        if (!result.ok) return bad(result.error, result.status)
+        const current = result.product
+        const isLinked = current.catalogItemId !== null
 
         const body = await req.json()
-        const data: Record<string, unknown> = {}
+        const data: Prisma.ProductUncheckedUpdateInput = {}
 
-        if (body.name !== undefined) data.name = String(body.name).trim()
-        if (body.nameAr !== undefined) data.nameAr = body.nameAr?.trim() || null
-        if (body.description !== undefined)
-            data.description = body.description?.trim() || null
-        if (body.brand !== undefined) data.brand = body.brand?.trim() || null
-        if (body.sku !== undefined) data.sku = body.sku?.trim() || null
-        if (body.categoryId !== undefined)
-            data.categoryId = body.categoryId || null
+        if (body.name !== undefined) {
+            const r = parseText(body.name, "Name", 200)
+            if (!r.ok) return bad(r.error)
+            if (!r.value) return bad("Product name is required")
+            data.name = r.value
+        }
+        if (body.nameAr !== undefined) {
+            const r = parseText(body.nameAr, "Arabic name", 200)
+            if (!r.ok) return bad(r.error)
+            data.nameAr = r.value
+        }
+        if (body.description !== undefined) {
+            const r = parseText(body.description, "Description", 2000)
+            if (!r.ok) return bad(r.error)
+            data.description = r.value
+        }
+        if (body.brand !== undefined) {
+            const r = parseText(body.brand, "Brand", 100)
+            if (!r.ok) return bad(r.error)
+            data.brand = r.value
+        }
+        if (body.sku !== undefined) {
+            const r = parseText(body.sku, "SKU", 100)
+            if (!r.ok) return bad(r.error)
+            data.sku = r.value
+        }
+        if (body.price !== undefined) {
+            const r = parsePrice(body.price)
+            if (!r.ok) return bad(r.error)
+            data.price = r.value
+        }
+        if (body.stock !== undefined) {
+            const r = parseStock(body.stock)
+            if (!r.ok) return bad(r.error)
+            data.stock = r.value
+        }
+        if (body.minOrderQty !== undefined) {
+            const r = parseMinOrderQty(body.minOrderQty)
+            if (!r.ok) return bad(r.error)
+            data.minOrderQty = r.value
+        }
         if (body.isActive !== undefined) data.isActive = Boolean(body.isActive)
 
-        if (body.price !== undefined) {
-            const priceNum = Number(body.price)
-            if (Number.isNaN(priceNum) || priceNum < 0) {
-                return NextResponse.json(
-                    { error: "Valid price is required" },
-                    { status: 400 }
-                )
+        // Unit and category come from the catalogue for linked products
+        if (body.unit !== undefined) {
+            const r = parseUnit(body.unit)
+            if (!r.ok) return bad(r.error)
+            if (isLinked && r.value !== current.unit) {
+                return bad("The unit is defined by the catalogue item")
             }
-            data.price = priceNum
+            data.unit = r.value
+        }
+        if (body.categoryId !== undefined) {
+            const categoryId = body.categoryId ? String(body.categoryId) : null
+            if (isLinked && categoryId !== current.categoryId) {
+                return bad("The category is defined by the catalogue item")
+            }
+            if (categoryId) {
+                const exists = await prisma.category.findUnique({
+                    where: { id: categoryId },
+                    select: { id: true },
+                })
+                if (!exists) return bad("Category not found")
+            }
+            data.categoryId = categoryId
         }
 
-        if (body.stock !== undefined) {
-            const stockNum = Number(body.stock)
-            if (Number.isNaN(stockNum) || stockNum < 0) {
-                return NextResponse.json(
-                    { error: "Stock must be a non-negative number" },
-                    { status: 400 }
-                )
-            }
-            data.stock = stockNum
-        }
-
-        const product = await prisma.product.update({
-            where: { id },
-            data,
-        })
-
+        const product = await prisma.product.update({ where: { id }, data })
         return NextResponse.json({ product })
     } catch (error) {
         console.error("Update product error:", error)
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        )
+        return bad("Something went wrong", 500)
     }
 }
 
@@ -123,20 +140,12 @@ export async function DELETE(
     try {
         const { id } = await params
         const result = await getOwnedProduct(id)
-        if ("error" in result && result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
-            )
-        }
+        if (!result.ok) return bad(result.error, result.status)
 
         await prisma.product.delete({ where: { id } })
         return NextResponse.json({ message: "Product deleted" })
     } catch (error) {
         console.error("Delete product error:", error)
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        )
+        return bad("Something went wrong", 500)
     }
 }

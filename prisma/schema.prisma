@@ -13,6 +13,18 @@ enum Role {
   ADMIN
 }
 
+enum Unit {
+  PIECE
+  BAG
+  METER
+  SQUARE_METER
+  CUBIC_METER
+  TON
+  ROLL
+  LITER
+  OTHER
+}
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -54,11 +66,43 @@ model Provider {
 }
 
 model Category {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  nameAr   String?
-  slug     String    @unique
+  id          String     @id @default(cuid())
+  name        String     @unique
+  nameAr      String?
+  slug        String     @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  sortOrder   Int        @default(0)
+
+  catalogItems CatalogItem[]
+  products     Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CatalogItem {
+  id          String   @id @default(cuid())
+  name        String
+  nameAr      String?
+  slug        String   @unique
+  description String?
+  brand       String?
+  unit        Unit     @default(PIECE)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  images      String[]
+  isActive    Boolean  @default(true)
+
   products Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([name])
 }
 
 model Product {
@@ -66,16 +110,24 @@ model Product {
   providerId String
   provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
+  // Optional link to the shared catalogue — enables price comparison
+  catalogItemId String?
+  catalogItem   CatalogItem? @relation(fields: [catalogItemId], references: [id])
+
+  // Provider's own data (can differ from catalogue)
   name        String
   nameAr      String?
   description String?
   brand       String?
   sku         String?
+  unit        Unit    @default(PIECE)
 
-  price    Decimal @db.Decimal(10, 3)
-  stock    Int     @default(0)
-  isActive Boolean @default(true)
+  price       Decimal @db.Decimal(12, 3)
+  stock       Int     @default(0)
+  isActive    Boolean @default(true)
+  minOrderQty Int?
 
+  // Useful for free-form products that have no catalogItem
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
@@ -84,7 +136,11 @@ model Product {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // A provider lists a given catalogue item at most once (NULLs stay allowed
+  // for free-form products). Also serves lookups by providerId.
+  @@unique([providerId, catalogItemId])
   @@index([providerId])
+  @@index([catalogItemId])
   @@index([categoryId])
   @@index([name])
 }

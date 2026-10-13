@@ -4,7 +4,7 @@
 
 Bayna helps clients find the best real price for products (including travel cost), and gives local providers a simple dashboard to manage stock, prices, and orders.
 
-**Current focus:** Auto parts (MVP)  
+**Current focus:** Construction materials (MVP) — expandable to hardware, auto parts, and more  
 **Market:** Tunisia  
 **Languages (planned):** French + Arabic
 
@@ -36,12 +36,29 @@ We combine:
 
 ---
 
+## Data Model (Products & Catalogue)
+
+| Model | Role |
+|-------|------|
+| **Category** | Grouping (Cement, Steel, Bricks, Plumbing, Hardware…) — supports parent/child |
+| **CatalogItem** | Shared product identity from the catalogue. Optional. Used for price comparison across providers |
+| **Product** | A provider’s offer. Always belongs to one provider. Optional `catalogItemId` |
+
+Rules:
+- A product **must** belong to a provider
+- `catalogItemId` is **optional** → providers can sell niche items that don’t appear in comparisons
+- Multiple providers can link products to the same catalog item → that’s how comparison works
+- Sale units: piece, bag, meter, m², m³, ton, roll, liter, other
+
+---
+
 ## Project Structure
 
 ```
 app/
-├── (auth)/              # Login / Register
+├── (auth)/              # Login / Register / Forgot-Reset password
 ├── (public)/            # Landing, search, product pages
+├── (account)/           # Profile, Become a Provider
 ├── (client)/            # CLIENT dashboard (/dashboard)
 ├── (provider)/          # PROVIDER dashboard (/provider/...)
 ├── (admin)/             # ADMIN dashboard (/admin/...)
@@ -51,8 +68,12 @@ app/
 components/
 lib/
   ├── prisma.ts
-  └── session.ts         # getCurrentUser, requireRole helpers
+  └── session.ts         # getCurrentUser, requireAuth, requireRole
+proxy.ts                 # Route protection (auth + role gates)
 prisma/
+  ├── schema.prisma
+  ├── seed.ts            # Categories + ~200 catalog items
+  └── migrations/
 types/
 ```
 
@@ -72,11 +93,23 @@ cp .env.example .env
 npx prisma generate
 npx prisma migrate dev
 
-# 4. Start development server
+# 4. Seed categories + catalogue (construction materials demo)
+npm run db:seed
+
+# 5. Start development server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000)
+
+### Useful scripts
+
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Next.js dev server |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:migrate` | Run migrations |
+| `npm run db:seed` | Seed categories + catalog items |
 
 ---
 
@@ -91,36 +124,72 @@ Open [http://localhost:3000](http://localhost:3000)
 **Rules:**
 - Every new user is created as **CLIENT** by default
 - Users can later apply to become a **PROVIDER** (separate flow)
-- **ADMIN** is never self-assigned
-- Never let users freely choose their role on the registration form
+- **ADMIN** is never self-assigned from the public UI
 
----
-
-## Current Status
-
-| Phase | Status |
-|-------|--------|
-| Phase 0 – Foundation | Done |
-| Phase 1 – Core Data Model | Done |
-| Phase 2 – Authentication & Roles | In progress |
-| Phase 3 – Provider Side | Not started |
-| Phase 4 – Client Side | Not started |
-
-See **[TODO.md](./TODO.md)** for the full prioritized checklist.
-
-
----
-
-## How to create an Admin
-
-Admins are never self-assigned. Promote a user manually:
+### How to make a user ADMIN
 
 ```bash
 npx prisma studio
+# Open User table → set role = ADMIN
 ```
 
-Or:
-
+Or SQL:
 ```sql
 UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
 ```
+
+---
+
+## Route Protection
+
+Protected routes are enforced in `proxy.ts` (Next.js proxy / middleware style):
+
+- `/admin/*` → ADMIN only
+- `/provider/*` → PROVIDER only
+- `/dashboard` → CLIENT only
+- `/profile`, `/become-provider` → any authenticated user
+
+Unauthenticated users are redirected to `/login`. Wrong-role users are redirected to their home dashboard.
+
+---
+
+## Catalogue (Demo Seed)
+
+The seed script loads **16 categories** and ~**200 catalog items** based on a Tunisian construction materials demo catalogue:
+
+1. Cement, Concrete & Binders  
+2. Reinforcing Steel & Metal Products  
+3. Bricks, Blocks & Masonry  
+4. Sand, Gravel & Aggregates  
+5. Waterproofing & Insulation  
+6. Plasterboard, Boards & Suspended Ceilings  
+7. Tiles & Coverings  
+8. Paint & Decoration  
+9. Plumbing & Sanitary  
+10. Electrical  
+11. Doors, Windows & Joinery  
+12. Wood & Site Carpentry  
+13. Tools & Site Equipment  
+14. Fixings & Hardware  
+15. Roofing, Façade & Exterior  
+16. Garden & Outdoor Landscaping  
+
+No prices are seeded — providers set their own prices when creating products. Categories for **hardware store items** and **auto/car parts** can be added later the same way.
+
+---
+
+## Roadmap
+
+**Next focus: categories management.** An admin area to create, edit and organise
+categories (parent/child, display order, French/Arabic names). Catalogue item
+management follows, since every catalogue item and product depends on a category.
+
+Provider product management (list with search, filters and pagination; create from the
+catalogue or as a custom product; edit and delete) is done. See `TODO.md` for the full
+phase-by-phase list.
+
+---
+
+## License
+
+Private — all rights reserved.

@@ -1,126 +1,131 @@
 // app/api/provider/products/route.ts
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { Role } from "@/app/generated/prisma/enums"
+import { Unit } from "@/app/generated/prisma/enums"
+import { getVerifiedProvider } from "@/lib/provider-auth"
+import { listProducts } from "@/lib/provider-products"
+import { parseProductFilters } from "@/lib/product-filters"
+import {
+    parseMinOrderQty,
+    parsePrice,
+    parseStock,
+    parseText,
+    parseUnit,
+} from "@/lib/product-input"
 
-async function getVerifiedProvider() {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== Role.PROVIDER) {
-        return { error: "Unauthorized", status: 401 as const }
-    }
+const bad = (error: string, status = 400, extra?: Record<string, unknown>) =>
+    NextResponse.json({ error, ...extra }, { status })
 
-    const provider = await prisma.provider.findUnique({
-        where: { userId: session.user.id },
-    })
-
-    if (!provider) {
-        return { error: "Provider profile not found", status: 404 as const }
-    }
-
-    if (!provider.isVerified) {
-        return { error: "Provider not verified yet", status: 403 as const }
-    }
-
-    return { provider, session }
-}
-
-export async function GET() {
+// GET /api/provider/products?q=&category=&status=&stock=&linked=&unit=&sort=&dir=&page=&pageSize=
+export async function GET(req: Request) {
     try {
-        const result = await getVerifiedProvider()
-        if ("error" in result && result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
-            )
-        }
-        const { provider } = result as { provider: { id: string } }
+        const guard = await getVerifiedProvider()
+        if (!guard.ok) return bad(guard.error, guard.status)
 
-        const products = await prisma.product.findMany({
-            where: { providerId: provider.id },
-            include: { category: true },
-            orderBy: { updatedAt: "desc" },
+        const filters = parseProductFilters(new URL(req.url).searchParams)
+        const result = await listProducts(guard.provider.id, filters)
+
+        return NextResponse.json({
+            products: result.items,
+            total: result.total,
+            page: result.page,
+            pageSize: result.pageSize,
+            pageCount: result.pageCount,
         })
-
-        return NextResponse.json({ products })
     } catch (error) {
         console.error("List products error:", error)
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        )
+        return bad("Something went wrong", 500)
     }
 }
 
 export async function POST(req: Request) {
     try {
-        const result = await getVerifiedProvider()
-        if ("error" in result && result.error) {
-            return NextResponse.json(
-                { error: result.error },
-                { status: result.status }
-            )
-        }
-        const { provider } = result as { provider: { id: string } }
+        const guard = await getVerifiedProvider()
+        if (!guard.ok) return bad(guard.error, guard.status)
+        const providerId = guard.provider.id
 
         const body = await req.json()
-        const {
-            name,
-            nameAr,
-            description,
-            brand,
-            sku,
-            price,
-            stock,
-            categoryId,
-            isActive,
-        } = body
 
-        if (!name?.trim()) {
-            return NextResponse.json(
-                { error: "Product name is required" },
-                { status: 400 }
-            )
+        // Optional link to the shared catalogue. A linked product inherits the
+        // catalogue unit and category so prices stay comparable across providers.
+        let catalog: { id: string; name: string; brand: string | null; unit: Unit; categoryId: string } | null = null
+        if (body.catalogItemId) {
+            catalog = await prisma.catalogItem.findFirst({
+                where: { id: String(body.catalogItemId), isActive: true },
+                select: { id: true, name: true, brand: true, unit: true, categoryId: true },
+            })
+            if (!catalog) return bad("Catalogue item not found")
+
+            const existing = await prisma.product.findFirst({
+                where: { providerId, catalogItemId: catalog.id },
+                select: { id: true },
+            })
+            if (existing) {
+                return bad("You already list this catalogue item", 409, { productId: existing.id })
+            }
         }
 
-        const priceNum = Number(price)
-        if (Number.isNaN(priceNum) || priceNum < 0) {
-            return NextResponse.json(
-                { error: "Valid price is required" },
-                { status: 400 }
-            )
+        const name = parseText(body.name, "Name", 200)
+        const nameAr = parseText(body.nameAr, "Arabic name", 200)
+        const description = parseText(body.description, "Description", 2000)
+        const brand = parseText(body.brand, "Brand", 100)
+        const sku = parseText(body.sku, "SKU", 100)
+        const price = parsePrice(body.price)
+        const stock = parseStock(body.stock)
+        const minOrderQty = parseMinOrderQty(body.minOrderQty)
+        for (const r of [name, nameAr, description, brand, sku, price, stock, minOrderQty]) {
+            if (!r.ok) return bad(r.error)
         }
 
-        const stockNum = stock === undefined || stock === "" ? 0 : Number(stock)
-        if (Number.isNaN(stockNum) || stockNum < 0) {
-            return NextResponse.json(
-                { error: "Stock must be a non-negative number" },
-                { status: 400 }
-            )
+        const finalName = (name.ok && name.value) || catalog?.name
+        if (!finalName) return bad("Product name is required")
+
+        let unit: Unit
+        let categoryId: string | null
+        if (catalog) {
+            unit = catalog.unit
+            categoryId = catalog.categoryId
+        } else {
+            const u = body.unit === undefined || body.unit === "" ? null : parseUnit(body.unit)
+            if (u && !u.ok) return bad(u.error)
+            unit = u && u.ok ? u.value : Unit.PIECE
+
+            categoryId = body.categoryId ? String(body.categoryId) : null
+            if (categoryId) {
+                const exists = await prisma.category.findUnique({
+                    where: { id: categoryId },
+                    select: { id: true },
+                })
+                if (!exists) return bad("Category not found")
+            }
         }
 
         const product = await prisma.product.create({
             data: {
-                providerId: provider.id,
-                name: name.trim(),
-                nameAr: nameAr?.trim() || null,
-                description: description?.trim() || null,
-                brand: brand?.trim() || null,
-                sku: sku?.trim() || null,
-                price: priceNum,
-                stock: stockNum,
-                categoryId: categoryId || null,
-                isActive: isActive !== false,
+                providerId,
+                catalogItemId: catalog?.id ?? null,
+                name: finalName,
+                nameAr: nameAr.ok ? nameAr.value : null,
+                description: description.ok ? description.value : null,
+                brand: (brand.ok && brand.value) || catalog?.brand || null,
+                sku: sku.ok ? sku.value : null,
+                unit,
+                price: price.ok ? price.value : "0.000",
+                stock: stock.ok ? stock.value : 0,
+                minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
+                categoryId,
+                isActive: body.isActive !== false,
                 images: [],
             },
         })
 
         return NextResponse.json({ product }, { status: 201 })
     } catch (error) {
+        // Unique (providerId, catalogItemId) hit by a concurrent request
+        if ((error as { code?: string })?.code === "P2002") {
+            return bad("You already list this catalogue item", 409)
+        }
         console.error("Create product error:", error)
-        return NextResponse.json(
-            { error: "Something went wrong" },
-            { status: 500 }
-        )
+        return bad("Something went wrong", 500)
     }
 }

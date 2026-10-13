@@ -1,6 +1,6 @@
 # Bayna – Project TODOs
 
-Last updated: 12 Oct 2026
+Last updated: 13 Oct 2026
 
 ---
 
@@ -40,8 +40,12 @@ Never expose admin promotion in the public UI.
 - [x] Roles, Provider, Product, Category, location fields
 - [x] LoginSession model (device/session tracking)
 - [x] passwordChangedAt on User
+- [x] Unit enum (piece, bag, m, m², m³, ton, roll, liter, other)
+- [x] CatalogItem model (shared catalogue, optional link from Product)
+- [x] Category improvements (parent/child, sortOrder, description)
+- [x] Seed: 16 construction categories + ~200 catalog items
 
-## Phase 2 – Auth ( Mostly done )
+## Phase 2 – Auth (mostly done)
 - [x] Register (always CLIENT) / Login
 - [x] Session helpers + role-protected dashboards
 - [x] Forgot / Reset password
@@ -52,17 +56,24 @@ Never expose admin promotion in the public UI.
 - [x] Send reset link while logged in
 - [x] After password change → modal to revoke other sessions
 - [x] Active sessions list on profile
-- [ ] Optional: middleware protection
+- [x] Route protection via proxy.ts (auth + role gates)
 - [ ] Enrich LoginSession with real userAgent / IP on login
 - [ ] Google / Facebook OAuth
 
 ## Phase 3 – Provider Side
 - [x] “Become a Provider” application flow (pending until admin approves)
 - [ ] Provider profile CRUD
-- [ ] Product management (add / edit / delete / stock)
+- [x] Product management (add / edit / delete / stock)
+  - [x] List own products (server-side search, filters, sort, pagination)
+  - [x] Create product (link to CatalogItem or free-form niche item)
+  - [ ] Edit product: price, stock, active flag done; images still to do
+  - [x] Delete product (deactivate via the Active flag)
+- [ ] Optional: bulk import / quick-add from catalogue
 
 ## Phase 4 – Client Side
-- [ ] Product search + comparison (price + distance)
+- [ ] Product search (by name, category, location)
+- [ ] Price comparison across providers for the same CatalogItem
+- [ ] Distance + estimated travel cost
 - [ ] Orders / pickup requests
 
 ## Phase 5 – Admin Side
@@ -70,15 +81,30 @@ Never expose admin promotion in the public UI.
 - [x] Admin List Users (Basic)
 - [x] Admin List Providers (With Filters)
 - [ ] Admin Manage Categories
+- [ ] Admin Manage CatalogItems (add / edit / deactivate)
 
 ## Phase 6 – Tunisia Polish
-- [ ] i18n (FR + AR), COD, seed data
+- [ ] i18n (FR + AR)
+- [ ] COD / pickup flows
+- [ ] Expand catalogue (hardware store, auto/car parts)
+- [x] Seed demo providers + sample products with prices (prisma/seed-demo.ts)
 
 ---
 
 ## Immediate Next Steps
 
-1. Run migration for LoginSession + passwordChangedAt
-2. Test profile + change password + revoke sessions
-3. Become a Provider flow
-4. Product management
+1. Admin: categories management (create / edit / reorder, parent/child) — **current focus**
+2. Admin: CatalogItem management (add / edit / deactivate)
+3. Provider: product images, quick inline edit of price and stock
+4. Client search + comparison
+
+---
+
+## Notes
+
+- **Product** = provider’s offer (always has providerId)
+- **CatalogItem** = shared identity for comparison (optional on Product)
+- A niche item with no `catalogItemId` still works; it just won’t appear in cross-provider comparisons
+
+- Product has a unique (providerId, catalogItemId): a provider lists a catalogue item at most once.
+- Linked products inherit unit and category from the CatalogItem (not editable), keeping prices comparable.
