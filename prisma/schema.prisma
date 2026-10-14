@@ -25,6 +25,12 @@ enum Unit {
   OTHER
 }
 
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -62,7 +68,8 @@ model Provider {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  products Product[]
+  products    Product[]
+  suggestions CatalogSuggestion[]
 }
 
 model Category {
@@ -78,6 +85,7 @@ model Category {
 
   catalogItems CatalogItem[]
   products     Product[]
+  suggestions  CatalogSuggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -96,13 +104,49 @@ model CatalogItem {
   images      String[]
   isActive    Boolean  @default(true)
 
-  products Product[]
+  products    Product[]
+  suggestions CatalogSuggestion[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([categoryId])
   @@index([name])
+}
+
+// A provider's request to add an item to the shared catalogue.
+// Created alongside a custom product; on approval the product is linked to the
+// resulting CatalogItem so it joins price comparisons.
+model CatalogSuggestion {
+  id         String   @id @default(cuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  // The provider's custom product that triggered the suggestion (relinked on approval)
+  productId String?  @unique
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  name       String
+  nameAr     String?
+  brand      String?
+  unit       Unit     @default(PIECE)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  note       String?
+
+  status     SuggestionStatus @default(PENDING)
+  reviewNote String?
+  reviewedAt DateTime?
+
+  // Set when approved (new item) or merged into an existing one
+  catalogItemId String?
+  catalogItem   CatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([providerId])
 }
 
 model Product {
@@ -132,6 +176,8 @@ model Product {
   category   Category? @relation(fields: [categoryId], references: [id])
 
   images String[]
+
+  suggestion CatalogSuggestion?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

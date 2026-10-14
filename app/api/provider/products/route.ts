@@ -100,6 +100,35 @@ export async function POST(req: Request) {
             }
         }
 
+        // Optional: ask for the item to be added to the shared catalogue (custom products only)
+        const wantsSuggestion = !catalog && body.suggestToCatalogue === true
+        if (wantsSuggestion) {
+            if (!categoryId) return bad("Choose a category to suggest this item for the catalogue")
+
+            const match = await prisma.catalogItem.findFirst({
+                where: { isActive: true, name: { equals: finalName, mode: "insensitive" } },
+                select: { id: true, name: true },
+            })
+            if (match) {
+                return bad("This item is already in the catalogue. Search for it and select it.", 409, {
+                    catalogItemId: match.id,
+                    catalogItemName: match.name,
+                })
+            }
+
+            const pending = await prisma.catalogSuggestion.findFirst({
+                where: {
+                    providerId,
+                    status: "PENDING",
+                    name: { equals: finalName, mode: "insensitive" },
+                },
+                select: { id: true },
+            })
+            if (pending) return bad("You already suggested this item. It is waiting for review.", 409)
+        }
+        const note = parseText(body.suggestionNote, "Note", 500)
+        if (!note.ok) return bad(note.error)
+
         const product = await prisma.product.create({
             data: {
                 providerId,
@@ -116,6 +145,21 @@ export async function POST(req: Request) {
                 categoryId,
                 isActive: body.isActive !== false,
                 images: [],
+                ...(wantsSuggestion && categoryId
+                    ? {
+                        suggestion: {
+                            create: {
+                                providerId,
+                                name: finalName,
+                                nameAr: nameAr.ok ? nameAr.value : null,
+                                brand: brand.ok ? brand.value : null,
+                                unit,
+                                categoryId,
+                                note: note.value,
+                            },
+                        },
+                    }
+                    : {}),
             },
         })
 

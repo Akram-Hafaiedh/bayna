@@ -3,24 +3,18 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import type { Unit } from "@/app/generated/prisma/enums"
 import type { CategoryTree, ProductDetail } from "@/lib/provider-products"
-import { UNIT_OPTIONS } from "@/lib/units"
+import { UNIT_NAMES } from "@/lib/units"
 import CatalogPicker, { type CatalogResult } from "./CatalogPicker"
-
-type FormValues = {
-    name: string
-    nameAr: string
-    description: string
-    brand: string
-    sku: string
-    unit: Unit
-    categoryId: string
-    price: string
-    stock: string
-    minOrderQty: string
-    isActive: boolean
-}
+import {
+    CustomFields,
+    Field,
+    OfferFields,
+    Section,
+    textareaClass,
+    type FormValues,
+    type SetField,
+} from "./ProductFormParts"
 
 const EMPTY: FormValues = {
     name: "",
@@ -52,8 +46,16 @@ function fromProduct(p: ProductDetail): FormValues {
     }
 }
 
-const inputClass =
-    "w-full h-11 px-3.5 rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 text-[15px] focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent disabled:bg-zinc-50 disabled:text-zinc-500"
+type Source = "catalogue" | "custom"
+
+function categoryName(tree: CategoryTree[], id: string): string | null {
+    for (const root of tree) {
+        if (root.id === id) return root.name
+        const child = root.children.find((c) => c.id === id)
+        if (child) return `${root.name} › ${child.name}`
+    }
+    return null
+}
 
 export default function ProductForm({
     mode,
@@ -69,17 +71,28 @@ export default function ProductForm({
     const [catalog, setCatalog] = useState<{ id: string; name: string } | null>(
         product?.catalogItem ?? null
     )
-    // Create flow: choose a catalogue item first, or go custom
-    const [custom, setCustom] = useState(false)
+    const [source, setSource] = useState<Source>(
+        mode === "edit" && !product?.catalogItem ? "custom" : "catalogue"
+    )
+    const [suggest, setSuggest] = useState(true)
+    const [suggestNote, setSuggestNote] = useState("")
     const [error, setError] = useState("")
-    const [existingId, setExistingId] = useState<string | null>(null)
+    const [existing, setExisting] = useState<{ href: string; label: string } | null>(null)
     const [loading, setLoading] = useState(false)
 
-    const locked = catalog !== null
-    const showPicker = mode === "create" && !catalog && !custom
+    const isLinked = catalog !== null
+    // Catalogue source with nothing picked yet: the picker is shown, nothing to save
+    const picking = mode === "create" && source === "catalogue" && !catalog
 
-    function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
-        setForm((f) => ({ ...f, [key]: value }))
+    const set: SetField = (key, value) => setForm((f) => ({ ...f, [key]: value }))
+
+    function chooseSource(next: Source) {
+        if (next === source) return
+        setSource(next)
+        setCatalog(null)
+        setForm(EMPTY)
+        setError("")
+        setExisting(null)
     }
 
     function pick(item: CatalogResult) {
@@ -94,34 +107,55 @@ export default function ProductForm({
         }))
     }
 
-    function resetSelection() {
+    function cantFind(query: string) {
+        setSource("custom")
         setCatalog(null)
-        setCustom(false)
-        setForm(EMPTY)
+        setSuggest(true)
+        setForm({ ...EMPTY, name: query })
     }
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
+        if (picking) return
         setError("")
-        setExistingId(null)
-        setLoading(true)
+        setExisting(null)
 
+        if (mode === "create" && source === "custom" && suggest && !form.categoryId) {
+            setError("Choose a category to suggest this item for the catalogue.")
+            return
+        }
+
+        setLoading(true)
         try {
             const isEdit = mode === "edit" && product
+            const payload = isEdit
+                ? form
+                : {
+                    ...form,
+                    catalogItemId: catalog?.id,
+                    ...(source === "custom" && suggest
+                        ? { suggestToCatalogue: true, suggestionNote: suggestNote }
+                        : {}),
+                }
             const res = await fetch(
                 isEdit ? `/api/provider/products/${product.id}` : "/api/provider/products",
                 {
                     method: isEdit ? "PATCH" : "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(
-                        isEdit ? form : { ...form, catalogItemId: catalog?.id }
-                    ),
+                    body: JSON.stringify(payload),
                 }
             )
             const data = await res.json()
             if (!res.ok) {
                 setError(data.error || "Failed to save product")
-                if (data.productId) setExistingId(data.productId)
+                if (data.productId) {
+                    setExisting({
+                        href: `/provider/products/${data.productId}/edit`,
+                        label: "Edit it",
+                    })
+                } else if (data.catalogItemName) {
+                    setExisting({ href: "", label: data.catalogItemName })
+                }
                 return
             }
             router.push("/provider/products")
@@ -133,247 +167,273 @@ export default function ProductForm({
         }
     }
 
-    if (showPicker) {
-        return (
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 space-y-4">
-                <div>
-                    <h2 className="font-medium text-zinc-900">Start from the catalogue</h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        Linked products appear in price comparisons across providers.
-                    </p>
-                </div>
-                <CatalogPicker onPick={pick} />
-                <div className="flex items-center justify-between pt-1 text-sm">
-                    <button
-                        type="button"
-                        onClick={() => setCustom(true)}
-                        className="text-zinc-600 hover:text-zinc-900"
-                    >
-                        Not in the catalogue? Add a custom product
-                    </button>
-                    <Link href="/provider/products" className="text-zinc-500 hover:text-zinc-900">
-                        Cancel
-                    </Link>
-                </div>
-            </div>
-        )
-    }
+    const submitLabel = loading
+        ? "Saving..."
+        : mode === "edit"
+            ? "Save changes"
+            : "Create product"
 
     return (
         <form
             onSubmit={handleSubmit}
-            className="rounded-xl border border-zinc-200 bg-white p-6 space-y-4"
+            className="rounded-xl border border-zinc-200 bg-white p-6 space-y-6"
         >
-            {catalog && (
-                <div className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3.5 py-2.5 text-sm">
-                    <p className="text-zinc-600">
-                        Linked to catalogue item{" "}
-                        <span className="font-medium text-zinc-900">{catalog.name}</span>
-                    </p>
+            {mode === "create" && (
+                <SourceChoice value={source} onChange={chooseSource} />
+            )}
+
+            {mode === "edit" && product?.suggestion && !isLinked && (
+                <SuggestionStatus
+                    status={product.suggestion.status}
+                    note={product.suggestion.reviewNote}
+                />
+            )}
+
+            {picking && (
+                <CatalogPicker onPick={pick} onCantFind={cantFind} />
+            )}
+
+            {isLinked && (
+                <>
+                    <LinkedSummary
+                        name={catalog.name}
+                        nameAr={form.nameAr}
+                        brand={form.brand}
+                        category={categoryName(categories, form.categoryId)}
+                        unit={UNIT_NAMES[form.unit]}
+                        onChange={
+                            mode === "create"
+                                ? () => {
+                                    setCatalog(null)
+                                    setForm(EMPTY)
+                                }
+                                : undefined
+                        }
+                    />
+                    <OfferFields form={form} set={set} />
+                    <Section title="Details" description="Optional. Shown with your offer.">
+                        <Field label="Description">
+                            <textarea
+                                rows={3}
+                                value={form.description}
+                                onChange={(e) => set("description", e.target.value)}
+                                className={textareaClass}
+                            />
+                        </Field>
+                    </Section>
+                </>
+            )}
+
+            {!picking && !isLinked && (
+                <>
+                    <CustomFields form={form} set={set} categories={categories} />
+                    <OfferFields form={form} set={set} />
                     {mode === "create" && (
-                        <button
-                            type="button"
-                            onClick={resetSelection}
-                            className="shrink-0 text-zinc-500 hover:text-zinc-900"
-                        >
-                            Change
-                        </button>
+                        <SuggestBox
+                            checked={suggest}
+                            onChange={setSuggest}
+                            note={suggestNote}
+                            onNote={setSuggestNote}
+                        />
                     )}
-                </div>
+                </>
             )}
-            {mode === "create" && custom && !catalog && (
-                <div className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 px-3.5 py-2.5 text-sm">
-                    <p className="text-zinc-600">Custom product (not compared with other providers)</p>
-                    <button
-                        type="button"
-                        onClick={resetSelection}
-                        className="shrink-0 text-zinc-500 hover:text-zinc-900"
-                    >
-                        Use the catalogue
-                    </button>
-                </div>
-            )}
-
-            <Field label="Name" required>
-                <input
-                    required
-                    value={form.name}
-                    onChange={(e) => set("name", e.target.value)}
-                    className={inputClass}
-                />
-            </Field>
-            <Field label="Name (Arabic)">
-                <input
-                    value={form.nameAr}
-                    onChange={(e) => set("nameAr", e.target.value)}
-                    className={inputClass}
-                />
-            </Field>
-            <Field label="Description">
-                <textarea
-                    rows={3}
-                    value={form.description}
-                    onChange={(e) => set("description", e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 text-[15px] focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent resize-none"
-                />
-            </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Brand">
-                    <input
-                        value={form.brand}
-                        onChange={(e) => set("brand", e.target.value)}
-                        className={inputClass}
-                    />
-                </Field>
-                <Field label="SKU">
-                    <input
-                        value={form.sku}
-                        onChange={(e) => set("sku", e.target.value)}
-                        className={inputClass}
-                    />
-                </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Unit" hint={locked ? "Defined by the catalogue item" : undefined}>
-                    <select
-                        value={form.unit}
-                        disabled={locked}
-                        onChange={(e) => set("unit", e.target.value as Unit)}
-                        className={inputClass}
-                    >
-                        {UNIT_OPTIONS.map((u) => (
-                            <option key={u.value} value={u.value}>
-                                {u.label}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
-                <Field label="Category" hint={locked ? "Defined by the catalogue item" : undefined}>
-                    <select
-                        value={form.categoryId}
-                        disabled={locked}
-                        onChange={(e) => set("categoryId", e.target.value)}
-                        className={inputClass}
-                    >
-                        <option value="">No category</option>
-                        {categories.map((root) =>
-                            root.children.length > 0 ? (
-                                <optgroup key={root.id} label={root.name}>
-                                    {root.children.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            ) : (
-                                <option key={root.id} value={root.id}>
-                                    {root.name}
-                                </option>
-                            )
-                        )}
-                    </select>
-                </Field>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Price (TND)" required>
-                    <input
-                        required
-                        type="number"
-                        step="0.001"
-                        min="0"
-                        value={form.price}
-                        onChange={(e) => set("price", e.target.value)}
-                        className={inputClass}
-                    />
-                </Field>
-                <Field label="Stock">
-                    <input
-                        type="number"
-                        step="1"
-                        min="0"
-                        value={form.stock}
-                        onChange={(e) => set("stock", e.target.value)}
-                        className={inputClass}
-                    />
-                </Field>
-                <Field label="Min. order">
-                    <input
-                        type="number"
-                        step="1"
-                        min="1"
-                        placeholder="None"
-                        value={form.minOrderQty}
-                        onChange={(e) => set("minOrderQty", e.target.value)}
-                        className={inputClass}
-                    />
-                </Field>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-zinc-700">
-                <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => set("isActive", e.target.checked)}
-                    className="rounded border-zinc-300"
-                />
-                Active (visible to clients)
-            </label>
 
             {error && (
-                <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">
+                <div
+                    role="alert"
+                    className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600"
+                >
                     {error}
-                    {existingId && (
+                    {existing?.href && (
                         <>
                             {" "}
-                            <Link href={`/provider/products/${existingId}/edit`} className="underline">
-                                Edit it
+                            <Link href={existing.href} className="underline">
+                                {existing.label}
                             </Link>
+                        </>
+                    )}
+                    {existing && !existing.href && (
+                        <>
+                            {" "}
+                            Search for &ldquo;{existing.label}&rdquo; in the catalogue.
                         </>
                     )}
                 </div>
             )}
 
-            <div className="flex items-center gap-3 pt-2">
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="h-10 px-4 rounded-lg bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-                >
-                    {loading ? "Saving..." : mode === "edit" ? "Save changes" : "Create product"}
-                </button>
+            <div className="sticky bottom-0 -mx-6 -mb-6 flex items-center justify-end gap-3 rounded-b-xl border-t border-zinc-200 bg-white/95 px-6 py-3 backdrop-blur">
                 <Link
                     href="/provider/products"
-                    className="text-sm text-zinc-500 hover:text-zinc-900"
+                    className="h-10 px-3 inline-flex items-center text-sm text-zinc-500 hover:text-zinc-900"
                 >
                     Cancel
                 </Link>
+                <button
+                    type="submit"
+                    disabled={loading || picking}
+                    className="h-10 px-5 rounded-lg bg-zinc-900 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-40"
+                >
+                    {submitLabel}
+                </button>
             </div>
         </form>
     )
 }
 
-function Field({
-    label,
-    required,
-    hint,
-    children,
+function SourceChoice({
+    value,
+    onChange,
 }: {
-    label: string
-    required?: boolean
-    hint?: string
-    children: React.ReactNode
+    value: Source
+    onChange: (next: Source) => void
+}) {
+    const options: { id: Source; title: string; text: string }[] = [
+        {
+            id: "catalogue",
+            title: "From the catalogue",
+            text: "Pick a known item. Clients can compare your price with other providers.",
+        },
+        {
+            id: "custom",
+            title: "Custom product",
+            text: "Your own listing. You can also suggest it for the catalogue.",
+        },
+    ]
+    return (
+        <div role="radiogroup" aria-label="Product type" className="grid gap-3 sm:grid-cols-2">
+            {options.map((o) => {
+                const on = value === o.id
+                return (
+                    <button
+                        key={o.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => onChange(o.id)}
+                        className={`rounded-lg border p-3.5 text-left transition ${on
+                                ? "border-zinc-900 ring-1 ring-zinc-900"
+                                : "border-zinc-200 hover:border-zinc-400"
+                            }`}
+                    >
+                        <span className="block text-sm font-medium text-zinc-900">{o.title}</span>
+                        <span className="mt-0.5 block text-xs text-zinc-500">{o.text}</span>
+                    </button>
+                )
+            })}
+        </div>
+    )
+}
+
+function LinkedSummary({
+    name,
+    nameAr,
+    brand,
+    category,
+    unit,
+    onChange,
+}: {
+    name: string
+    nameAr: string
+    brand: string
+    category: string | null
+    unit: string
+    onChange?: () => void
 }) {
     return (
-        <label className="block space-y-1.5">
-            <span className="block text-sm font-medium text-zinc-700">
-                {label}
-                {required && <span className="text-red-500"> *</span>}
-            </span>
-            {children}
-            {hint && <span className="block text-xs text-zinc-400">{hint}</span>}
-        </label>
+        <div className="rounded-lg bg-zinc-50 px-4 py-3.5">
+            <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+                        Catalogue item
+                    </p>
+                    <p className="mt-0.5 font-medium text-zinc-900">{name}</p>
+                    {nameAr && (
+                        <p className="text-sm text-zinc-500" dir="rtl">
+                            {nameAr}
+                        </p>
+                    )}
+                    <p className="mt-1 text-sm text-zinc-500">
+                        {[brand, category, unit].filter(Boolean).join(" · ")}
+                    </p>
+                </div>
+                {onChange && (
+                    <button
+                        type="button"
+                        onClick={onChange}
+                        className="shrink-0 text-sm text-zinc-500 hover:text-zinc-900"
+                    >
+                        Change
+                    </button>
+                )}
+            </div>
+            <p className="mt-2 text-xs text-zinc-400">
+                Name, unit and category come from the catalogue so prices stay comparable.
+            </p>
+        </div>
+    )
+}
+
+function SuggestBox({
+    checked,
+    onChange,
+    note,
+    onNote,
+}: {
+    checked: boolean
+    onChange: (v: boolean) => void
+    note: string
+    onNote: (v: string) => void
+}) {
+    return (
+        <div className="rounded-lg border border-zinc-200 p-4 space-y-3">
+            <label className="flex items-start gap-2.5 text-sm text-zinc-700">
+                <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => onChange(e.target.checked)}
+                    className="mt-0.5 rounded border-zinc-300"
+                />
+                <span>
+                    <span className="font-medium text-zinc-900">Suggest this for the catalogue</span>
+                    <span className="block text-zinc-500">
+                        An admin reviews it. Once approved, your product is linked to the catalogue
+                        item and compared with other providers. Your listing stays live meanwhile.
+                    </span>
+                </span>
+            </label>
+            {checked && (
+                <Field label="Note for the admin" hint="Optional. For example the exact size or standard.">
+                    <textarea
+                        rows={2}
+                        maxLength={500}
+                        value={note}
+                        onChange={(e) => onNote(e.target.value)}
+                        className={textareaClass}
+                    />
+                </Field>
+            )}
+        </div>
+    )
+}
+
+function SuggestionStatus({
+    status,
+    note,
+}: {
+    status: "PENDING" | "APPROVED" | "REJECTED"
+    note: string | null
+}) {
+    if (status === "APPROVED") return null
+    const pending = status === "PENDING"
+    return (
+        <div
+            className={`rounded-lg px-4 py-3 text-sm ${pending ? "bg-amber-50 text-amber-800" : "bg-zinc-100 text-zinc-700"
+                }`}
+        >
+            {pending
+                ? "You suggested this item for the catalogue. It is waiting for review."
+                : `Your catalogue suggestion was not accepted${note ? `: ${note}` : "."} The product stays as a custom listing.`}
+        </div>
     )
 }

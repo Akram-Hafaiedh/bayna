@@ -15,7 +15,14 @@ export type CatalogResult = {
     listedProductId: string | null
 }
 
-export default function CatalogPicker({ onPick }: { onPick: (item: CatalogResult) => void }) {
+export default function CatalogPicker({
+    onPick,
+    onCantFind,
+}: {
+    onPick: (item: CatalogResult) => void
+    /** Called with the current search text when the provider cannot find their item. */
+    onCantFind: (query: string) => void
+}) {
     const [q, setQ] = useState("")
     const [items, setItems] = useState<CatalogResult[]>([])
     const [loading, setLoading] = useState(true)
@@ -97,13 +104,24 @@ export default function CatalogPicker({ onPick }: { onPick: (item: CatalogResult
                 ))}
                 {!loading && items.length === 0 && (
                     <li className="px-3.5 py-6 text-center text-sm text-zinc-500">
-                        No catalogue item found.
+                        No catalogue item found{q.trim() ? ` for “${q.trim()}”` : ""}.
                     </li>
                 )}
                 {loading && items.length === 0 && (
                     <li className="px-3.5 py-6 text-center text-sm text-zinc-400">Searching...</li>
                 )}
             </ul>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 px-3.5 py-3 text-sm">
+                <p className="text-zinc-600">Can&apos;t find it?</p>
+                <button
+                    type="button"
+                    onClick={() => onCantFind(q.trim())}
+                    className="font-medium text-zinc-900 underline underline-offset-2 hover:text-zinc-700"
+                >
+                    Add it as a custom product and suggest it for the catalogue
+                </button>
+            </div>
         </div>
     )
 }

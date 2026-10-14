@@ -13,6 +13,9 @@ export default function AdminLayout({
                 items={[
                     { href: "/admin/dashboard", label: "Overview" },
                     { href: "/admin/providers", label: "Providers" },
+                    { href: "/admin/catalogue", label: "Catalogue" },
+                    { href: "/admin/catalogue-requests", label: "Catalogue requests" },
+                    { href: "/admin/categories", label: "Categories" },
                     { href: "/admin/users", label: "Users" },
                 ]}
             />

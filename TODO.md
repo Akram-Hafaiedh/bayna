@@ -68,6 +68,9 @@ Never expose admin promotion in the public UI.
   - [x] Create product (link to CatalogItem or free-form niche item)
   - [ ] Edit product: price, stock, active flag done; images still to do
   - [x] Delete product (deactivate via the Active flag)
+- [x] Product form redesign: choose catalogue vs custom up front, short linked form, one action bar
+- [x] Suggest a custom product for the catalogue (CatalogSuggestion, provider side)
+- [ ] Provider: suggest an existing custom product for the catalogue later (from edit)
 - [ ] Optional: bulk import / quick-add from catalogue
 
 ## Phase 4 – Client Side
@@ -80,8 +83,12 @@ Never expose admin promotion in the public UI.
 - [x] Admin Dashboard (Basic)
 - [x] Admin List Users (Basic)
 - [x] Admin List Providers (With Filters)
-- [ ] Admin Manage Categories
-- [ ] Admin Manage CatalogItems (add / edit / deactivate)
+- [x] Admin review of catalogue requests (approve as new item, link to existing, reject)
+- [x] Admin Manage Categories (create, rename, move, reorder; two levels)
+- [x] Admin Manage CatalogItems (add / edit / deactivate; unit and category changes update linked products)
+- [x] Edit catalogue request details before approving
+- [ ] Delete categories (not built: only create / edit / reorder)
+- [ ] Seed re-runs overwrite name, unit and category of seeded items; make the seed skip items the admin edited
 
 ## Phase 6 – Tunisia Polish
 - [ ] i18n (FR + AR)
@@ -101,6 +108,11 @@ Never expose admin promotion in the public UI.
 ---
 
 ## Notes
+
+- Catalogue governance: categories are admin-only. Providers cannot create catalogue items; they
+  add a custom product and optionally suggest it. An admin approves it (new item or merged into an
+  existing one), which links the product and makes it comparable. Rejected suggestions keep the
+  custom listing.
 
 - **Product** = provider’s offer (always has providerId)
 - **CatalogItem** = shared identity for comparison (optional on Product)

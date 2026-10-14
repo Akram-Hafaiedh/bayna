@@ -2,7 +2,7 @@
 // Server-side querying for the provider's product list: search, filters, sort, pagination.
 // Used by the API route today and by the products page (Server Component) next.
 import type { Prisma } from "@/app/generated/prisma/client"
-import type { Unit } from "@/app/generated/prisma/enums"
+import type { SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
 import { LOW_STOCK_THRESHOLD, type ProductFilters } from "@/lib/product-filters"
 
@@ -211,6 +211,8 @@ export type ProductDetail = {
     minOrderQty: number | null
     isActive: boolean
     catalogItem: { id: string; name: string } | null
+    /** Latest request to add this product to the shared catalogue, if any. */
+    suggestion: { status: SuggestionStatus; reviewNote: string | null } | null
 }
 
 /** Returns null when the product does not exist or belongs to another provider. */
@@ -234,6 +236,7 @@ export async function getProviderProduct(
             minOrderQty: true,
             isActive: true,
             catalogItem: { select: { id: true, name: true } },
+            suggestion: { select: { status: true, reviewNote: true } },
         },
     })
     return p ? { ...p, price: p.price.toString() } : null
