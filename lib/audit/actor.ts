@@ -1,6 +1,6 @@
 // lib/audit/actor.ts
 // Who is acting, in the shape the database audit triggers read from the transaction setting
-// `app.audit` (see prisma/migrations/*_audit_foundation). Pure and dependency-free so it can be
+// `app.audit` (see prisma/migrations/*_audit_triggers). Pure and dependency-free so it can be
 // unit-tested without a database.
 
 export type AuditSource = "WEB" | "API" | "SEED" | "JOB" | "IMPORT" | "WEBHOOK" | "SYSTEM"

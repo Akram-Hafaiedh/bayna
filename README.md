@@ -179,11 +179,23 @@ No prices are seeded — providers set their own prices when creating products. 
 
 ## Roadmap
 
-**Next focus: categories management.** An admin area to create, edit and organise categories (parent/child, display order, French/Arabic names). Catalogue item management follows, since every catalogue item and product depends on a category.
+**Done:** shared catalogue and categories with admin management; provider product management (list with
+search, filters and pagination, create from the catalogue or as a custom product, edit, delete); admin
+review of catalogue requests; audit columns and an append-only activity log on every table; a
+permission layer (roles and assignments, one guard for every admin and provider API route).
 
-Provider product management (list with search, filters and pagination; create from the catalogue or as a custom product; edit and delete) is done. See `TODO.md` for the full phase-by-phase list.
+**Next:** record who did each change in the activity log, then the provider profile (shop identity,
+logo, hours, contact) with admin review of edits to verified shops.
 
-Longer term: client search & ordering, distance + travel cost, COD/pickup flows, i18n (FR + AR), and expanding the catalogue beyond construction materials.
+**Backlog (not started):** richer account and security pages (2FA, sessions, connected accounts,
+notifications), person and admin detail profiles, inventory with a stock ledger and reorder queue,
+personal versus business clients with invoices, provider and client team pages, analytics and reports,
+promotions and reviews, a help and support module, an admin project / deal board, and admin billing.
+
+Longer term: client search and ordering, distance + travel cost, COD/pickup flows, i18n (FR + AR), and
+expanding the catalogue beyond construction materials and auto parts.
+
+The full phase-by-phase list, with the backlog ideas and their open questions, is in `TODO.md`.
 
 ---
 

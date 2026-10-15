@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 
 export async function POST(req: Request) {
     try {
@@ -25,21 +27,24 @@ export async function POST(req: Request) {
             })
         }
 
-        // Delete any existing tokens for this email
-        await prisma.passwordResetToken.deleteMany({
-            where: { email },
-        })
-
         // Create a secure token
         const token = crypto.randomBytes(32).toString("hex")
         const expires = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
-        await prisma.passwordResetToken.create({
-            data: {
-                email,
-                token,
-                expires,
-            },
+        // Anyone can request a reset, so there is no signed-in person; the request's IP and
+        // browser are recorded instead.
+        await withAudit(actorFromSession(null, requestMeta(req)), async (tx) => {
+            // Delete any existing tokens for this email
+            await tx.passwordResetToken.deleteMany({
+                where: { email },
+            })
+            await tx.passwordResetToken.create({
+                data: {
+                    email,
+                    token,
+                    expires,
+                },
+            })
         })
 
         // In development we just log the link.

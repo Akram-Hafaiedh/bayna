@@ -2,7 +2,9 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { getVerifiedProvider } from "@/lib/provider-auth"
+import { requireShop } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
+import type { ShopPermission } from "@/lib/access/catalogue"
 import {
     parseMinOrderQty,
     parsePrice,
@@ -13,8 +15,8 @@ import {
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
-async function getOwnedProduct(productId: string) {
-    const guard = await getVerifiedProvider()
+async function getOwnedProduct(productId: string, key: ShopPermission, req: Request) {
+    const guard = await requireShop(key, req)
     if (!guard.ok) return { ok: false as const, error: guard.error, status: guard.status }
 
     const product = await prisma.product.findFirst({
@@ -26,16 +28,16 @@ async function getOwnedProduct(productId: string) {
     })
     if (!product) return { ok: false as const, error: "Product not found", status: 404 as const }
 
-    return { ok: true as const, product }
+    return { ok: true as const, product, guard }
 }
 
 export async function GET(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params
-        const result = await getOwnedProduct(id)
+        const result = await getOwnedProduct(id, "product.listing.view", req)
         if (!result.ok) return bad(result.error, result.status)
         return NextResponse.json({ product: result.product })
     } catch (error) {
@@ -50,7 +52,7 @@ export async function PATCH(
 ) {
     try {
         const { id } = await params
-        const result = await getOwnedProduct(id)
+        const result = await getOwnedProduct(id, "product.listing.edit", req)
         if (!result.ok) return bad(result.error, result.status)
         const current = result.product
         const isLinked = current.catalogItemId !== null
@@ -125,7 +127,16 @@ export async function PATCH(
             data.categoryId = categoryId
         }
 
-        const product = await prisma.product.update({ where: { id }, data })
+        // Price and stock have their own permissions. Only a real change is checked, so an edit form
+        // that resends the unchanged values still works for someone without them.
+        if (data.price !== undefined && Number(data.price) !== Number(current.price) && !result.guard.can("product.price.edit")) {
+            return bad("You do not have permission to change prices", 403)
+        }
+        if (data.stock !== undefined && data.stock !== current.stock && !result.guard.can("product.stock.edit")) {
+            return bad("You do not have permission to change stock", 403)
+        }
+
+        const product = await withAudit(result.guard.actor, (tx) => tx.product.update({ where: { id }, data }))
         return NextResponse.json({ product })
     } catch (error) {
         console.error("Update product error:", error)
@@ -134,15 +145,15 @@ export async function PATCH(
 }
 
 export async function DELETE(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const { id } = await params
-        const result = await getOwnedProduct(id)
+        const result = await getOwnedProduct(id, "product.listing.delete", req)
         if (!result.ok) return bad(result.error, result.status)
 
-        await prisma.product.delete({ where: { id } })
+        await withAudit(result.guard.actor, (tx) => tx.product.delete({ where: { id } }))
         return NextResponse.json({ message: "Product deleted" })
     } catch (error) {
         console.error("Delete product error:", error)

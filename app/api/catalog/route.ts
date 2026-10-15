@@ -4,11 +4,11 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { getVerifiedProvider } from "@/lib/provider-auth"
+import { requireShop } from "@/lib/access/guard"
 
 export async function GET(req: Request) {
     try {
-        const guard = await getVerifiedProvider()
+        const guard = await requireShop("product.listing.create", req)
         if (!guard.ok) {
             return NextResponse.json({ error: guard.error }, { status: guard.status })
         }

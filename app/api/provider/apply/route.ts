@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(req: Request) {
@@ -66,18 +68,20 @@ export async function POST(req: Request) {
         }
 
         // Create provider profile only — role stays CLIENT until admin approves
-        const provider = await prisma.provider.create({
-            data: {
-                userId,
-                businessName: businessName.trim(),
-                description: description?.trim() || null,
-                phone: phone?.trim() || user.phone || null,
-                address: address?.trim() || null,
-                city: city.trim(),
-                governorate: governorate?.trim() || null,
-                isVerified: false,
-            },
-        })
+        const provider = await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
+            tx.provider.create({
+                data: {
+                    userId,
+                    businessName: businessName.trim(),
+                    description: description?.trim() || null,
+                    phone: phone?.trim() || user.phone || null,
+                    address: address?.trim() || null,
+                    city: city.trim(),
+                    governorate: governorate?.trim() || null,
+                    isVerified: false,
+                },
+            })
+        )
 
         return NextResponse.json(
             {

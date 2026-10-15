@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(req: Request) {
@@ -38,14 +40,18 @@ export async function POST(req: Request) {
         const hashedPassword = await bcrypt.hash(password, 12)
 
         // Always create as CLIENT — never trust role from the client
-        const user = await prisma.user.create({
-            data: {
-                email,
-                name: name || null,
-                password: hashedPassword,
-                role: Role.CLIENT,
-            },
-        })
+        // Nobody is signed in yet, so the new account is named as the actor by its email.
+        const actor = actorFromSession(null, requestMeta(req), { actorName: email, actorRole: Role.CLIENT })
+        const user = await withAudit(actor, (tx) =>
+            tx.user.create({
+                data: {
+                    email,
+                    name: name || null,
+                    password: hashedPassword,
+                    role: Role.CLIENT,
+                },
+            })
+        )
 
         return NextResponse.json(
             { message: "User created successfully", userId: user.id },

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 
 export async function POST(req: Request) {
     try {
@@ -48,13 +50,15 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcrypt.hash(newPassword, 12)
 
-        await prisma.user.update({
-            where: { id: user.id },
-            data: {
-                password: hashedPassword,
-                passwordChangedAt: new Date(),
-            },
-        })
+        await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
+            tx.user.update({
+                where: { id: user.id },
+                data: {
+                    password: hashedPassword,
+                    passwordChangedAt: new Date(),
+                },
+            })
+        )
 
         return NextResponse.json({
             message: "Password updated successfully",

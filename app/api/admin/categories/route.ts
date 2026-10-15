@@ -3,15 +3,17 @@
 // POST /api/admin/categories   create a category
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { slugify } from "@/lib/slug"
 import { parseCategoryFields } from "@/lib/category-input"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.category.view", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
 
         const rows = await prisma.category.findMany({
             orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
@@ -42,7 +44,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.category.create", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
 
         const body = await req.json().catch(() => ({}))
         const fields = await parseCategoryFields(body)
@@ -60,9 +63,11 @@ export async function POST(req: Request) {
             _max: { sortOrder: true },
         })
 
-        const category = await prisma.category.create({
-            data: { ...fields.value, slug, sortOrder: (last._max.sortOrder ?? 0) + 1 },
-        })
+        const category = await withAudit(guard.actor, (tx) =>
+            tx.category.create({
+                data: { ...fields.value, slug, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+            })
+        )
         return NextResponse.json({ category }, { status: 201 })
     } catch (error) {
         if ((error as { code?: string })?.code === "P2002") {

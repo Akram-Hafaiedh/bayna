@@ -10,9 +10,10 @@
     "db:seed": "npx tsx prisma/seed.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
+    "access:sync": "npx tsx scripts/sync-access.ts",
     "audit:check": "npx tsx scripts/check-audit-schema.ts",
     "test:unit": "npx tsx --test \"lib/**/*.test.ts\"",
-    "test:audit-db": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f prisma/tests/audit-foundation.sql"
+    "test:audit-db": "npx tsx scripts/run-audit-db-test.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

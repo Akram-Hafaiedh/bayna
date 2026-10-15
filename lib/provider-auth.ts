@@ -1,43 +1,28 @@
 // lib/provider-auth.ts
-// Shared guard for provider API routes (replaces the copies in each route file).
-import { auth } from "@/auth"
+// Helpers for provider Server Component pages. API routes use requireShop() from lib/access/guard.
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
 import { connection } from "next/server"
 import { requireRole } from "@/lib/session"
 
-export type ProviderAuth =
-    | { ok: true; provider: { id: string } }
-    | { ok: false; error: string; status: 401 | 403 | 404 }
-
-export async function getVerifiedProvider(): Promise<ProviderAuth> {
-    const session = await auth()
-    if (!session?.user?.id || session.user.role !== Role.PROVIDER) {
-        return { ok: false, error: "Unauthorized", status: 401 }
-    }
-
-    const provider = await prisma.provider.findUnique({
-        where: { userId: session.user.id },
-        select: { id: true, isVerified: true },
-    })
-
-    if (!provider) {
-        return { ok: false, error: "Provider profile not found", status: 404 }
-    }
-    if (!provider.isVerified) {
-        return { ok: false, error: "Provider not verified yet", status: 403 }
-    }
-
-    return { ok: true, provider: { id: provider.id } }
-}
-
 /**
  * For Server Component pages (call inside a <Suspense> boundary).
- * Redirects non-providers; returns null when the user has no provider profile.
+ * Redirects non-providers. Returns the person's shop, found through their shop assignment, or null
+ * when they have none. An applicant still waiting for approval has no assignment yet, so the shop
+ * they applied for is returned (not verified) so the page can show the pending state. Pages do not
+ * authorize anything with this: every API route checks permissions itself.
  */
 export async function requireProvider() {
     await connection()
     const user = await requireRole([Role.PROVIDER])
+
+    const assignment = await prisma.accessAssignment.findFirst({
+        where: { userId: user.id, scope: "SHOP", status: "ACTIVE", providerId: { not: null } },
+        orderBy: { providerId: "asc" },
+        select: { provider: { select: { id: true, isVerified: true } } },
+    })
+    if (assignment?.provider) return assignment.provider
+
     return prisma.provider.findUnique({
         where: { userId: user.id },
         select: { id: true, isVerified: true },

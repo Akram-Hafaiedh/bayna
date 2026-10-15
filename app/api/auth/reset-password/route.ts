@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 
 export async function POST(req: Request) {
     try {
@@ -34,14 +36,18 @@ export async function POST(req: Request) {
 
         const hashedPassword = await bcrypt.hash(password, 12)
 
-        await prisma.user.update({
-            where: { email: resetToken.email },
-            data: { password: hashedPassword },
-        })
+        // The reset link proves who this is, but there is no session, so the actor is named by email.
+        const actor = actorFromSession(null, requestMeta(req), { actorName: resetToken.email })
+        await withAudit(actor, async (tx) => {
+            await tx.user.update({
+                where: { email: resetToken.email },
+                data: { password: hashedPassword },
+            })
 
-        // Delete the used token
-        await prisma.passwordResetToken.delete({
-            where: { token },
+            // Delete the used token
+            await tx.passwordResetToken.delete({
+                where: { token },
+            })
         })
 
         return NextResponse.json({

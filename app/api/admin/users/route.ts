@@ -1,14 +1,13 @@
 // app/api/admin/users/route.ts
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
+import { requirePlatform } from "@/lib/access/guard"
 import { prisma } from "@/lib/prisma"
-import { Role } from "@/app/generated/prisma/enums"
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== Role.ADMIN) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        const guard = await requirePlatform("user.account.view", req)
+        if (!guard.ok) {
+            return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
 
         const users = await prisma.user.findMany({

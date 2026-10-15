@@ -1,18 +1,18 @@
 // app/api/admin/providers/[id]/reject/route.ts
-// WORKSPACE NOTE: folder is named _id here — rename to [id] in your local project
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== Role.ADMIN) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        const guard = await requirePlatform("shop.application.reject", req)
+        if (!guard.ok) {
+            return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
 
         const { id } = await params
@@ -29,13 +29,13 @@ export async function POST(
         }
 
         // Remove application; keep user as CLIENT
-        await prisma.$transaction([
-            prisma.provider.delete({ where: { id } }),
-            prisma.user.update({
+        await withAudit(guard.actor, async (tx) => {
+            await tx.provider.delete({ where: { id } })
+            await tx.user.update({
                 where: { id: provider.userId },
                 data: { role: Role.CLIENT },
-            }),
-        ])
+            })
+        })
 
         return NextResponse.json({ message: "Provider application rejected" })
     } catch (error) {

@@ -2,13 +2,15 @@
 // POST { ids: string[] }  new display order for categories that share the same parent.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
 export async function POST(req: Request) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.category.reorder", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
 
         const body = await req.json().catch(() => ({}))
         const ids: unknown = body.ids
@@ -26,11 +28,11 @@ export async function POST(req: Request) {
             return bad("Only categories with the same parent can be reordered together")
         }
 
-        await prisma.$transaction(
-            (ids as string[]).map((id, index) =>
-                prisma.category.update({ where: { id }, data: { sortOrder: index + 1 } })
-            )
-        )
+        await withAudit(guard.actor, async (tx) => {
+            for (const [index, id] of (ids as string[]).entries()) {
+                await tx.category.update({ where: { id }, data: { sortOrder: index + 1 } })
+            }
+        })
         return NextResponse.json({ message: "Order saved" })
     } catch (error) {
         console.error("Reorder categories error:", error)

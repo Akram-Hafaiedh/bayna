@@ -1,7 +1,7 @@
 -- Behaviour test for the audit triggers (migration *_audit_triggers).
 --
 -- Run against a database with all migrations applied:
---   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/tests/audit-foundation.sql
+--   npm run test:audit-db        (or: psql -U postgres -d bayna -v ON_ERROR_STOP=1 -f prisma/tests/audit-foundation.sql)
 --
 -- Everything runs in one transaction that is rolled back, so no data is left behind.
 -- Prints one PASS line per check and stops at the first FAIL.

@@ -1,6 +1,6 @@
 // lib/audit/run.ts
 // Tell the database who is acting, once per transaction. The audit triggers (migration
-// *_audit_foundation) read it to fill createdById / updatedById and to write ActivityLog rows.
+// *_audit_triggers) read it to fill createdById / updatedById and to write ActivityLog rows.
 //
 //   await withAudit(actor, async (tx) => {
 //       await tx.product.update({ where: { id }, data: { price } })

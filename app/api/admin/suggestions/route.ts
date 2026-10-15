@@ -4,14 +4,15 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
 
 const STATUSES = { pending: "PENDING", approved: "APPROVED", rejected: "REJECTED" } as const
 
 export async function GET(req: Request) {
     try {
-        if (!(await isAdmin())) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        const guard = await requirePlatform("catalog.suggestion.view", req)
+        if (!guard.ok) {
+            return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
 
         const status = new URL(req.url).searchParams.get("status") ?? "pending"

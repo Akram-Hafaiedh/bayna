@@ -2,7 +2,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Unit } from "@/app/generated/prisma/enums"
-import { getVerifiedProvider } from "@/lib/provider-auth"
+import { requireShop } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { listProducts } from "@/lib/provider-products"
 import { parseProductFilters } from "@/lib/product-filters"
 import {
@@ -19,7 +20,7 @@ const bad = (error: string, status = 400, extra?: Record<string, unknown>) =>
 // GET /api/provider/products?q=&category=&status=&stock=&linked=&unit=&sort=&dir=&page=&pageSize=
 export async function GET(req: Request) {
     try {
-        const guard = await getVerifiedProvider()
+        const guard = await requireShop("product.listing.view", req)
         if (!guard.ok) return bad(guard.error, guard.status)
 
         const filters = parseProductFilters(new URL(req.url).searchParams)
@@ -40,11 +41,19 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const guard = await getVerifiedProvider()
+        const guard = await requireShop("product.listing.create", req)
         if (!guard.ok) return bad(guard.error, guard.status)
         const providerId = guard.provider.id
 
         const body = await req.json()
+
+        // Setting a price or opening stock needs its own permission (an inventory clerk may not).
+        if (Number(body.price) > 0 && !guard.can("product.price.edit")) {
+            return bad("You do not have permission to set prices", 403)
+        }
+        if (Number(body.stock) > 0 && !guard.can("product.stock.edit")) {
+            return bad("You do not have permission to set stock", 403)
+        }
 
         // Optional link to the shared catalogue. A linked product inherits the
         // catalogue unit and category so prices stay comparable across providers.
@@ -129,39 +138,41 @@ export async function POST(req: Request) {
         const note = parseText(body.suggestionNote, "Note", 500)
         if (!note.ok) return bad(note.error)
 
-        const product = await prisma.product.create({
-            data: {
-                providerId,
-                catalogItemId: catalog?.id ?? null,
-                name: finalName,
-                nameAr: nameAr.ok ? nameAr.value : null,
-                description: description.ok ? description.value : null,
-                brand: (brand.ok && brand.value) || catalog?.brand || null,
-                sku: sku.ok ? sku.value : null,
-                unit,
-                price: price.ok ? price.value : "0.000",
-                stock: stock.ok ? stock.value : 0,
-                minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
-                categoryId,
-                isActive: body.isActive !== false,
-                images: [],
-                ...(wantsSuggestion && categoryId
-                    ? {
-                        suggestion: {
-                            create: {
-                                providerId,
-                                name: finalName,
-                                nameAr: nameAr.ok ? nameAr.value : null,
-                                brand: brand.ok ? brand.value : null,
-                                unit,
-                                categoryId,
-                                note: note.value,
+        const product = await withAudit(guard.actor, (tx) =>
+            tx.product.create({
+                data: {
+                    providerId,
+                    catalogItemId: catalog?.id ?? null,
+                    name: finalName,
+                    nameAr: nameAr.ok ? nameAr.value : null,
+                    description: description.ok ? description.value : null,
+                    brand: (brand.ok && brand.value) || catalog?.brand || null,
+                    sku: sku.ok ? sku.value : null,
+                    unit,
+                    price: price.ok ? price.value : "0.000",
+                    stock: stock.ok ? stock.value : 0,
+                    minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
+                    categoryId,
+                    isActive: body.isActive !== false,
+                    images: [],
+                    ...(wantsSuggestion && categoryId
+                        ? {
+                            suggestion: {
+                                create: {
+                                    providerId,
+                                    name: finalName,
+                                    nameAr: nameAr.ok ? nameAr.value : null,
+                                    brand: brand.ok ? brand.value : null,
+                                    unit,
+                                    categoryId,
+                                    note: note.value,
+                                },
                             },
-                        },
-                    }
-                    : {}),
-            },
-        })
+                        }
+                        : {}),
+                },
+            })
+        )
 
         return NextResponse.json({ product }, { status: 201 })
     } catch (error) {

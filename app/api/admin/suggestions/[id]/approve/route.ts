@@ -6,7 +6,8 @@
 // Either way the provider's product is linked to the item, so it joins price comparisons.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { slugify } from "@/lib/slug"
 import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalog-input"
 
@@ -17,7 +18,8 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.suggestion.review", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
         const { id } = await params
 
         const body = await req.json().catch(() => ({}))
@@ -63,27 +65,28 @@ export async function POST(
                 select: { slug: true },
             })
             const slug = await uniqueCatalogSlug(slugify(`${category?.slug ?? ""}-${fields.value.name}`))
-            item = await prisma.catalogItem.create({
-                data: { ...fields.value, slug },
-                select: { id: true, unit: true, categoryId: true },
-            })
+            item = await withAudit(guard.actor, (tx) =>
+                tx.catalogItem.create({
+                    data: { ...fields.value, slug },
+                    select: { id: true, unit: true, categoryId: true },
+                })
+            )
         }
 
-        await prisma.$transaction([
-            prisma.catalogSuggestion.update({
+        const approved = item
+        await withAudit(guard.actor, async (tx) => {
+            await tx.catalogSuggestion.update({
                 where: { id },
-                data: { status: "APPROVED", catalogItemId: item.id, reviewedAt: new Date() },
-            }),
-            ...(suggestion.productId
-                ? [
-                    prisma.product.update({
-                        where: { id: suggestion.productId },
-                        // Linked products inherit unit and category from the catalogue item
-                        data: { catalogItemId: item.id, unit: item.unit, categoryId: item.categoryId },
-                    }),
-                ]
-                : []),
-        ])
+                data: { status: "APPROVED", catalogItemId: approved.id, reviewedAt: new Date() },
+            })
+            if (suggestion.productId) {
+                await tx.product.update({
+                    where: { id: suggestion.productId },
+                    // Linked products inherit unit and category from the catalogue item
+                    data: { catalogItemId: approved.id, unit: approved.unit, categoryId: approved.categoryId },
+                })
+            }
+        })
 
         return NextResponse.json({ message: "Request approved", catalogItemId: item.id })
     } catch (error) {

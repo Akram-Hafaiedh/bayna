@@ -4,7 +4,8 @@
 // either one here is applied to every linked product in the same transaction.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { parseCatalogFields } from "@/lib/catalog-input"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -14,7 +15,8 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.item.update", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
         const { id } = await params
 
         const current = await prisma.catalogItem.findUnique({ where: { id } })
@@ -23,6 +25,10 @@ export async function PATCH(
         const body = await req.json().catch(() => ({}))
         if (typeof body.isActive !== "boolean" && body.isActive !== undefined) {
             return bad("isActive must be true or false")
+        }
+        // Hiding or restoring an item is its own permission
+        if (typeof body.isActive === "boolean" && body.isActive !== current.isActive && !guard.can("catalog.item.archive")) {
+            return bad("Forbidden", 403)
         }
 
         // Merge over the current values so a partial body (e.g. only isActive) is valid
@@ -37,19 +43,20 @@ export async function PATCH(
         })
         if (!fields.ok) return bad(fields.error)
 
-        const [item] = await prisma.$transaction([
-            prisma.catalogItem.update({
+        const item = await withAudit(guard.actor, async (tx) => {
+            const updated = await tx.catalogItem.update({
                 where: { id },
                 data: {
                     ...fields.value,
                     ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
                 },
-            }),
-            prisma.product.updateMany({
+            })
+            await tx.product.updateMany({
                 where: { catalogItemId: id },
                 data: { unit: fields.value.unit, categoryId: fields.value.categoryId },
-            }),
-        ])
+            })
+            return updated
+        })
 
         return NextResponse.json({ item })
     } catch (error) {

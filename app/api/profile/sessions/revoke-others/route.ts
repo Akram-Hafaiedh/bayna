@@ -1,9 +1,10 @@
 // app/api/profile/sessions/revoke-others/route.ts
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
-import { prisma } from "@/lib/prisma"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 
-export async function POST() {
+export async function POST(req: Request) {
     try {
         const session = await auth()
         if (!session?.user?.id) {
@@ -12,14 +13,17 @@ export async function POST() {
 
         const currentSessionId = (session as { loginSessionId?: string }).loginSessionId
 
-        await prisma.loginSession.updateMany({
-            where: {
-                userId: session.user.id,
-                revokedAt: null,
-                ...(currentSessionId ? { NOT: { id: currentSessionId } } : {}),
-            },
-            data: { revokedAt: new Date() },
-        })
+        const userId = session.user.id
+        await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
+            tx.loginSession.updateMany({
+                where: {
+                    userId,
+                    revokedAt: null,
+                    ...(currentSessionId ? { NOT: { id: currentSessionId } } : {}),
+                },
+                data: { revokedAt: new Date() },
+            })
+        )
 
         return NextResponse.json({ message: "Other sessions revoked" })
     } catch (error) {

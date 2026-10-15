@@ -3,7 +3,8 @@
 // The slug stays the same so links and the seed keep working.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { parseCategoryFields } from "@/lib/category-input"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -13,7 +14,8 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.category.update", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
         const { id } = await params
 
         const current = await prisma.category.findUnique({ where: { id } })
@@ -42,10 +44,12 @@ export async function PATCH(
             sortOrder = (last._max.sortOrder ?? 0) + 1
         }
 
-        const category = await prisma.category.update({
-            where: { id },
-            data: { ...fields.value, sortOrder },
-        })
+        const category = await withAudit(guard.actor, (tx) =>
+            tx.category.update({
+                where: { id },
+                data: { ...fields.value, sortOrder },
+            })
+        )
         return NextResponse.json({ category })
     } catch (error) {
         if ((error as { code?: string })?.code === "P2002") {

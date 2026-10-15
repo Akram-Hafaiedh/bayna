@@ -1,17 +1,18 @@
 // app/api/admin/providers/[id]/approve/route.ts
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(
-    _req: Request,
+    req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await auth()
-        if (!session?.user?.id || session.user.role !== Role.ADMIN) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        const guard = await requirePlatform("shop.application.approve", req)
+        if (!guard.ok) {
+            return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
 
         const { id } = await params
@@ -27,16 +28,45 @@ export async function POST(
             )
         }
 
-        await prisma.$transaction([
-            prisma.provider.update({
+        // The applicant becomes OWNER of the shop. Permissions come from this assignment.
+        const ownerRole = await prisma.accessRole.findFirst({
+            where: { scope: "SHOP", providerId: null, key: "OWNER" },
+            select: { id: true },
+        })
+        if (!ownerRole) {
+            return NextResponse.json(
+                { error: "Access roles are not set up. Run: npm run access:sync" },
+                { status: 500 }
+            )
+        }
+        const alreadyOwner = await prisma.accessAssignment.findFirst({
+            where: { userId: provider.userId, providerId: id, roleId: ownerRole.id },
+            select: { id: true },
+        })
+
+        const ownerRoleId = ownerRole.id
+        await withAudit(guard.actor, async (tx) => {
+            await tx.provider.update({
                 where: { id },
                 data: { isVerified: true },
-            }),
-            prisma.user.update({
+            })
+            await tx.user.update({
                 where: { id: provider.userId },
                 data: { role: Role.PROVIDER },
-            }),
-        ])
+            })
+            if (!alreadyOwner) {
+                await tx.accessAssignment.create({
+                    data: {
+                        userId: provider.userId,
+                        roleId: ownerRoleId,
+                        scope: "SHOP",
+                        providerId: id,
+                        status: "ACTIVE",
+                        invitedById: guard.userId,
+                    },
+                })
+            }
+        })
 
         return NextResponse.json({ message: "Provider approved" })
     } catch (error) {

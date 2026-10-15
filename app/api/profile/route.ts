@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { withAudit } from "@/lib/audit/run"
+import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 
 export async function GET() {
     try {
@@ -41,20 +43,23 @@ export async function PATCH(req: Request) {
 
         const { name, phone } = await req.json()
 
-        const user = await prisma.user.update({
-            where: { id: session.user.id },
-            data: {
-                name: name ?? undefined,
-                phone: phone ?? undefined,
-            },
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                phone: true,
-                role: true,
-            },
-        })
+        const userId = session.user.id
+        const user = await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
+            tx.user.update({
+                where: { id: userId },
+                data: {
+                    name: name ?? undefined,
+                    phone: phone ?? undefined,
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    phone: true,
+                    role: true,
+                },
+            })
+        )
 
         return NextResponse.json({ user })
     } catch (error) {

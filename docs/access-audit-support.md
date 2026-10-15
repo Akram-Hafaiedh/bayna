@@ -4,8 +4,11 @@ Design notes behind `TODO.md` (Phase 7, Phase 8 and the provider profile in Phas
 Goal: add these once, at the data-model level, so the `User` table and the guards never have to be
 reworked when new modules arrive.
 
-Status: design only. Nothing here is built yet. Items marked **verify** depend on behaviour I could
-not test (no database in the design environment).
+Status: sections 1 (core) and 2 are built; the rest is design only. Built so far: the audit columns and
+triggers (section 2), and the access tables, permission catalogue, evaluator, system roles and guard
+(section 1: `lib/access/`, `prisma/schema.prisma`, `scripts/sync-access.ts`). Not built: role and
+assignment management screens, step-up checks, impersonation (3), support (4), the provider profile (5).
+Items marked **verify** depend on behaviour I could not test.
 
 ---
 
@@ -35,6 +38,14 @@ Role:  id, scope, providerId (null = system role), key, name, description,
   open). Authorization never reads it.
 - `Role.providerId` is nullable from day one so shops can have custom roles later without a schema
   change. System roles are locked; to customise, copy one.
+
+**Built:** `AccessRole` and `AccessAssignment` (plain `providerId` on the role, real foreign keys on the
+assignment so deleting a user or shop removes its assignments). Two choices made while building:
+a check that names a shop looks only at that shop's assignments and a check without one looks only at
+platform assignments, so the same key (`order.request.view_all`) can mean different things in the two
+scopes; and system roles are stored as explicit key lists (only SUPER_ADMIN stores `*`), so a key added
+to the catalogue later never reaches an existing role by itself. There is no cross-request cache and no
+`sessionVersion` yet: access is read from the database on every request, so changes apply at once.
 
 ### 1.2 Permission keys
 
@@ -192,7 +203,7 @@ Open question from the old TODO, answered by default: only OWNER and MANAGER hol
 `createdAt`, `updatedAt`, `createdById`, `updatedById`. The two `...ById` columns are plain ids with
 no foreign key (see Cautions).
 
-**Built (migration `20261015100000_audit_foundation`):** all four columns exist on every model.
+**Built (columns: `20261015113316_audit_foundation`; triggers: `20261015115650_audit_triggers`):** all four columns exist on every model.
 `Account`, `Session` and `VerificationToken` gained `createdAt` / `updatedAt`; `PasswordResetToken`
 and `LoginSession` gained `updatedAt`; every model gained the two actor columns.
 

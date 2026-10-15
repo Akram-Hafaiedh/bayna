@@ -38,9 +38,20 @@ enum UserStatus {
   PENDING_DELETION
 }
 
+enum AccessScope {
+  PLATFORM
+  SHOP
+}
+
+enum AssignmentStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
 // AUDIT COLUMNS (every model except ActivityLog)
 //   createdAt, updatedAt, createdById, updatedById are maintained by database triggers
-//   (see prisma/migrations/*_audit_foundation). Do not set them in application code.
+//   (see prisma/migrations/*_audit_triggers). Do not set them in application code.
 //   Actor columns are plain ids on purpose (no foreign key): User never needs a new relation
 //   line when a table is added, and history survives deleting a user.
 //   deletedAt / deletedById exist on business tables; nothing filters on them yet.
@@ -76,6 +87,9 @@ model User {
   sessions      Session[]
   loginSessions LoginSession[]
   provider      Provider?
+
+  // Permissions come from these, never from User.role (which only decides which dashboard opens).
+  accessAssignments AccessAssignment[]
 }
 
 model Provider {
@@ -100,8 +114,9 @@ model Provider {
   deletedAt   DateTime?
   deletedById String?
 
-  products    Product[]
-  suggestions CatalogSuggestion[]
+  products          Product[]
+  suggestions       CatalogSuggestion[]
+  accessAssignments AccessAssignment[]
 }
 
 model Category {
@@ -352,4 +367,59 @@ model ActivityLog {
   @@index([entityType, entityId, createdAt])
   @@index([providerId, createdAt])
   @@index([actorId, createdAt])
+}
+
+// ACCESS CONTROL (see docs/access-audit-support.md section 1, and lib/access)
+// A role is a named list of permission keys ("module.resource.action"). The keys live in code
+// (lib/access/catalogue.ts); the database only stores strings, so adding a permission never
+// needs a migration. providerId null = system role (seeded by `npm run access:sync`);
+// a value = a custom role owned by that shop (not used yet).
+model AccessRole {
+  id          String      @id @default(cuid())
+  key         String // e.g. "OWNER", "SUPPORT_AGENT"
+  name        String
+  description String?
+  scope       AccessScope
+  providerId  String?
+  isSystem    Boolean     @default(false)
+  permissions String[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  assignments AccessAssignment[]
+
+  @@unique([scope, providerId, key])
+  @@index([scope])
+}
+
+// Gives one user one role, platform-wide or inside one shop. A user can hold several.
+// Effective permissions = role.permissions + grants - denies (deny wins).
+model AccessAssignment {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId     String
+  role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  scope      AccessScope
+  providerId String? // null for PLATFORM, the shop for SHOP
+  provider   Provider?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  status     AssignmentStatus @default(ACTIVE)
+
+  grants    String[] // extra permission keys for this person
+  denies    String[] // keys removed for this person
+  expiresAt DateTime? // time-boxed access
+
+  invitedById String? // who handed this access out (plain id, like the audit columns)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([userId, status])
+  @@index([providerId])
+  @@index([roleId])
 }

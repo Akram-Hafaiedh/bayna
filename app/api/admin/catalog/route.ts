@@ -4,7 +4,8 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { isAdmin } from "@/lib/admin-auth"
+import { requirePlatform } from "@/lib/access/guard"
+import { withAudit } from "@/lib/audit/run"
 import { slugify } from "@/lib/slug"
 import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalog-input"
 
@@ -12,7 +13,8 @@ const bad = (error: string, status = 400) => NextResponse.json({ error }, { stat
 
 export async function GET(req: Request) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.item.view", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
 
         const params = new URL(req.url).searchParams
         const q = (params.get("q") ?? "").trim().slice(0, 100)
@@ -79,7 +81,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        if (!(await isAdmin())) return bad("Unauthorized", 401)
+        const guard = await requirePlatform("catalog.item.create", req)
+        if (!guard.ok) return bad(guard.error, guard.status)
 
         const body = await req.json().catch(() => ({}))
         const fields = await parseCatalogFields(body)
@@ -90,7 +93,7 @@ export async function POST(req: Request) {
             select: { slug: true },
         })
         const slug = await uniqueCatalogSlug(slugify(`${category?.slug ?? ""}-${fields.value.name}`))
-        const item = await prisma.catalogItem.create({ data: { ...fields.value, slug } })
+        const item = await withAudit(guard.actor, (tx) => tx.catalogItem.create({ data: { ...fields.value, slug } }))
 
         return NextResponse.json({ item }, { status: 201 })
     } catch (error) {
