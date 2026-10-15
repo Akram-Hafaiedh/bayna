@@ -31,6 +31,20 @@ enum SuggestionStatus {
   REJECTED
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  PENDING_DELETION
+}
+
+// AUDIT COLUMNS (every model except ActivityLog)
+//   createdAt, updatedAt, createdById, updatedById are maintained by database triggers
+//   (see prisma/migrations/*_audit_foundation). Do not set them in application code.
+//   Actor columns are plain ids on purpose (no foreign key): User never needs a new relation
+//   line when a table is added, and history survives deleting a user.
+//   deletedAt / deletedById exist on business tables; nothing filters on them yet.
+
 model User {
   id                String    @id @default(cuid())
   email             String    @unique
@@ -41,8 +55,22 @@ model User {
   emailVerified     DateTime?
   image             String?
   passwordChangedAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+
+  // Account state and preferences, added now so User does not change again.
+  // status is not enforced yet; the permission guard will refuse non-ACTIVE users.
+  status          UserStatus @default(ACTIVE)
+  suspendedReason String?
+  lastLoginAt     DateTime?
+  locale          String?
+  timezone        String?
+  preferences     Json?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
 
   accounts      Account[]
   sessions      Session[]
@@ -64,9 +92,13 @@ model Provider {
   latitude     Float?
   longitude    Float?
 
-  isVerified Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isVerified  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
 
   products    Product[]
   suggestions CatalogSuggestion[]
@@ -87,8 +119,12 @@ model Category {
   products     Product[]
   suggestions  CatalogSuggestion[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
 }
 
 model CatalogItem {
@@ -107,8 +143,12 @@ model CatalogItem {
   products    Product[]
   suggestions CatalogSuggestion[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
 
   @@index([categoryId])
   @@index([name])
@@ -142,8 +182,10 @@ model CatalogSuggestion {
   catalogItemId String?
   catalogItem   CatalogItem? @relation(fields: [catalogItemId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
 
   @@index([status, createdAt])
   @@index([providerId])
@@ -179,8 +221,12 @@ model Product {
 
   suggestion CatalogSuggestion?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
 
   // A provider lists a given catalogue item at most once (NULLs stay allowed
   // for free-form products). Also serves lookups by providerId.
@@ -205,6 +251,11 @@ model Account {
   id_token          String? @db.Text
   session_state     String?
 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
@@ -215,7 +266,13 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -223,15 +280,23 @@ model VerificationToken {
   token      String   @unique
   expires    DateTime
 
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+
   @@unique([identifier, token])
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  email     String
-  token     String   @unique
-  expires   DateTime
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  email       String
+  token       String   @unique
+  expires     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
 
   @@index([email])
 }
@@ -251,5 +316,40 @@ model LoginSession {
   lastActiveAt DateTime  @default(now())
   revokedAt    DateTime?
 
+  updatedAt   DateTime @default(now()) @updatedAt
+  createdById String?
+  updatedById String?
+
   @@index([userId])
+}
+
+// Append-only history of changes. Rows are written by database triggers on every audited table
+// (and by logActivity() for events that are not row changes, such as logins or impersonation).
+// The application never updates or deletes rows. No foreign keys, so history survives the
+// deletion of users, shops and records. Actor name and role are copied at write time.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  entityType String
+  entityId   String?
+  providerId String? // set for shop-scoped records; powers the shop activity feed
+  action     String
+  changes    Json? // [{ field, from, to }] with secrets redacted
+  note       String?
+
+  actorId         String?
+  actorName       String?
+  actorRole       String?
+  onBehalfOfId    String? // the user being impersonated, if any
+  impersonationId String?
+
+  source    String  @default("SYSTEM")
+  requestId String?
+  ip        String?
+  userAgent String?
+
+  @@index([entityType, entityId, createdAt])
+  @@index([providerId, createdAt])
+  @@index([actorId, createdAt])
 }
