@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
+import { notifications, notify } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
 
@@ -35,6 +36,7 @@ export async function POST(
                 where: { id: provider.userId },
                 data: { role: Role.CLIENT },
             })
+            await notify(tx, provider.userId, notifications.applicationRejected())
         })
 
         return NextResponse.json({ message: "Provider application rejected" })

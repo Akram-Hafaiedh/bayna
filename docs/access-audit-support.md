@@ -403,7 +403,7 @@ Separate from tickets because the workflow differs.
 ### 4.3 Shared infrastructure the support module needs
 
 - Real email sending (reset links are only logged today)
-- In-app notification centre (`Notification`: user, type, payload, `readAt`)
+- In-app notification centre (`Notification`: user, type, title, body, href, `readAt`). Built 16 Oct 2026 (TODO Phase 7b): stamped by `audit_stamp` but with no `audit_log` trigger, because the event that causes a notification is already in `ActivityLog` and a read is not an auditable change
 - File storage and a generic `Attachment` table (also needed for product images; pick the provider
   once)
 - A scheduled-jobs mechanism (SLA, auto-close, digests)

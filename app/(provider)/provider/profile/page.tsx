@@ -2,6 +2,7 @@
 // app/(provider)/provider/profile/page.tsx
 // The shop's own profile: same form as the application, saved through /api/provider/profile.
 import { useEffect, useState } from "react"
+import { NOTIFICATIONS_NEW_EVENT } from "@/components/NotificationBell"
 import ProviderProfileForm, { type ProfileValues } from "@/components/provider/ProviderProfileForm"
 
 type Loaded = ProfileValues & { canEdit: boolean; isVerified: boolean; needsReview: boolean }
@@ -45,6 +46,25 @@ export default function ProviderProfilePage() {
         return () => {
             alive = false
         }
+    }, [])
+
+    // The bell saw something new (for example an admin finished the review): refresh only the status
+    // banner, never the form, so what the person is typing is not lost
+    useEffect(() => {
+        async function refreshStatus() {
+            try {
+                const res = await fetch("/api/provider/profile", { cache: "no-store" })
+                if (!res.ok) return
+                const json = await res.json()
+                setData((prev) =>
+                    prev ? { ...prev, needsReview: json.provider.needsReview === true, isVerified: json.provider.isVerified === true } : prev
+                )
+            } catch {
+                // keep what is shown
+            }
+        }
+        window.addEventListener(NOTIFICATIONS_NEW_EVENT, refreshStatus)
+        return () => window.removeEventListener(NOTIFICATIONS_NEW_EVENT, refreshStatus)
     }, [])
 
     async function save(body: Record<string, unknown>): Promise<string | null> {

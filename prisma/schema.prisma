@@ -102,6 +102,7 @@ model User {
 
   // Permissions come from these, never from User.role (which only decides which dashboard opens).
   accessAssignments AccessAssignment[]
+  notifications     Notification[]
 }
 
 model Provider {
@@ -440,4 +441,27 @@ model AccessAssignment {
   @@index([userId, status])
   @@index([providerId])
   @@index([roleId])
+}
+
+// A message for one person, shown in the bell in the header. Created by notify() inside the same
+// transaction as the event it reports. The event itself is already in ActivityLog, so this table is
+// stamped (audit columns) but does not write log rows (see the notifications migration).
+model Notification {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type   String // for example "provider.application.approved"; a string so new kinds need no migration
+  title  String
+  body   String?
+  href   String? // where the notification leads, a path inside the app
+  readAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
 }

@@ -11,10 +11,11 @@ Design details for access control, audit, impersonation and support live in
 
 ## Current focus
 
-**Phase 7 foundation: audit columns, `ActivityLog` and the permission layer are done and verified
-(15 Oct 2026).** Left in the foundation: wiring every write route to `withAudit` so the log records who
-acted, then the provider profile (Phase 3a, built 16 Oct 2026, being verified). Next after it: the notification module (Phase 7b below). The ideas collected on 15 Oct 2026 are in
-[Backlog ideas](#backlog-ideas-added-15-oct-2026-not-started) below: not started, not ordered.
+**Done and verified: audit columns, `ActivityLog`, permission layer, `withAudit` on every write, the provider profile with map pin and admin review (16 Oct 2026).** Notifications (Phase 7b) are built and verified; more event types are added by each later module. The
+answers to the open design questions were recorded on 16 Oct 2026 in
+[Decisions of 16 Oct 2026](#decisions-of-16-oct-2026-answers-to-the-open-questions). The execution order
+is in [Next up](#next-up-execution-order). The backlog ideas from 15 Oct 2026 are in
+[Backlog ideas](#backlog-ideas-added-15-oct-2026-not-started): not started, not ordered.
 
 ---
 
@@ -84,7 +85,7 @@ Never expose admin promotion in the public UI.
 - [x] Route protection via proxy.ts (auth + role gates)
 - [ ] Enrich LoginSession with real userAgent / IP on login (`authorize()` receives the request; today the label is hard-coded "Web browser")
 - [ ] Google / Facebook OAuth
-- [ ] 2FA (TOTP) for platform staff, required for anyone who can impersonate
+- [ ] 2FA (TOTP, authenticator app + recovery codes). **Decided 16 Oct 2026:** mandatory for SUPER_ADMIN and for any staff who can impersonate (`impersonation.session.*`), optional for providers and clients. Impersonation cannot start unless 2FA is on. SMS / WhatsApp codes stay open (see backlog A)
 
 ## Phase 3 – Provider Side
 
@@ -98,14 +99,14 @@ Never expose admin promotion in the public UI.
 - [x] Write an `ActivityLog` entry with before/after values (audit columns come from Phase 7)
 - [x] Guard the route with `requireShop("shop.profile.edit")` from Phase 7
 - [ ] Optional later: opening hours, logo, delivery / pickup / COD options, open / closed / vacation status, public shop page
-- [ ] Decide: can one provider have several locations / depots?
+- [x] **Decided 16 Oct 2026:** a provider has **several warehouses**, with stock tracked per warehouse (see “Decisions of 16 Oct 2026”, 1). The shop's own pin (profile) stays the shop / head-office location
 
 ### 3b – Listings & pricing
 - [x] Product management (add / edit / stock)
   - [x] List own products (server-side search, filters, sort, pagination)
   - [x] Create product (link to CatalogItem or free-form niche item)
   - [x] Edit product: price, stock, active flag
-  - [ ] Edit product: **images** (pick storage first: Vercel Blob / Cloudinary / S3)
+  - [ ] Edit product: **images**. **Deferred 16 Oct 2026:** no storage service chosen (the candidates are not free and coverage in Tunisia is uncertain). Products show a placeholder until then; revisit when the shop count justifies a paid plan
   - [ ] Delete product is a **hard delete** today ("cannot be undone"). Move to soft delete / Active flag before orders exist
 - [x] Product form redesign: choose catalogue vs custom up front, short linked form, one action bar
 - [x] Suggest a custom product for the catalogue on create (CatalogSuggestion)
@@ -113,14 +114,14 @@ Never expose admin promotion in the public UI.
 - [ ] Inline / quick edit of price and stock on the products table
 - [ ] Bulk edit, CSV import / export, quick-add from the catalogue
 - [ ] Price history and a "price last confirmed" date (`priceUpdatedAt`, not just `updatedAt`)
-- [ ] VAT rule: prices consistently tax-inclusive or exclusive so comparison is fair
+- [ ] **Custom taxes per shop. Decided 16 Oct 2026** (see “Decisions of 16 Oct 2026”, 2): the provider enters the price before tax (HT), applies one or several of his own taxes (percentage or fixed, calculated on the base or on the running total), buyers always see the tax-inclusive price (TTC); tax changes never need a developer
 - [ ] Quantity price tiers (by pallet / ton) and delivery fee
 
 ### 3c – Orders & operations (marketplace core for the provider)
 - [ ] Provider order inbox (only their OrderProvider slice)
 - [ ] Fulfillment statuses (new → accepted → preparing → ready → completed / cancelled)
 - [ ] Stock handling: treat an order as a request; no hold at estimate; decrement on accept; restore on cancel
-- [ ] Dashboard beyond product stats: open orders, low-stock list, pending suggestions
+- [ ] Dashboard beyond product stats: open orders, low-stock alerts, products waiting for a price review (catalogue unit changed), pending suggestions
 - [ ] Notifications on new orders (email first; WhatsApp later)
 - [ ] Assign an order to an employee; order status history (customer-visible)
 
@@ -134,7 +135,7 @@ Admin and Client do **not** get shop membership.
 - [ ] Invite by email (token + expiry); needs real email sending first
 - [ ] Team page: invite, change role, suspend / remove; protect the last owner; removing a member revokes their sessions
 - [ ] Activity page for owner / manager (filter by member and entity) + "last changed by" on product and order pages
-- [ ] Decide: can one person work for several shops? (schema allows it; UI single shop at first)
+- [x] **Decided 16 Oct 2026:** one person can work for several shops. Shop switcher in the navbar, `activeProviderId` in a cookie, guards check it against the person's live assignments (see “Decisions of 16 Oct 2026”, 5). Not built yet
 
 ### 3e – Shop lifecycle & insights
 - [ ] Shop states: suspended and temporarily closed (today only `isVerified`)
@@ -254,7 +255,7 @@ Fix first (small, and they affect data or deploys):
 - [x] **Prisma 7 config:** `prisma7.config.ts` is picked up automatically (`prisma validate` loaded it on 15 Oct 2026). Nothing to rename
 - [ ] Lowercase / trim emails on register, login, forgot and reset (avoid duplicate accounts)
 - [ ] Price must be greater than 0 (`parsePrice` accepts 0, which would top every comparison)
-- [ ] Unit changes (admin edits a catalogue item's unit, or a suggestion is merged into an item with another unit) overwrite linked products' units but not their prices. Warn, or make the provider re-confirm the price
+- [ ] **Unit changes. Decided 16 Oct 2026** (moved to “Decisions of 16 Oct 2026”, 7): linked products get `needsPriceReview = true`, drop out of comparison and ordering until the provider confirms the price, and the provider is notified and sees an alert on the dashboard
 - [ ] Navbar and provider sub-nav link to `/provider/orders`, which does not exist
 - [ ] Page metadata still says "Create Next App"; add `error`, `not-found` and `loading` pages
 - [ ] Remove the stale "WORKSPACE NOTE" comment in the provider reject route
@@ -267,6 +268,92 @@ Then:
 - [ ] Hash reset tokens at rest
 - [ ] Tests for the pure logic (`product-input`, `product-filters`, slug / catalogue input) and a CI workflow
 - [ ] Verify end to end: a newly approved provider can reach `/provider/*` without logging out (proxy reads the role from the JWT cookie)
+
+---
+
+## Decisions of 16 Oct 2026 (answers to the open questions)
+
+Recorded so the design is not re-discussed. Each item says what is decided, what it means for the
+data and code, and what is still open.
+
+### 1. Several warehouses per shop, stock per warehouse
+- **Data:** `Warehouse` (shop, name, address, city, governorate, latitude, longitude, `locationSource`, isDefault, isActive, archivedAt; reuses the map picker). `StockLevel` (product, warehouse, quantity, reorder point). `Product.stock` becomes the total across warehouses (kept in step by the application in the same transaction)
+- **Stock movements per warehouse (decided 16 Oct 2026):** every movement is a row in the stock ledger with its warehouse (received, sold, adjusted, returned, counted, transferred in, transferred out), quantity, reason, who, when and the order it came from. A transfer is two linked rows. Each warehouse has a **movement history page** (filter by product, type, date, person) next to its current stock
+- **Deleting a warehouse:** it can be **deleted only if it has never had a movement** (created by mistake). Once it has any movement it can only be **archived**, and only when its stock is 0 (transfer the rest out first). Archived warehouses keep their history, take no new stock and do not count toward the plan limit
+- **One inventory view:** all products with their quantity per warehouse, filters (low stock, one warehouse), transfer and adjust from there
+- **Orders:** accepting an order takes stock from a chosen warehouse (default: the one with enough stock, nearest to the buyer); cancelling puts it back into the same one
+- **Phase 4:** distance and travel cost use the nearest warehouse that has the item
+- **Migration:** every existing shop gets a default warehouse (from its profile address and pin) holding its current `Product.stock`
+- **Limits:** the number of active warehouses is a plan limit (decision 4)
+- Who may transfer and adjust: owner and manager by default (`inventory.location.manage`, `inventory.adjustment.create`); a warehouse-staff role can come with the team work
+
+### 2. Custom taxes per shop: the provider enters the price without tax (HT), the customer sees it with tax (TTC)
+- **Decided 16 Oct 2026:** the provider types the price **before tax (HT)**, chooses which of his taxes apply to the product, and the client sees the **tax-inclusive price (TTC)**. This **changes what `Product.price` means**: it becomes the HT base price
+- **Taxes (`TaxRate`, per shop):** name, kind **percentage or fixed amount per unit** (both needed), value, `appliesOn` and a sort order, isActive, optional validFrom / validTo. A product can have **several taxes** (`ProductTax`). Permission `pricing.tax.manage` exists
+- **Pre and post calculation:** each tax says whether it applies **on the base price** (pre) or **on the base plus the taxes calculated before it** (post). Taxes are applied in the shop's sort order, so a percentage tax can sit on top of an earlier tax or of a fixed amount
+- **Worked example (placeholder rates):** base 100.000; tax A 1% on the base = 1.000; tax B 19% on the running total (101.000) = 19.190; fixed 0.500 per unit; TTC = 100.000 + 1.000 + 19.190 + 0.500 = 120.690
+- **Rounding:** the dinar has 3 decimals (millimes, matching `Decimal(12,3)`). Each tax line is rounded to 3 decimals, half up, and the TTC is the sum of the rounded lines, so the lines always add up to the total
+- **One pure function** `computePrice(base, taxes)` returns the lines and the TTC; it is the only place that does this arithmetic, with unit tests
+- **Stored TTC:** `Product.priceTtc` is kept in step (same transaction) whenever the base price, the product's taxes or a tax's value change, so search, sorting and comparison read one indexed column. Changing a tax's rate recomputes that shop's affected products in one transaction
+- **Existing products:** the current price is treated as HT with no taxes, so TTC equals today's price until the provider adds taxes; nothing changes for buyers by surprise
+- **Comparison and display:** always TTC. The provider's own pages show HT, the taxes and the TTC
+- **Orders:** an order item snapshots the HT price, every tax line and the TTC, so a later rate change never rewrites history
+- **Reports:** tax collected per shop, per tax and per period, from the order item lines; admin sees totals per shop
+- **Why per shop:** rates change from year to year and differ by product type; providers manage their own, no developer needed. Admin may offer common presets to start from
+- The stamp duty is charged per invoice, not per product, so it belongs to invoicing for business clients (backlog C). The Tunisian rates, which taxes stack on which, and the invoice rules must be confirmed with an accountant before presets are written
+- Open: whether a shop may mark a product as tax-exempt explicitly (no taxes selected means no tax); whether the same tax may apply differently by unit
+
+### 3. Image storage: deferred
+Neither candidate is free with good coverage for Tunisia. Nothing is built; products show a placeholder. Revisit once the number of shops justifies a paid service. When revisited: compare Vercel Blob, Cloudinary and an S3-compatible bucket on price, delivery speed from Tunisia and image resizing.
+
+### 4. Revenue: free tier and subscriptions with limits
+- **Decided 16 Oct 2026:** a **free plan** with limits and **paid plans** that raise them and unlock more features, so the subscription is worth buying. Commission on completed orders stays a possible later add-on
+- **Data:** `Plan` (key, name, price, limits and feature flags), `Subscription` (shop, plan, status, period, trial). A shop with no subscription is on the free plan
+- **Starting limits (placeholders to tune; prices are the owner's choice):**
+
+| Limit | Free | Pro | Business |
+|---|---|---|---|
+| Products | 50 | 500 | unlimited |
+| Warehouses | 1 | 3 | 10 |
+| Team seats | 1 | 3 | 10 |
+| Custom taxes | 3 | 10 | unlimited |
+| Reports and exports | basic | full | full + CSV import |
+| Shops owned by one person | 1 | 3 | 10 |
+
+- **What is limited:** things that grow with the size of the business. **Never limited:** security and safety (2FA, the audit log, notifications)
+- **One helper** `checkLimit(shop, "warehouses")` is called by every feature that has a limit, with generous defaults until plans exist
+- **Feature flags** for plan-only features (advanced reports, bulk import, API access, priority placement)
+- **Trial:** 14 days of Pro for each newly approved shop
+- **Payment:** the payment method is not chosen, so at first an admin marks a subscription as paid by hand. No payment gateway is needed to start
+- **Over the limit after a downgrade:** nothing is deleted or hidden. The shop cannot create new items beyond the limit, and a banner explains why. Team seats get a 30-day grace period, after which the extra members become read-only
+- Billing (invoices, collections) stays in backlog I and needs the accountant's input
+- Open: the real limits and prices per plan
+
+### 5. One person, several shops: shop switcher and active shop
+- **Cookie:** `activeProviderId`, set by `POST /api/me/active-shop` after checking the person has a live assignment in that shop. `GET /api/me/shops` lists their shops for the switcher in the navbar
+- **Switcher (decided 16 Oct 2026):** always shown for a person with a shop, **even with one shop**, with a **"Create shop" button at the bottom**. It lists their approved shops (name, city, role) and any shop still waiting for approval (shown disabled, with "pending")
+- **Create shop:** opens the application form (the same shared form as `/become-provider`) for an additional shop. It goes through the same admin approval, and approval makes the creator OWNER of that shop. The number of shops one person may own is a plan limit (decision 4)
+- **Data change this needs:** `Provider.userId` is `@unique` today, which allows one shop per person. It must become a plain indexed column ("the person who applied"), and the code that looks a shop up by `userId` (`/api/provider/apply`, `requireProvider()`, the pending lookup in `requireShop()`) must handle several rows. Ownership itself already lives in `AccessAssignment`
+- **Guards:** `requireShop()` reads the cookie, and **never trusts it**: the id must be in the person's live shop assignments, otherwise it falls back to the first shop (or 403 when the request names a shop explicitly). `requireProvider()` for pages does the same
+- **proxy.ts:** `/provider` is allowed for anyone with an active shop assignment, no longer by `User.role` (the same change as the team item in 3d); a person can also act as a client
+- **Notifications and activity:** shop-scoped events go to the shop's members; the activity log already carries `providerId`
+- **Membership rules (decided 16 Oct 2026):** one person can belong to many shops, and one shop has many people (employees). **Every shop must always have an employer: at least one active OWNER.** The employer is the owner; employees hold the other shop roles
+  - The last active OWNER cannot be removed, suspended, downgraded or leave; ownership is transferred first (step-up check, activity-log entry, notification to both people)
+  - A person can be an employee in one shop and the owner of another; each shop's access is computed from that shop's assignment only
+  - Ownership is read from `AccessAssignment` (OWNER role), never from `Provider.userId`, which only records who applied
+  - If an owner's account is closed or deleted while they are the last owner, the shop is suspended and an admin is notified rather than left without an employer
+- Open: whether the last active shop is remembered across devices (cookie only for now)
+
+### 6. 2FA
+Mandatory for SUPER_ADMIN and for any staff who can impersonate; optional for providers and clients. Authenticator app (TOTP) with recovery codes first. The step-up check (recent 2FA or password) guards role changes, ownership transfer, impersonation and data export. Open: SMS / WhatsApp codes.
+
+### 7. Catalogue unit change must not leave a stale price
+- **Trigger:** an admin changes a catalogue item's unit, or approves a suggestion that merges into an item with a different unit
+- **Effect on every linked product:** `needsPriceReview = true` plus a short `priceReviewReason` (for example "Unit changed from piece to box of 10"). The product keeps its own on/off choice (`isActive` is not touched), but it is **left out of comparison and cannot be ordered** until the provider confirms
+- **Tell the provider:** a notification to the shop members who can edit prices, and an alert on the provider dashboard: "The catalogue item [X] changed unit from Piece to Box" with a link to the products waiting for review (filter on the products list)
+- **Clearing it:** the provider saves a price (or chooses “keep this price”) on the product; this needs `product.price.edit`, so only owner and manager can clear it. The change is in the activity log
+- **Decided 16 Oct 2026:** before the change is saved, the admin sees a preview and must confirm: "This will flag N products in M shops for a price review"
+- With taxes (decision 2) the price to confirm is the HT base price; the TTC is recomputed from it
 
 ---
 
@@ -315,7 +402,7 @@ Notifications, Activity, Help & support.
 - [ ] **Step-up check** (recent password / 2FA) before sensitive actions: role changes, ownership transfer, impersonation, data export (already listed in Phase 7)
 - [ ] **Person profile** (shop staff and business-client staff need their own details): name, photo, phone, job title, language, timezone, and "where I work" (shops / organisations with my role)
 - [ ] **Admin detail pages** so support and admins can read an account without impersonating it: one for a client, one for a provider (shop details, team, listings, orders, tickets, activity timeline). Read-only first; uses the audit timeline and the `user.account.view` / `shop.provider.view` permissions
-- Questions: which 2FA methods (authenticator only, or SMS / WhatsApp too); is 2FA mandatory for admins and shop owners
+- Questions: SMS / WhatsApp codes besides the authenticator app. **Decided 16 Oct 2026:** 2FA is mandatory for SUPER_ADMIN and impersonating staff, optional for providers and clients
 
 ### B. Inventory management (beyond a stock number)
 Today a product has a single `stock` integer. The permission keys `inventory.location.manage` and
@@ -323,9 +410,9 @@ Today a product has a single `stock` integer. The permission keys `inventory.loc
 - [ ] **Stock ledger** (append-only movement book): every change is a row (received, sold, adjusted, returned, counted, transferred) with quantity, reason, who, when and the order it came from; `stock` becomes the running total. Gives a history per product and makes order accept / cancel restore stock correctly (see 3c)
 - [ ] **Reorder queue:** low-stock and out-of-stock list with a reorder point per product, status (to order / ordered / received), optional supplier and expected date; feeds the provider dashboard and notifications
 - [ ] **Stock adjustments and counts:** manual correction with a required reason; stocktake mode
-- [ ] **Locations** (shops with more than one site or warehouse) when a shop needs it
+- [ ] **Warehouses. Decided 16 Oct 2026:** every shop can have several; stock is kept per warehouse and managed from one inventory view (see “Decisions of 16 Oct 2026”, 1). Uses `inventory.location.manage`
 - [ ] Permission checks use the existing keys; `product.stock.edit` stays the quick edit, the ledger records it
-- Questions: "ledger book" is read here as the stock movement ledger. If you also meant an accounting ledger, that belongs to billing (group I). One site per shop at first, or locations from the start?
+- Questions: "ledger book" is read here as the stock movement ledger. If you also meant an accounting ledger, that belongs to billing (group I). Locations are decided: several warehouses from the start
 
 ### C. Two kinds of client: personal and business
 - [ ] **Client type:** PERSONAL or BUSINESS
@@ -365,7 +452,7 @@ Permission keys `insight.*` (shop) and `analytics.*` (platform) already exist.
 The marketplace earns money from providers, but the mechanism is not chosen. Payments are mostly cash on
 delivery or pickup, so the money rarely passes through Bayna and a commission cannot simply be deducted
 from a payout.
-- [ ] **Decide the revenue model** (can be combined): commission on completed orders, monthly subscription plans for shops (limits on products and team seats), paid placement or featured listings, fee per accepted order request
+- [ ] **Revenue model. Decided 16 Oct 2026 (direction):** a free tier plus paid subscriptions with limits, combined with features that make the plans worth paying for (see “Decisions of 16 Oct 2026”, 4). Commission on orders stays a later option
 - [ ] **Plans and limits:** plan table, per-shop plan, limit checks (products, team seats), upgrade and downgrade
 - [ ] **Commission statements and invoices to providers:** monthly statement from completed orders, invoice with legal numbering, payment status and due date
 - [ ] **Collections:** record payments (bank transfer, card or local payment methods once chosen), overdue reminders, restrict or suspend a shop after a grace period (ties to shop states in 3e)
@@ -375,31 +462,123 @@ from a payout.
 
 ---
 
-## Phase 7b – Notifications (planned, decided 16 Oct 2026, not started)
+## Phase 7b – Notifications (built and verified 16 Oct 2026)
 A bell dropdown in the header next to the user menu, so people learn that something happened without
 refreshing. Built once, before orders and support, so every later feature calls one helper.
-- [ ] `Notification` table: recipient user, type, title, body, link, `readAt`, `createdAt`; hand-written migration with `audit_attach('Notification')`
-- [ ] `notify(tx, userId, {...})` helper that runs inside the same `withAudit` transaction as the event, so a notification is never lost or sent for a rolled-back change
-- [ ] `GET /api/notifications` (list + unread count), `POST` to mark one or all as read; everyone reads only their own, so no new permission key
-- [ ] Header bell with unread badge and dropdown; poll every 30 to 60 seconds (real-time push later)
-- [ ] First events: admin marks a shop's changes reviewed (`/api/admin/providers/[id]/reviewed`), application approved, application rejected
-- [ ] Later events: order status changes, low stock, support ticket replies, account and security alerts (backlog A)
+- [x] `Notification` table: recipient user, type, title, body, link, `readAt`, `createdAt`; stamped by `audit_attach('Notification', '', '', false)` (no log rows: the causing event is already logged)
+- [x] `notify(tx, userId, {...})` helper that runs inside the same `withAudit` transaction as the event, so a notification is never lost or sent for a rolled-back change
+- [x] `GET /api/notifications` (list + unread count), `POST` to mark one or all as read; everyone reads only their own, so no new permission key
+- [x] Header bell with unread badge and dropdown; poll every 30 to 60 seconds (real-time push later)
+- [x] First events: admin marks a shop's changes reviewed (`/api/admin/providers/[id]/reviewed`), application approved, application rejected
+- [ ] Later events: **low-stock and out-of-stock alerts** (see below), products flagged for price review, order status changes, support ticket replies, account and security alerts (backlog A)
+- [ ] **Stock alerts through notifications:** when a product's quantity in a warehouse falls to or below its reorder point (and when it reaches 0), notify the members who hold `product.stock.edit`. Only on the crossing, not on every save, so there is no flood; the alert clears when stock is restored above the point. Links to the product. Needs the reorder point from the inventory work (backlog B)
 - [ ] Preferences per type and channel (in-app, email) once emails exist (Phase 9)
 - Questions: how long to keep read notifications; whether staff-targeted notifications go to a role or to named people
 
 ---
 
-## Next up (proposed order, reorder freely)
+## Next up (execution order)
 
-1. **Phase 7 foundation** — chosen first: audit columns + ActivityLog, then permissions + guard (before orders, so every order action records who did it)
-2. **Provider profile (3a)** — chosen second, built 16 Oct 2026
-2b. **Notifications (Phase 7b)** — chosen next, before orders and support
-3. Phase 9 quick fixes (deploy, emails, price > 0, dead link); the `postinstall: prisma generate` fix is needed as soon as schema work starts
-4. 3b listing operations: images, inline price / stock, soft delete
-5. Phase 4: search, comparison, location and travel cost
-6. Estimate → order schema → provider inbox
-7. Phase 8 support module; impersonation once staff roles exist
-8. Team UI (3d) when a shop needs a second login
+Regrouped on 16 Oct 2026 into seven releases. Work that touches the same tables, screens or helper is
+bundled so it shares one migration, one design decision and one round of testing. Each release ends
+with a gate (tests plus a click-through checklist, as for the profile) before the next starts. Inside a
+release the steps are in the order to build them. Reorder releases freely, but check **Needs** first.
+
+**Done:** audit columns and `ActivityLog`, permission layer, `withAudit` everywhere, provider profile
+(map pin, review flag, edit / withdraw application), notifications (bell, `notify()`, approved /
+rejected / reviewed).
+
+### R1. Clean base (small, no big design questions)
+Everything here touches products, the catalogue or configuration, and none of it needs a new concept.
+- **Fix list (Phase 9, "fix first"):** `postinstall: prisma generate`, price must be above 0, lowercase and trim emails, dead `/provider/orders` link, page metadata, `error` / `not-found` / `loading` pages, stale comment in the reject route
+- **One product migration** for the four columns that three items need: `needsPriceReview` + `priceReviewReason` (unit-change guard, decision 7), `deletedAt` (soft delete) and `priceUpdatedAt` ("price last confirmed")
+- **Unit-change guard** (decision 7): admin preview and confirm, flag linked products, notify, dashboard alert, leave flagged products out of comparison
+- **Product soft delete**, then **inline price and stock edit** on the products table (price edit stays owner and manager only)
+- **Tests for the pure logic** (`product-input`, `product-filters`, slug and catalogue input) and a CI workflow; a first deploy to a staging environment so deploy problems show up early
+- **Needs:** nothing. **Gate:** `test:unit`, `tsc`, a flagged product disappears from comparison data and reappears after the price is confirmed
+
+### R2. Shops, people and plans
+One theme: who belongs to a shop and what a shop may do. All of it rests on `AccessAssignment`, the guard and the same navbar, so it is one design.
+- **Shop switcher, active shop cookie, "Create shop"**, drop the unique on `Provider.userId`, gate `/provider` by assignment in `proxy.ts` (decision 5)
+- **Membership rules:** the last owner is protected, ownership transfer with a step-up check (decision 5)
+- **Real email sending** (Resend or similar), then everything that needs it in the same release: invite links, password reset links, an email channel for notifications
+- **Hardening that belongs with email and sign-in:** rate limiting on login, register and reset; hash reset tokens; reset sets `passwordChangedAt` and revokes sessions; throttle the `lastActiveAt` write in the JWT callback
+- **Team page:** invite, change role, suspend / remove; the shop activity page for owner and manager; "last changed by" on product pages
+- **Person profile** with "where I work" (shops and roles), which the switcher also feeds
+- **Plans skeleton** (decision 4): `Plan`, `Subscription`, `checkLimit()`; enforce shops owned and team seats now; admin marks a plan as paid by hand
+- **Shop states and user management** (3e, Phase 5): suspended and temporarily closed shops, suspend / reinstate users, force password reset, revoke sessions. Replaces the risky reject-a-verified-provider path
+- **Needs:** R1. **Gate:** invite someone to two shops, switch between them, try to remove the last owner (must fail), receive a real email
+
+### R3. Stock and prices (listings)
+Two tracks that both change the product form, the products table and what an order will later snapshot. Do them one after the other, inventory first.
+- **3A Inventory** (decision 1, backlog B): warehouses, `StockLevel`, the movement ledger with a history page per warehouse, adjustments and stocktake, reorder point and reorder queue, the one inventory view with transfers, migration of existing stock to a default warehouse
+- **Stock alerts** (notifications): low and out of stock, only on the crossing; the provider dashboard shows low stock and products waiting for a price review
+- **3B Taxes and pricing** (decision 2): `TaxRate` (percentage or fixed, pre or post), `ProductTax`, `computePrice()` with tests, stored `priceTtc`, HT entry and TTC display; **price history**, **quantity price tiers** and **delivery fee**
+- **Then:** bulk edit and CSV import / export (a Pro-plan feature, checked with `checkLimit` / a feature flag), and warehouse and product limits enforced by plans
+- **Needs:** R1 (soft delete, `priceUpdatedAt`) and R2 (plans skeleton, active shop). **Gate:** a stock transfer shows in both warehouses' histories, a rate change recomputes TTC, an alert fires once and clears when stock is restored
+
+### R4. Marketplace for clients (public side)
+Everything a buyer sees before ordering. It reads stock (nearest warehouse) and TTC prices, so it comes after R3.
+- **Search and comparison** per catalogue item: TTC price, stock, minimum order, city, price age; flagged products excluded
+- **Client location** (city picker) and **distance plus travel cost** from the nearest warehouse that has the item
+- **Public shop page and shop map**, reusing `LocationMap`; the profile extras that feed it: opening hours, delivery / pickup / COD options, open / closed / vacation status
+- **Client dashboard** (replaces the placeholder)
+- **i18n (FR + AR)** for these public pages first, showing `nameAr`; admin and provider screens follow later
+- **Hardware catalogue expansion** so there is something to compare beyond construction and auto parts
+- **Needs:** R3. **Gate:** compare three shops for one item from a chosen city and see the cheapest TTC price and the distance
+
+### R5. Orders
+The core of the marketplace. Stock, taxes, warehouses and notifications are all in place, so the order schema is built once.
+- **Order schema:** `Order`, `OrderProvider`, `OrderItem` with snapshots of HT price, every tax line, TTC, unit, name and warehouse
+- **Estimate (cart / quote), checkout, client order history** with per-provider progress
+- **Provider inbox and status machine** (new, accepted, preparing, ready, completed, cancelled), COD and pickup flows; accept takes stock from a warehouse, cancel puts it back (ledger rows)
+- **Order notifications** to client and provider, status history visible to the client, assign an order to an employee
+- **Admin order oversight and disputes**
+- **Needs:** R3, R4. **Gate:** one order split across two shops, accepted in one and cancelled in the other, stock and notifications correct, tax lines in the snapshot
+
+*A possible soft launch is here, after R5 plus the minimal help contact from R6. The hardening in R2 must be done before that.*
+
+### R6. Trust, security and support
+These share the step-up check and the rule "who may see another person's account", so they are built together.
+- **2FA (TOTP) and the step-up check** (decision 6): mandatory for SUPER_ADMIN and impersonating staff, optional for others; recovery codes
+- **Security page:** change password, sessions list and revoke, "sign out everywhere", idle timeout, connected accounts (Google / Facebook OAuth, never unlink the last way in)
+- **Account pages:** the person's own activity, notification settings per type and channel, the rest of the person profile
+- **Platform staff accounts and roles**, **impersonation** ("view as", real admin recorded as actor), **admin detail pages** for a client and a provider, **global audit view**
+- **Support module** (Phase 8): help page and tickets, support inbox, feature requests board with votes, public roadmap, support metrics
+- **Needs:** R2 (email, hardening). Start the 2FA part earlier if staff accounts are needed sooner. **Gate:** an agent opens a ticket, starts a read-only "view as" only after 2FA, and the session shows in the audit log
+
+### R7. Money and insight (after real orders exist)
+Needs real data and, for billing, an accountant.
+- **Billing and collections** (backlog I): plan payments, invoices, overdue handling, finance pages; commission stays an optional add-on
+- **Analytics and reports** (backlog E) including the **tax collected** report from order item lines, and **provider insights** (views, position against the cheapest shop)
+- **Promotions and reviews** (backlog F); reviews need completed orders
+- **Business clients and their team** (backlog C and D): invoices with Tunisian rules (accountant needed), company details, client team page
+- **Admin project and deal board** (backlog H)
+- **Needs:** R5. **Gate:** reports reconcile with the order snapshots
+
+### Deferred on purpose
+Product images (no storage service chosen, decision 3); a logo needs images, so it waits too. Commission on orders. Catalogue category archive rules and the seed re-run fix can be picked up inside R1 or R4 when convenient.
+
+---|---|---|---|
+| done | Audit columns + `ActivityLog`, permission layer, `withAudit` everywhere | | Every later action records who did it |
+| done | Provider profile (3a): map pin, review flag, edit / withdraw application | | |
+| done | Notifications (7b): bell, `notify()`, approved / rejected / reviewed | | One helper for every later alert |
+| 1 | **Quick fixes (Phase 9):** `postinstall: prisma generate`, price must be above 0, lowercase and trim emails, dead `/provider/orders` link, page metadata, `error` / `not-found` / `loading` pages | | Small, no design questions, removes known traps |
+| 2 | **Catalogue unit-change guard** (decision 7): `needsPriceReview`, notification, dashboard alert, left out of comparison | notifications | Small schema change, first real use of notifications, and it closes a correctness hole before prices matter |
+| 3 | **Product soft delete + inline price / stock edit + `priceUpdatedAt`** (3b) | | Orders must never point at a deleted product |
+| 4 | **Shop switcher, active shop and create shop** (decision 5): cookie, guard change, `proxy.ts` gating by assignment, `GET /api/me/shops`, drop the unique on `Provider.userId`, "Create shop" in the switcher | | One guard change that every provider page and route inherits; do it before more provider pages exist |
+| 5 | **Warehouses, per-warehouse stock, movement ledger and history page, reorder point** (decision 1, backlog B) | 3 | Stock structure must exist before orders decrement it; includes the migration of current stock to a default warehouse |
+| 6 | **Stock alerts through notifications** (low and out of stock) | 5 | Needs the reorder point and the stock levels |
+| 7 | **Custom taxes** (decision 2): HT price entry, `TaxRate` (percentage or fixed, pre or post), `ProductTax`, `computePrice()`, stored `priceTtc`, TTC display | | Order items snapshot taxes, so taxes come before orders |
+| 8 | **Plans and limits skeleton** (decision 4): `Plan`, `Subscription`, `checkLimit()` with generous free defaults; call it from warehouses, products and team seats | 5, 7 | The helper must exist before team seats and more limit-bearing features are added |
+| 9 | **Client side (Phase 4):** search, comparison (tax-inclusive price, nearest warehouse), distance and travel cost, public shop page and shop map | 5, 7 | Needs warehouses (nearest stock) and taxes (fair price) |
+| 10 | **Order schema, then provider inbox** (3c): snapshots of price, unit, tax breakdown and warehouse; accept decrements stock, cancel restores it; order notifications | 5, 7, 9 | The marketplace core |
+| 11 | **2FA (TOTP)**, mandatory for SUPER_ADMIN and impersonating staff; step-up check | | Must be in place before impersonation |
+| 12 | **Support module and impersonation** (Phase 8) | 11 | Tickets, feature requests, "view as" with the real admin as actor |
+| 13 | **Real email sending** (Phase 9), then **team UI** (3d): invites, roles, last-owner protection | 4, 8 | Invites need email; seats are a plan limit |
+| 14 | Account and security pages, person and admin profile pages (backlog A) | 11 | Uses 2FA and sessions |
+| 15 | Billing and collections (backlog I), analytics and tax reports (backlog E), promotions and reviews (F), help page (G), admin board (H), business clients and invoices (C) | 10 | After orders exist |
+| later | **Images** (storage not chosen), Google / Facebook OAuth, i18n (FR + AR), expanding the catalogue beyond construction materials and auto parts | | Deferred on purpose |
 
 ---
 
@@ -414,4 +593,4 @@ refreshing. Built once, before orders and support, so every later feature calls 
 - Catalogue governance: categories are admin-only; providers add a custom product and optionally suggest it; an admin approves it (new item or merged into an existing one), which links the product and makes it comparable
 - Each employee has their own login, so history is attributed to a person, never to the shop
 - Admin impersonation records the real admin as the actor; it never attributes an admin's action to the user
-- Open questions: can staff change prices (default: owner and manager only); can one person work for several shops; should users be told when support accesses their account (recommended: yes)
+- Open questions: can staff change prices (default: owner and manager only); should users be told when support accesses their account (recommended: yes). “Can one person work for several shops” is decided: yes

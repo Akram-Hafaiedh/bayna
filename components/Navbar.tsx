@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
 import { useState, useRef, useEffect } from "react"
+import NotificationBell from "@/components/NotificationBell"
 
 type Role = "CLIENT" | "PROVIDER" | "ADMIN"
 
@@ -70,109 +71,112 @@ export default function Navbar() {
                     {status === "loading" ? (
                         <div className="h-8 w-8 animate-pulse rounded-full bg-zinc-200" />
                     ) : user ? (
-                        <div className="relative" ref={menuRef}>
-                            <button
-                                onClick={() => setMenuOpen((v) => !v)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white ring-2 ring-white transition hover:ring-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-400"
-                                aria-label="User menu"
-                            >
-                                {initials}
-                            </button>
+                        <>
+                            <NotificationBell />
+                            <div className="relative" ref={menuRef}>
+                                <button
+                                    onClick={() => setMenuOpen((v) => !v)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white ring-2 ring-white transition hover:ring-zinc-300 focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                                    aria-label="User menu"
+                                >
+                                    {initials}
+                                </button>
 
-                            {menuOpen && (
-                                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-1.5 shadow-lg">
-                                    <div className="px-3.5 py-2.5 border-b border-zinc-100">
-                                        <p className="text-sm font-medium text-zinc-900 truncate">
-                                            {user.name || "User"}
-                                        </p>
-                                        <p className="text-xs text-zinc-500 truncate">
-                                            {user.email}
-                                        </p>
-                                        <span
-                                            className={`mt-1.5 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${getRoleBadgeClass(role)}`}
-                                        >
-                                            {getRoleLabel(role)}
-                                        </span>
-                                    </div>
+                                {menuOpen && (
+                                    <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-1.5 shadow-lg">
+                                        <div className="px-3.5 py-2.5 border-b border-zinc-100">
+                                            <p className="text-sm font-medium text-zinc-900 truncate">
+                                                {user.name || "User"}
+                                            </p>
+                                            <p className="text-xs text-zinc-500 truncate">
+                                                {user.email}
+                                            </p>
+                                            <span
+                                                className={`mt-1.5 inline-block px-2 py-0.5 rounded-full text-[11px] font-medium ${getRoleBadgeClass(role)}`}
+                                            >
+                                                {getRoleLabel(role)}
+                                            </span>
+                                        </div>
 
-                                    <Link
-                                        href={dashboardHref}
-                                        onClick={() => setMenuOpen(false)}
-                                        className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                    >
-                                        Dashboard
-                                    </Link>
-
-                                    <Link
-                                        href="/profile"
-                                        onClick={() => setMenuOpen(false)}
-                                        className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                    >
-                                        Profile
-                                    </Link>
-
-                                    {role === "CLIENT" && (
                                         <Link
-                                            href="/become-provider"
+                                            href={dashboardHref}
                                             onClick={() => setMenuOpen(false)}
                                             className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                         >
-                                            Become a Provider
+                                            Dashboard
                                         </Link>
-                                    )}
 
-                                    {role === "PROVIDER" && (
-                                        <>
+                                        <Link
+                                            href="/profile"
+                                            onClick={() => setMenuOpen(false)}
+                                            className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                        >
+                                            Profile
+                                        </Link>
+
+                                        {role === "CLIENT" && (
                                             <Link
-                                                href="/provider/products"
+                                                href="/become-provider"
                                                 onClick={() => setMenuOpen(false)}
                                                 className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                             >
-                                                My Products
+                                                Become a Provider
                                             </Link>
-                                            <Link
-                                                href="/provider/orders"
-                                                onClick={() => setMenuOpen(false)}
-                                                className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                            >
-                                                Orders
-                                            </Link>
-                                        </>
-                                    )}
+                                        )}
 
-                                    {role === "ADMIN" && (
-                                        <>
-                                            <Link
-                                                href="/admin/providers"
-                                                onClick={() => setMenuOpen(false)}
-                                                className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                            >
-                                                Providers
-                                            </Link>
-                                            <Link
-                                                href="/admin/users"
-                                                onClick={() => setMenuOpen(false)}
-                                                className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                            >
-                                                Users
-                                            </Link>
-                                        </>
-                                    )}
+                                        {role === "PROVIDER" && (
+                                            <>
+                                                <Link
+                                                    href="/provider/products"
+                                                    onClick={() => setMenuOpen(false)}
+                                                    className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                                >
+                                                    My Products
+                                                </Link>
+                                                <Link
+                                                    href="/provider/orders"
+                                                    onClick={() => setMenuOpen(false)}
+                                                    className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                                >
+                                                    Orders
+                                                </Link>
+                                            </>
+                                        )}
 
-                                    <div className="my-1 border-t border-zinc-100" />
+                                        {role === "ADMIN" && (
+                                            <>
+                                                <Link
+                                                    href="/admin/providers"
+                                                    onClick={() => setMenuOpen(false)}
+                                                    className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                                >
+                                                    Providers
+                                                </Link>
+                                                <Link
+                                                    href="/admin/users"
+                                                    onClick={() => setMenuOpen(false)}
+                                                    className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                                >
+                                                    Users
+                                                </Link>
+                                            </>
+                                        )}
 
-                                    <button
-                                        onClick={() => {
-                                            setMenuOpen(false)
-                                            signOut({ callbackUrl: "/" })
-                                        }}
-                                        className="block w-full px-3.5 py-2 text-left text-sm text-red-600 hover:bg-red-50"
-                                    >
-                                        Log out
-                                    </button>
-                                </div>
-                            )}
-                        </div>
+                                        <div className="my-1 border-t border-zinc-100" />
+
+                                        <button
+                                            onClick={() => {
+                                                setMenuOpen(false)
+                                                signOut({ callbackUrl: "/" })
+                                            }}
+                                            className="block w-full px-3.5 py-2 text-left text-sm text-red-600 hover:bg-red-50"
+                                        >
+                                            Log out
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     ) : (
                         <div className="flex items-center gap-2">
                             <Link

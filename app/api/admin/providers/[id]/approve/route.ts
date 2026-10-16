@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
+import { notifications, notify } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
 
@@ -66,6 +67,7 @@ export async function POST(
                     },
                 })
             }
+            await notify(tx, provider.userId, notifications.applicationApproved())
         })
 
         return NextResponse.json({ message: "Provider approved" })
