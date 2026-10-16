@@ -38,6 +38,18 @@ enum UserStatus {
   PENDING_DELETION
 }
 
+// How a shop's coordinates were set. A pin the provider placed is trusted over a guess.
+//   LOOKUP    the centre of the chosen governorate (a starting point, not an address)
+//   PIN       the provider clicked or dragged the map pin, or used his device location
+//   GEOCODED  the provider picked an address search result
+//   IMPORTED  loaded by a seed or script, never confirmed by the provider
+enum LocationSource {
+  LOOKUP
+  PIN
+  GEOCODED
+  IMPORTED
+}
+
 enum AccessScope {
   PLATFORM
   SHOP
@@ -97,16 +109,22 @@ model Provider {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  businessName String
-  description  String?
-  phone        String?
-  address      String?
-  city         String
-  governorate  String?
-  latitude     Float?
-  longitude    Float?
+  businessName   String
+  description    String?
+  phone          String?
+  whatsapp       String?
+  address        String?
+  city           String
+  governorate    String?
+  latitude       Float?
+  longitude      Float?
+  // null while there are no coordinates
+  locationSource LocationSource?
 
   isVerified  Boolean   @default(false)
+  // Set when a verified shop changes its name, address, city, governorate or location, so an admin
+  // sees it in the providers list. The shop stays live. Cleared by "Mark reviewed".
+  needsReview Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   createdById String?

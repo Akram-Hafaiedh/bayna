@@ -14,6 +14,7 @@ export default function ProviderLayout({
                     { href: "/provider/dashboard", label: "Overview" },
                     { href: "/provider/products", label: "Products" },
                     { href: "/provider/orders", label: "Orders" },
+                    { href: "/provider/profile", label: "Profile" },
                 ]}
             />
             <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>

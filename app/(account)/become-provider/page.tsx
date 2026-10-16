@@ -3,29 +3,34 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import ProviderProfileForm, { EMPTY_PROFILE, type ProfileValues } from "@/components/provider/ProviderProfileForm"
 
-const GOVERNORATES = [
-    "Tunis", "Ariana", "Ben Arous", "Manouba", "Nabeul", "Zaghouan",
-    "Bizerte", "Béja", "Jendouba", "Kef", "Siliana", "Sousse",
-    "Monastir", "Mahdia", "Sfax", "Kairouan", "Kasserine", "Sidi Bouzid",
-    "Gabès", "Medenine", "Tataouine", "Gafsa", "Tozeur", "Kebili",
-]
+function toValues(p: Record<string, unknown>): ProfileValues {
+    const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "")
+    const n = (k: string) => (typeof p[k] === "number" ? (p[k] as number) : null)
+    return {
+        businessName: s("businessName"),
+        description: s("description"),
+        phone: s("phone"),
+        whatsapp: s("whatsapp"),
+        address: s("address"),
+        city: s("city"),
+        governorate: s("governorate"),
+        latitude: n("latitude"),
+        longitude: n("longitude"),
+        locationSource: typeof p.locationSource === "string" ? p.locationSource : null,
+    }
+}
 
 type AppStatus = "loading" | "none" | "pending" | "approved"
 
 export default function BecomeProviderPage() {
     const { data: session } = useSession()
     const [appStatus, setAppStatus] = useState<AppStatus>("loading")
-    const [form, setForm] = useState({
-        businessName: "",
-        description: "",
-        phone: "",
-        address: "",
-        city: "",
-        governorate: "",
-    })
-    const [error, setError] = useState("")
-    const [loading, setLoading] = useState(false)
+    const [application, setApplication] = useState<ProfileValues | null>(null)
+    const [version, setVersion] = useState(0)
+    const [message, setMessage] = useState("")
+    const [withdrawing, setWithdrawing] = useState(false)
 
     const role = session?.user?.role
 
@@ -34,7 +39,10 @@ export default function BecomeProviderPage() {
             try {
                 const res = await fetch("/api/provider/apply")
                 const data = await res.json()
-                if (data.status === "pending") setAppStatus("pending")
+                if (data.status === "pending") {
+                    setApplication(toValues(data.provider))
+                    setAppStatus("pending")
+                }
                 else if (data.status === "approved") setAppStatus("approved")
                 else setAppStatus("none")
             } catch {
@@ -83,189 +91,98 @@ export default function BecomeProviderPage() {
         return <p className="text-sm text-zinc-500">Loading...</p>
     }
 
-    if (appStatus === "pending") {
-        return (
-            <div className="rounded-xl border border-amber-100 bg-amber-50 p-8 text-center">
-                <h1 className="text-xl font-semibold text-amber-900">
-                    Application pending
-                </h1>
-                <p className="mt-2 text-sm text-amber-800">
-                    Your provider application is waiting for admin approval.
-                    You will get provider access once it is approved.
-                </p>
-                <Link
-                    href="/profile"
-                    className="mt-6 inline-flex h-10 items-center rounded-lg border border-amber-200 bg-white px-4 text-sm font-medium text-amber-900 hover:bg-amber-50"
-                >
-                    Back to profile
-                </Link>
-            </div>
-        )
+    // Create the application, or save changes to a pending one
+    async function save(body: Record<string, unknown>): Promise<string | null> {
+        setMessage("")
+        const pending = appStatus === "pending"
+        const res = await fetch("/api/provider/apply", {
+            method: pending ? "PATCH" : "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        })
+        const data = await res.json()
+        if (!res.ok) return data.error || "Application failed"
+
+        if (pending) {
+            setApplication(toValues(data.provider))
+            setVersion((x) => x + 1)
+            setMessage("Application updated.")
+        } else {
+            // Load what was saved, so the pending view shows the real values
+            const again = await (await fetch("/api/provider/apply")).json()
+            if (again.provider) setApplication(toValues(again.provider))
+            setAppStatus("pending")
+            setMessage("Application submitted.")
+        }
+        return null
     }
 
-    async function handleSubmit(e: React.FormEvent) {
-        e.preventDefault()
-        setError("")
-        setLoading(true)
-
+    async function withdraw() {
+        if (!confirm("Withdraw your application? You can apply again later.")) return
+        setWithdrawing(true)
         try {
-            const res = await fetch("/api/provider/apply", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(form),
-            })
-            const data = await res.json()
-
-            if (!res.ok) {
-                setError(data.error || "Application failed")
-                return
+            const res = await fetch("/api/provider/apply", { method: "DELETE" })
+            if (res.ok) {
+                setApplication(null)
+                setMessage("")
+                setVersion((x) => x + 1)
+                setAppStatus("none")
+            } else {
+                const data = await res.json()
+                setMessage(data.error || "Could not withdraw")
             }
-
-            setAppStatus("pending")
-        } catch {
-            setError("Something went wrong")
         } finally {
-            setLoading(false)
+            setWithdrawing(false)
         }
     }
 
+    const pending = appStatus === "pending"
+
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-                    Become a provider
-                </h1>
-                <p className="mt-1 text-sm text-zinc-500">
-                    Submit your shop details. An admin will review and approve
-                    your application before you can list products.
-                </p>
-            </div>
-
-            <form
-                onSubmit={handleSubmit}
-                className="rounded-xl border border-zinc-200 bg-white p-6 space-y-5"
-            >
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
-                        Business name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                        required
-                        type="text"
-                        placeholder="e.g. Auto Parts Sousse"
-                        value={form.businessName}
-                        onChange={(e) =>
-                            setForm({ ...form, businessName: e.target.value })
-                        }
-                        className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
-                        Description
-                    </label>
-                    <textarea
-                        rows={3}
-                        placeholder="What do you sell?"
-                        value={form.description}
-                        onChange={(e) =>
-                            setForm({ ...form, description: e.target.value })
-                        }
-                        className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent resize-none"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
-                        Phone
-                    </label>
-                    <input
-                        type="tel"
-                        placeholder="+216 ..."
-                        value={form.phone}
-                        onChange={(e) =>
-                            setForm({ ...form, phone: e.target.value })
-                        }
-                        className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
-                    />
-                </div>
-
-                <div className="space-y-1.5">
-                    <label className="block text-sm font-medium text-zinc-700">
-                        Address
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="Street, building..."
-                        value={form.address}
-                        onChange={(e) =>
-                            setForm({ ...form, address: e.target.value })
-                        }
-                        className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
-                    />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-zinc-700">
-                            City <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            required
-                            type="text"
-                            placeholder="e.g. Sousse"
-                            value={form.city}
-                            onChange={(e) =>
-                                setForm({ ...form, city: e.target.value })
-                            }
-                            className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="block text-sm font-medium text-zinc-700">
-                            Governorate
-                        </label>
-                        <select
-                            value={form.governorate}
-                            onChange={(e) =>
-                                setForm({ ...form, governorate: e.target.value })
-                            }
-                            className="w-full h-11 px-3.5 rounded-lg border border-zinc-250 bg-white text-zinc-900 text-[15px] focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+        <div className="max-w-3xl space-y-6">
+            {pending ? (
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-6">
+                    <h1 className="text-xl font-semibold text-amber-900">Application pending</h1>
+                    <p className="mt-2 text-sm text-amber-800">
+                        Your application is waiting for admin approval. You can still correct your details below, or withdraw it.
+                        You will get provider access once it is approved.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={withdraw}
+                            disabled={withdrawing}
+                            className="h-10 rounded-lg border border-red-200 bg-white px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
                         >
-                            <option value="">Select...</option>
-                            {GOVERNORATES.map((g) => (
-                                <option key={g} value={g}>
-                                    {g}
-                                </option>
-                            ))}
-                        </select>
+                            {withdrawing ? "Withdrawing..." : "Withdraw application"}
+                        </button>
+                        <Link
+                            href="/profile"
+                            className="inline-flex h-10 items-center rounded-lg border border-amber-200 bg-white px-4 text-sm font-medium text-amber-900 hover:bg-amber-50"
+                        >
+                            Back to profile
+                        </Link>
                     </div>
                 </div>
-
-                {error && (
-                    <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">
-                        {error}
-                    </div>
-                )}
-
-                <div className="flex items-center gap-3 pt-2">
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="h-11 px-5 rounded-lg bg-zinc-900 text-white text-[15px] font-medium hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? "Submitting..." : "Submit application"}
-                    </button>
-                    <Link
-                        href="/profile"
-                        className="text-sm text-zinc-500 hover:text-zinc-900"
-                    >
-                        Cancel
-                    </Link>
+            ) : (
+                <div>
+                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Become a provider</h1>
+                    <p className="mt-1 text-sm text-zinc-500">
+                        Submit your shop details. An admin will review and approve your application before you can list products.
+                    </p>
                 </div>
-            </form>
+            )}
+
+            {message && (
+                <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">{message}</div>
+            )}
+
+            <ProviderProfileForm
+                key={version}
+                initial={application ?? EMPTY_PROFILE}
+                submitLabel={pending ? "Save changes" : "Submit application"}
+                onSubmit={save}
+            />
         </div>
     )
 }

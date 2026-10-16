@@ -13,7 +13,7 @@ Design details for access control, audit, impersonation and support live in
 
 **Phase 7 foundation: audit columns, `ActivityLog` and the permission layer are done and verified
 (15 Oct 2026).** Left in the foundation: wiring every write route to `withAudit` so the log records who
-acted, then the provider profile (Phase 3a). The ideas collected on 15 Oct 2026 are in
+acted, then the provider profile (Phase 3a, built 16 Oct 2026, being verified). Next after it: the notification module (Phase 7b below). The ideas collected on 15 Oct 2026 are in
 [Backlog ideas](#backlog-ideas-added-15-oct-2026-not-started) below: not started, not ordered.
 
 ---
@@ -90,13 +90,13 @@ Never expose admin promotion in the public UI.
 
 ### 3a – Onboarding & shop identity  ← **NEXT, right after the Phase 7 foundation**
 - [x] “Become a Provider” application flow (pending until admin approves)
-- [ ] **Provider profile page** (view + edit): businessName, description, phone, WhatsApp, address, city, governorate
-- [ ] `PATCH /api/provider/profile` with input validation (same style as `lib/product-input.ts`)
-- [ ] Location v1: governorate / city lookup fills latitude + longitude; store how it was set (lookup vs pin). Map pin picker later
-- [ ] Show verification status on the profile. **Decided:** phone, WhatsApp and description save and log only; business name, address, city, governorate and location save, log and set `needsReview` for the admin (the shop stays live)
-- [ ] Pending applicants can edit or withdraw their application (`PATCH` / `DELETE /api/provider/apply`, UI under `/become-provider`, because they are still CLIENT and cannot reach `/provider`)
-- [ ] Write an `ActivityLog` entry with before/after values (audit columns come from Phase 7)
-- [ ] Guard the route with `requirePermission("shop.profile.edit")` from Phase 7
+- [x] **Provider profile page** (view + edit) — built 16 Oct 2026 (`/provider/profile`): businessName, description, phone, WhatsApp, address, city, governorate
+- [x] `PATCH /api/provider/profile` with input validation (same style as `lib/product-input.ts`)
+- [x] Location, **decided 16 Oct 2026:** coordinates must be reliable for the address, shown on a map. Governorate lookup gives the starting point, then the provider confirms or moves a **map pin** himself (map picker is part of this task, not later); store how it was set (lookup / pin / address search). The same map component is reused for the public map of shops in Phase 4. Governorate coordinates come from a cited source (English Wikipedia, 16 Oct 2026), not from memory. Governorates are a TypeScript constant (`lib/governorates.ts`), not a database table. Admin side: `needsReview` flag, “needs review” filter and “Mark reviewed” button on `/admin/providers`
+- [x] Show verification status on the profile. **Decided:** phone, WhatsApp and description save and log only; business name, address, city, governorate and location save, log and set `needsReview` for the admin (the shop stays live)
+- [x] Pending applicants can edit or withdraw their application (`PATCH` / `DELETE /api/provider/apply`, UI under `/become-provider`, because they are still CLIENT and cannot reach `/provider`)
+- [x] Write an `ActivityLog` entry with before/after values (audit columns come from Phase 7)
+- [x] Guard the route with `requireShop("shop.profile.edit")` from Phase 7
 - [ ] Optional later: opening hours, logo, delivery / pickup / COD options, open / closed / vacation status, public shop page
 - [ ] Decide: can one provider have several locations / depots?
 
@@ -199,7 +199,7 @@ Full design and the permission catalogue: `docs/access-audit-support.md`.
 - [x] `withAudit` in every write route (15 Oct 2026): the 15 admin and provider routes use `guard.actor`; register, forgot / reset password, profile, change password, revoke sessions and provider apply use `actorFromSession` with the request's IP and browser. Anonymous requests (register, forgot / reset password) have no actor id; the email is recorded as the actor name. Written, not yet compiled or clicked through
 - [ ] Writes still outside `withAudit`: the `LoginSession` rows created, touched and revoked in `auth.ts` (sign-in, activity, sign-out), and the seed scripts. Login events get their own entries with `logActivity`
 - [ ] Seeds (`prisma/seed.ts`, `prisma/seed-demo.ts`): use `systemActor("SEED")` so their rows are labelled (`scripts/sync-access.ts` already does)
-- [x] Checks: `npm run audit:check` (every model has the columns), `npm run test:audit-db` (36 checks on a real database), `npm run test:unit`
+- [x] Checks: `npm run audit:check` (every model has the columns), `npm run test:audit-db` (36 checks on a real database), `npm run test:unit` (Vitest since 16 Oct 2026; config in `vitest.config.mts`, the `@/` alias works in tests)
 - [x] `ActivityLog`: append-only (enforced by a trigger), field-level before/after, actor snapshot, on-behalf-of, source, request id, secrets redacted
 - [ ] Reusable Timeline component: entity history tab, shop activity page, admin global audit, user "account activity" (logins, password and role changes, support access)
 - [x] User columns added: `status`, `suspendedReason`, `lastLoginAt`, `locale`, `timezone`, `preferences`, `deletedAt`
@@ -208,7 +208,7 @@ Full design and the permission catalogue: `docs/access-audit-support.md`.
 
 **Permission layer: what was checked (15 Oct 2026).** Same limits as before (no npm in the session):
 - `lib/access` unit tests: 22 pass (catalogue, patterns, system roles, deny-wins, scopes, expiry, no escalation)
-- `prisma/pending/access_audit_triggers.sql` applied on Postgres 16 on tables shaped like the new models: 36 database checks pass, array changes (`permissions`) are logged with before/after, `providerId` lands on assignment log rows
+- the access-table trigger SQL (now `20261015181723_access_audit_triggers`) applied on Postgres 16 on tables shaped like the new models: 36 database checks pass, array changes (`permissions`) are logged with before/after, `providerId` lands on assignment log rows
 - `lib/access/guard.ts` and `load.ts` type-check against stubs of `@/auth`, `@/lib/prisma` and the Prisma enums (the routes and `scripts/sync-access.ts` were not compiled: no generated Prisma client here)
 
 **Passed on your machine (15 Oct 2026):** `access_control` migration, audit triggers on the two new tables (24 triggers in total), `npm run access:sync` (14 roles; SUPER_ADMIN for the admin; OWNER for the 6 verified shops), `prisma generate`, `tsc --noEmit` with the new routes, `npm run test:unit` (33 pass), `npm run test:audit-db` (36 pass).
@@ -375,10 +375,25 @@ from a payout.
 
 ---
 
+## Phase 7b – Notifications (planned, decided 16 Oct 2026, not started)
+A bell dropdown in the header next to the user menu, so people learn that something happened without
+refreshing. Built once, before orders and support, so every later feature calls one helper.
+- [ ] `Notification` table: recipient user, type, title, body, link, `readAt`, `createdAt`; hand-written migration with `audit_attach('Notification')`
+- [ ] `notify(tx, userId, {...})` helper that runs inside the same `withAudit` transaction as the event, so a notification is never lost or sent for a rolled-back change
+- [ ] `GET /api/notifications` (list + unread count), `POST` to mark one or all as read; everyone reads only their own, so no new permission key
+- [ ] Header bell with unread badge and dropdown; poll every 30 to 60 seconds (real-time push later)
+- [ ] First events: admin marks a shop's changes reviewed (`/api/admin/providers/[id]/reviewed`), application approved, application rejected
+- [ ] Later events: order status changes, low stock, support ticket replies, account and security alerts (backlog A)
+- [ ] Preferences per type and channel (in-app, email) once emails exist (Phase 9)
+- Questions: how long to keep read notifications; whether staff-targeted notifications go to a role or to named people
+
+---
+
 ## Next up (proposed order, reorder freely)
 
 1. **Phase 7 foundation** — chosen first: audit columns + ActivityLog, then permissions + guard (before orders, so every order action records who did it)
-2. **Provider profile (3a)** — chosen second
+2. **Provider profile (3a)** — chosen second, built 16 Oct 2026
+2b. **Notifications (Phase 7b)** — chosen next, before orders and support
 3. Phase 9 quick fixes (deploy, emails, price > 0, dead link); the `postinstall: prisma generate` fix is needed as soon as schema work starts
 4. 3b listing operations: images, inline price / stock, soft delete
 5. Phase 4: search, comparison, location and travel cost

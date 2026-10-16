@@ -9,6 +9,9 @@ type ProviderRow = {
     governorate: string | null
     phone: string | null
     isVerified: boolean
+    needsReview: boolean
+    latitude: number | null
+    longitude: number | null
     createdAt: string
     user: {
         id: string
@@ -20,7 +23,7 @@ type ProviderRow = {
 
 export default function AdminProvidersPage() {
     const [providers, setProviders] = useState<ProviderRow[]>([])
-    const [filter, setFilter] = useState<"pending" | "verified" | "all">("pending")
+    const [filter, setFilter] = useState<"pending" | "verified" | "review" | "all">("pending")
     const [loading, setLoading] = useState(true)
     const [actionId, setActionId] = useState<string | null>(null)
     const [error, setError] = useState("")
@@ -67,6 +70,23 @@ export default function AdminProvidersPage() {
         }
     }
 
+    async function markReviewed(id: string) {
+        setActionId(id)
+        try {
+            const res = await fetch(`/api/admin/providers/${id}/reviewed`, { method: "POST" })
+            if (!res.ok) {
+                const data = await res.json()
+                setError(data.error || "Could not mark as reviewed")
+                return
+            }
+            await load()
+        } catch {
+            setError("Could not mark as reviewed")
+        } finally {
+            setActionId(null)
+        }
+    }
+
     async function reject(id: string) {
         if (!confirm("Reject this application? The provider profile will be removed.")) {
             return
@@ -101,7 +121,7 @@ export default function AdminProvidersPage() {
                     </p>
                 </div>
                 <div className="flex gap-1 rounded-lg border border-zinc-200 bg-white p-1">
-                    {(["pending", "verified", "all"] as const).map((f) => (
+                    {(["pending", "verified", "review", "all"] as const).map((f) => (
                         <button
                             key={f}
                             type="button"
@@ -111,7 +131,7 @@ export default function AdminProvidersPage() {
                                     : "text-zinc-600 hover:bg-zinc-50"
                                 }`}
                         >
-                            {f}
+                            {f === "review" ? "needs review" : f}
                         </button>
                     ))}
                 </div>
@@ -171,11 +191,28 @@ export default function AdminProvidersPage() {
                                     <td className="px-4 py-3 hidden md:table-cell text-zinc-600">
                                         {p.city}
                                         {p.governorate ? `, ${p.governorate}` : ""}
+                                        {p.latitude != null && p.longitude != null && (
+                                            <a
+                                                href={`https://www.openstreetmap.org/?mlat=${p.latitude}&mlon=${p.longitude}#map=16/${p.latitude}/${p.longitude}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="ml-2 text-xs text-zinc-500 underline hover:text-zinc-900"
+                                            >
+                                                Map
+                                            </a>
+                                        )}
                                     </td>
                                     <td className="px-4 py-3">
                                         {p.isVerified ? (
-                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                                                Verified
+                                            <span className="inline-flex gap-1.5">
+                                                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+                                                    Verified
+                                                </span>
+                                                {p.needsReview && (
+                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                                                        Needs review
+                                                    </span>
+                                                )}
                                             </span>
                                         ) : (
                                             <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
@@ -184,6 +221,16 @@ export default function AdminProvidersPage() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-right">
+                                        {p.isVerified && p.needsReview && (
+                                            <button
+                                                type="button"
+                                                disabled={actionId === p.id}
+                                                onClick={() => markReviewed(p.id)}
+                                                className="text-xs font-medium text-emerald-700 hover:underline disabled:opacity-50"
+                                            >
+                                                Mark reviewed
+                                            </button>
+                                        )}
                                         {!p.isVerified && (
                                             <div className="inline-flex gap-2">
                                                 <button

@@ -1,6 +1,6 @@
 // lib/audit/actor.test.ts
-// Run: npm run test:unit
-import { test } from "node:test"
+// Run: npm run test:unit   (Vitest)
+import { test } from "vitest"
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"

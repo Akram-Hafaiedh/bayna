@@ -11,14 +11,16 @@ export async function GET(req: Request) {
         }
 
         const { searchParams } = new URL(req.url)
-        const filter = searchParams.get("filter") // pending | verified | all
+        const filter = searchParams.get("filter") // pending | verified | review | all
 
         const where =
             filter === "pending"
                 ? { isVerified: false }
                 : filter === "verified"
-                  ? { isVerified: true }
-                  : {}
+                    ? { isVerified: true }
+                    : filter === "review"
+                        ? { needsReview: true }
+                        : {}
 
         const providers = await prisma.provider.findMany({
             where,

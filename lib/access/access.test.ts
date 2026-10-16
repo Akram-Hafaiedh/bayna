@@ -1,6 +1,6 @@
 // lib/access/access.test.ts
-// Run: npm run test:unit
-import { test } from "node:test"
+// Run: npm run test:unit   (Vitest)
+import { test } from "vitest"
 import assert from "node:assert/strict"
 import {
     ALL_CLIENT_KEYS,

@@ -1,13 +1,11 @@
 // lib/product-input.ts
 // Validation of product fields coming from API request bodies.
 import { Unit } from "@/app/generated/prisma/enums"
+import { fail, isBlank, ok, parseText, type Parsed } from "@/lib/parse"
 
-export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
-
-const ok = <T>(value: T): Parsed<T> => ({ ok: true, value })
-const fail = <T>(error: string): Parsed<T> => ({ ok: false, error })
-
-const isBlank = (v: unknown) => v === undefined || v === null || v === ""
+// Other files import these from here; they now live in lib/parse.ts.
+export { parseText }
+export type { Parsed }
 
 /** Price in TND, stored as Decimal(12,3). Returned as a fixed 3-decimal string. */
 export function parsePrice(v: unknown): Parsed<string> {
@@ -52,13 +50,4 @@ export function parseUnit(v: unknown): Parsed<Unit> {
         return ok(v as Unit)
     }
     return fail("Invalid unit")
-}
-
-/** Trimmed text; empty becomes null. Rejects non-strings and over-long values. */
-export function parseText(v: unknown, label: string, max: number): Parsed<string | null> {
-    if (v === undefined || v === null) return ok(null)
-    if (typeof v !== "string") return fail(`${label} must be text`)
-    const t = v.trim()
-    if (t.length > max) return fail(`${label} is too long (max ${max} characters)`)
-    return ok(t || null)
 }

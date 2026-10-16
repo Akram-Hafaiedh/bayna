@@ -184,11 +184,13 @@ search, filters and pagination, create from the catalogue or as a custom product
 review of catalogue requests; audit columns and an append-only activity log on every table; a
 permission layer (roles and assignments, one guard for every admin and provider API route).
 
-**Next:** record who did each change in the activity log, then the provider profile (shop identity,
-logo, hours, contact) with admin review of edits to verified shops.
+**Built, being verified:** the provider profile (shop identity, contact, map pin) with admin review of
+edits to a verified shop's name and location, and edit / withdraw for pending applications.
 
-**Backlog (not started):** richer account and security pages (2FA, sessions, connected accounts,
-notifications), person and admin detail profiles, inventory with a stock ledger and reorder queue,
+**Next:** notifications (a bell in the header, so a shop learns when its changes are reviewed or its
+application is decided), then orders and support.
+
+**Backlog (not started):** richer account and security pages (2FA, sessions, connected accounts), person and admin detail profiles, inventory with a stock ledger and reorder queue,
 personal versus business clients with invoices, provider and client team pages, analytics and reports,
 promotions and reviews, a help and support module, an admin project / deal board, and admin billing.
 
