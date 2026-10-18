@@ -9,11 +9,11 @@ type UserRow = {
     phone: string | null
     role: string
     createdAt: string
-    provider: {
+    providers: {
         id: string
         businessName: string
         isVerified: boolean
-    } | null
+    }[]
 }
 
 export default function AdminUsersPage() {
@@ -105,15 +105,19 @@ export default function AdminUsersPage() {
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 hidden sm:table-cell text-zinc-600">
-                                        {u.provider ? (
-                                            <span>
-                                                {u.provider.businessName}
-                                                {!u.provider.isVerified && (
-                                                    <span className="ml-1 text-xs text-amber-600">
-                                                        (pending)
-                                                    </span>
-                                                )}
-                                            </span>
+                                        {u.providers.length > 0 ? (
+                                            <ul className="space-y-0.5">
+                                                {u.providers.map((p) => (
+                                                    <li key={p.id}>
+                                                        {p.businessName}
+                                                        {!p.isVerified && (
+                                                            <span className="ml-1 text-xs text-amber-600">
+                                                                (pending)
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         ) : (
                                             "—"
                                         )}

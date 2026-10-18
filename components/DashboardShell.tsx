@@ -28,21 +28,27 @@ export function DashboardLoading() {
 
 export function SubNav({
     items,
+    leading,
 }: {
     items: { href: string; label: string }[]
+    /** Shown before the links (the shop switcher). Kept outside the scrolling links so its menu is not clipped. */
+    leading?: React.ReactNode
 }) {
     return (
         <div className="border-b border-zinc-200 bg-white">
-            <div className="max-w-6xl mx-auto px-4 flex items-center gap-1 h-11 overflow-x-auto">
-                {items.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className="px-3 py-1.5 text-sm text-zinc-600 hover:text-zinc-900 rounded-md hover:bg-zinc-50 whitespace-nowrap"
-                    >
-                        {item.label}
-                    </Link>
-                ))}
+            <div className="max-w-6xl mx-auto px-4 flex items-center h-11">
+                {leading && <div className="mr-2 shrink-0 border-r border-zinc-200 pr-3">{leading}</div>}
+                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+                    {items.map((item) => (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className="px-3 py-1.5 text-sm text-zinc-600 hover:text-zinc-900 rounded-md hover:bg-zinc-50 whitespace-nowrap"
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
+                </div>
             </div>
         </div>
     )

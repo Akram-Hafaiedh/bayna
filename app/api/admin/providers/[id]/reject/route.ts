@@ -29,13 +29,24 @@ export async function POST(
             )
         }
 
-        // Remove application; keep user as CLIENT
+        // Only a waiting application can be rejected; an approved shop is closed another way
+        if (provider.isVerified) {
+            return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
+        }
+
+        // Remove the application. The person goes back to CLIENT only when this was their only way
+        // in: someone who already runs another shop stays a provider.
         await withAudit(guard.actor, async (tx) => {
             await tx.provider.delete({ where: { id } })
-            await tx.user.update({
-                where: { id: provider.userId },
-                data: { role: Role.CLIENT },
+            const otherShops = await tx.accessAssignment.count({
+                where: { userId: provider.userId, scope: "SHOP", status: "ACTIVE", providerId: { not: id } },
             })
+            if (otherShops === 0) {
+                await tx.user.update({
+                    where: { id: provider.userId },
+                    data: { role: Role.CLIENT },
+                })
+            }
             await notify(tx, provider.userId, notifications.applicationRejected())
         })
 

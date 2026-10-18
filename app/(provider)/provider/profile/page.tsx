@@ -35,7 +35,7 @@ export default function ProviderProfilePage() {
 
     useEffect(() => {
         let alive = true
-        fetch("/api/provider/profile")
+        fetch("/api/provider/profile", { cache: "no-store" })
             .then(async (res) => {
                 const json = await res.json()
                 if (!alive) return
@@ -92,7 +92,9 @@ export default function ProviderProfilePage() {
         <div className="max-w-3xl space-y-6">
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Shop profile</h1>
-                <p className="mt-1 text-sm text-zinc-500">How customers see and find your shop.</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                    {data?.businessName ? <>How customers see and find <span className="font-medium text-zinc-700">{data.businessName}</span>.</> : "How customers see and find your shop."}
+                </p>
             </div>
 
             {loadError && <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">{loadError}</div>}

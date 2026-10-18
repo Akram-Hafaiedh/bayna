@@ -24,7 +24,7 @@ function toValues(p: Record<string, unknown>): ProfileValues {
     }
 }
 
-type AppStatus = "loading" | "none" | "pending" | "approved"
+type AppStatus = "loading" | "none" | "pending"
 
 export default function BecomeProviderPage() {
     const { data: session } = useSession()
@@ -47,7 +47,6 @@ export default function BecomeProviderPage() {
                     setApplication(toValues(data.provider))
                     setAppStatus("pending")
                 }
-                else if (data.status === "approved") setAppStatus("approved")
                 else setAppStatus("none")
             } catch {
                 setAppStatus("none")
@@ -67,25 +66,6 @@ export default function BecomeProviderPage() {
                     className="mt-6 inline-flex h-10 items-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
                 >
                     Go to admin dashboard
-                </Link>
-            </div>
-        )
-    }
-
-    if (role === "PROVIDER" || appStatus === "approved") {
-        return (
-            <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center">
-                <h1 className="text-xl font-semibold text-zinc-900">
-                    You are a provider
-                </h1>
-                <p className="mt-2 text-sm text-zinc-500">
-                    Manage your shop from the provider dashboard.
-                </p>
-                <Link
-                    href="/provider/dashboard"
-                    className="mt-6 inline-flex h-10 items-center rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
-                >
-                    Go to provider dashboard
                 </Link>
             </div>
         )
@@ -148,6 +128,8 @@ export default function BecomeProviderPage() {
     }
 
     const pending = appStatus === "pending"
+    // Already a provider: this page creates one more shop
+    const another = role === "PROVIDER"
 
     return (
         <div className="max-w-3xl space-y-6">
@@ -156,7 +138,9 @@ export default function BecomeProviderPage() {
                     <h1 className="text-xl font-semibold text-amber-900">Application pending</h1>
                     <p className="mt-2 text-sm text-amber-800">
                         Your application is waiting for admin approval. You can still correct your details below, or withdraw it.
-                        You will get provider access once it is approved.
+                        {another
+                            ? " You will see the shop in your shop switcher once it is approved. Your other shops keep working."
+                            : " You will get provider access once it is approved."}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
@@ -168,19 +152,28 @@ export default function BecomeProviderPage() {
                             {withdrawing ? "Withdrawing..." : "Withdraw application"}
                         </button>
                         <Link
-                            href="/profile"
+                            href={another ? "/provider/dashboard" : "/profile"}
                             className="inline-flex h-10 items-center rounded-lg border border-amber-200 bg-white px-4 text-sm font-medium text-amber-900 hover:bg-amber-50"
                         >
-                            Back to profile
+                            {another ? "Back to my shop" : "Back to profile"}
                         </Link>
                     </div>
                 </div>
             ) : (
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Become a provider</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+                        {another ? "Create a new shop" : "Become a provider"}
+                    </h1>
                     <p className="mt-1 text-sm text-zinc-500">
-                        Submit your shop details. An admin will review and approve your application before you can list products.
+                        {another
+                            ? "Add another shop to your account. An admin reviews it before you can list products. Your other shops keep working, and you switch between them from the shop menu."
+                            : "Submit your shop details. An admin will review and approve your application before you can list products."}
                     </p>
+                    {another && (
+                        <Link href="/provider/dashboard" className="mt-3 inline-block text-sm text-zinc-500 hover:text-zinc-900">
+                            ← Back to my shop
+                        </Link>
+                    )}
                 </div>
             )}
 
@@ -191,7 +184,7 @@ export default function BecomeProviderPage() {
             <ProviderProfileForm
                 key={version}
                 initial={application ?? EMPTY_PROFILE}
-                submitLabel={pending ? "Save changes" : "Submit application"}
+                submitLabel={pending ? "Save changes" : another ? "Submit shop for review" : "Submit application"}
                 onSubmit={save}
             />
         </div>

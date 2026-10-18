@@ -29,6 +29,10 @@ export async function POST(
             )
         }
 
+        if (provider.isVerified) {
+            return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
+        }
+
         // The applicant becomes OWNER of the shop. Permissions come from this assignment.
         const ownerRole = await prisma.accessRole.findFirst({
             where: { scope: "SHOP", providerId: null, key: "OWNER" },

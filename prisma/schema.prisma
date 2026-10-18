@@ -98,7 +98,8 @@ model User {
   accounts      Account[]
   sessions      Session[]
   loginSessions LoginSession[]
-  provider      Provider?
+  // The shops this person applied for (and, once approved, owns). One person can have several.
+  providers     Provider[]
 
   // Permissions come from these, never from User.role (which only decides which dashboard opens).
   accessAssignments AccessAssignment[]
@@ -107,7 +108,8 @@ model User {
 
 model Provider {
   id     String @id @default(cuid())
-  userId String @unique
+  // The applicant. Who works in the shop, and as what, is AccessAssignment (the applicant becomes OWNER on approval).
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   businessName   String
@@ -136,6 +138,8 @@ model Provider {
   products          Product[]
   suggestions       CatalogSuggestion[]
   accessAssignments AccessAssignment[]
+
+  @@index([userId])
 }
 
 model Category {

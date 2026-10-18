@@ -254,11 +254,14 @@ async function main() {
             longitude: p.longitude,
             isVerified: true,
         }
-        const provider = await prisma.provider.upsert({
-            where: { userId: user.id },
-            update: providerData,
-            create: { userId: user.id, ...providerData },
+        // A person can run several shops, so a shop is found by owner + name (stays idempotent)
+        const existingShop = await prisma.provider.findFirst({
+            where: { userId: user.id, businessName: providerData.businessName },
+            select: { id: true },
         })
+        const provider = existingShop
+            ? await prisma.provider.update({ where: { id: existingShop.id }, data: providerData })
+            : await prisma.provider.create({ data: { userId: user.id, ...providerData } })
 
         // Which catalogue items does this provider stock?
         const offers = items.flatMap((item) => {

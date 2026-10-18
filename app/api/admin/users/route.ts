@@ -18,12 +18,14 @@ export async function GET(req: Request) {
                 phone: true,
                 role: true,
                 createdAt: true,
-                provider: {
+                providers: {
+                    where: { deletedAt: null },
                     select: {
                         id: true,
                         businessName: true,
                         isVerified: true,
                     },
+                    orderBy: { createdAt: "asc" },
                 },
             },
             orderBy: { createdAt: "desc" },

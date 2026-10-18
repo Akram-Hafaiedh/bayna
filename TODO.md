@@ -500,6 +500,18 @@ Everything here touches products, the catalogue or configuration, and none of it
 - **Needs:** nothing. **Gate:** `test:unit`, `tsc`, a flagged product disappears from comparison data and reappears after the price is confirmed
 
 ### R2. Shops, people and plans
+**Order of work (agreed 18 Oct 2026):** R2a, then R2c, then R2d, then R2b (email and hardening last, it needs a service chosen).
+
+**R2a, shops per person (built 18 Oct 2026, being verified)**
+- [x] `Provider.userId` is no longer unique: one person can apply for and own several shops (`User.providers`). Ownership and roles stay in `AccessAssignment`
+- [x] Active shop: `bayna_shop` cookie holds the choice but is never trusted; `pickActiveShop()` checks it against live assignments on every request (guard, pages, API). No valid hint = first shop by id
+- [x] `GET /api/me/shops` (shops + waiting applications + active) and `POST /api/me/active-shop` (refuses a shop the person does not work in)
+- [x] Shop switcher in the provider sub-navigation, always shown, **Create shop** at the bottom; waiting applications are listed but disabled. Switching goes back to the dashboard
+- [x] **Create shop**: `/become-provider` now works for existing providers (one waiting application at a time); the apply routes look at the waiting application, not "the" provider
+- [x] Rejecting an application only sets the person back to CLIENT if they run no other shop; approved shops can no longer be rejected or re-approved by mistake
+- [x] **Last-owner rule** (`lib/access/owners.ts`): `checkOwnerRule` / `assertKeepsAnOwner`, tested. Nothing calls it yet because there are no team routes; R2c (remove, suspend, change role) and R2d (close account) must call it
+- [ ] `proxy.ts` is unchanged on purpose: it runs without database access, so it still gates by role. Access to a shop is checked by the guard, `requireProvider()` and the API routes
+- [ ] Closing the last owner's account suspends the shop and notifies admin (R2d, user management)
 One theme: who belongs to a shop and what a shop may do. All of it rests on `AccessAssignment`, the guard and the same navbar, so it is one design.
 - **Shop switcher, active shop cookie, "Create shop"**, drop the unique on `Provider.userId`, gate `/provider` by assignment in `proxy.ts` (decision 5)
 - **Membership rules:** the last owner is protected, ownership transfer with a step-up check (decision 5)

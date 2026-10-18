@@ -18,6 +18,8 @@ import { requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/acto
 import type { PlatformPermission, ShopPermission } from "./catalogue"
 import { effective, has, isLive, roleKeys } from "./evaluate"
 import { loadAccess, type Access } from "./load"
+import { pickActiveShop } from "./active-shop"
+import { readActiveShopHint } from "./active-cookie"
 
 export type GuardFail = { ok: false; error: string; status: 401 | 403 | 404 }
 
@@ -86,9 +88,9 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
 }
 
 /**
- * Action inside a shop. Picks the shop from the person's own assignments. Someone who works for
- * several shops will pass `opts.providerId` (from a shop switcher) once that exists; until then the
- * first shop, in id order, is used.
+ * Action inside a shop. The shop is chosen from the person's own live assignments: the one they
+ * switched to (remembered in a cookie that is checked every time, never trusted), else the first
+ * by id. A caller may force a shop with `opts.providerId`; that still has to be one they work in.
  */
 export async function requireShop(
     key: ShopPermission,
@@ -112,14 +114,14 @@ export async function requireShop(
         if (!shopIds.includes(providerId)) return fail("Forbidden", 403)
     } else if (shopIds.length === 0) {
         // An applicant still waiting for approval has no assignment yet; keep the clearer message.
-        const pending = await prisma.provider.findUnique({
-            where: { userId: a.access.userId },
-            select: { isVerified: true },
+        const pending = await prisma.provider.findFirst({
+            where: { userId: a.access.userId, isVerified: false, deletedAt: null },
+            select: { id: true },
         })
-        if (pending && !pending.isVerified) return fail("Provider not verified yet", 403)
+        if (pending) return fail("Provider not verified yet", 403)
         return fail("Forbidden", 403)
     } else {
-        providerId = shopIds[0]
+        providerId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
     }
 
     const provider = await prisma.provider.findUnique({

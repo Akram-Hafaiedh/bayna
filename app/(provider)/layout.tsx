@@ -1,4 +1,6 @@
+import { Suspense } from "react"
 import Navbar from "@/components/Navbar"
+import ShopSwitcherLoader from "@/components/provider/ShopSwitcherLoader"
 import { SubNav } from "@/components/DashboardShell"
 
 export default function ProviderLayout({
@@ -10,6 +12,11 @@ export default function ProviderLayout({
         <div className="min-h-screen bg-zinc-50">
             <Navbar />
             <SubNav
+                leading={
+                    <Suspense fallback={<div className="h-8 w-40 animate-pulse rounded-lg bg-zinc-100" />}>
+                        <ShopSwitcherLoader />
+                    </Suspense>
+                }
                 items={[
                     { href: "/provider/dashboard", label: "Overview" },
                     { href: "/provider/products", label: "Products" },
