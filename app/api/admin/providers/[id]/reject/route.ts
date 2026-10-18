@@ -38,8 +38,19 @@ export async function POST(
         // in: someone who already runs another shop stays a provider.
         await withAudit(guard.actor, async (tx) => {
             await tx.provider.delete({ where: { id } })
+            // A business created only for this application goes with it
+            if (provider.businessId) {
+                await tx.business.deleteMany({
+                    where: { id: provider.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
+                })
+            }
+            // Still a provider if they work in another shop or belong to a business
             const otherShops = await tx.accessAssignment.count({
-                where: { userId: provider.userId, scope: "SHOP", status: "ACTIVE", providerId: { not: id } },
+                where: {
+                    userId: provider.userId,
+                    status: "ACTIVE",
+                    OR: [{ scope: "SHOP", providerId: { not: id } }, { scope: "BUSINESS" }],
+                },
             })
             if (otherShops === 0) {
                 await tx.user.update({

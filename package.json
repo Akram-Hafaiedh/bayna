@@ -12,6 +12,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "access:sync": "npx tsx scripts/sync-access.ts",
+    "db:backfill-businesses": "npx tsx scripts/backfill-businesses.ts",
     "db:normalize-emails": "npx tsx scripts/normalize-emails.ts",
     "audit:check": "npx tsx scripts/check-audit-schema.ts",
     "test:unit": "vitest run",

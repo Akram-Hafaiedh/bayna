@@ -356,6 +356,17 @@ Mandatory for SUPER_ADMIN and for any staff who can impersonate; optional for pr
 - **Decided 16 Oct 2026:** before the change is saved, the admin sees a preview and must confirm: "This will flag N products in M shops for a price review"
 - With taxes (decision 2) the price to confirm is the HT base price; the TTC is recomputed from it
 
+### 8. A Business sits above the shops (decided 18 Oct 2026, option B)
+- **Words:** *Business* = the trader or company (one legal entity). *Shop* = one outlet or location of a business (the `Provider` table today, "shop" in the interface). *Person* = `User`. A person can belong to several businesses and to several shops
+- **Business holds:** name, legal name, tax number (matricule fiscal), trade registry number (RNE), billing contact (email, phone, address), its owners, and later its **plan and subscription** (R2d) and invoicing details (R7). Plan limits such as "shops owned" count per business
+- **Shop holds:** address, map pin, phone, WhatsApp, description, hours, products, warehouses, orders. Customers compare and order from **shops**
+- **People, two levels:** an assignment is either `BUSINESS` scope (applies to **every shop** of that business: the owner, an accountant for all outlets) or `SHOP` scope (one shop: a branch manager, a clerk). A business-level assignment inherits into each shop; a shop-level one never reaches another shop or the business
+- **Owner rule:** a business always has at least one live business-level owner (the rule from R2a now counts business owners). Shop-level OWNER stays available for a franchise-style branch owner
+- **Pages:** *Business* page for business owners (legal and billing details) and *Shop profile* for the shop in front of you. The account page `/profile` stays about the person
+- **Applying:** a first application creates the business and the shop together. "Create shop" adds a shop to a business you own (or starts a separate business if you choose that). Approval makes the applicant business owner
+- **Existing data:** each existing shop gets its own business (named like the shop) and its owner becomes business owner. Done by a script, in three steps (expand, backfill, contract): `Provider.businessId` is nullable until the backfill has run, then a later migration makes it required
+- **Not yet:** business-level team page and invites (R2c), plan on the business (R2d), tax and invoice use of the legal fields (R3, R7)
+
 ---
 
 ## Catalogue & categories (decided)
@@ -500,7 +511,19 @@ Everything here touches products, the catalogue or configuration, and none of it
 - **Needs:** nothing. **Gate:** `test:unit`, `tsc`, a flagged product disappears from comparison data and reappears after the price is confirmed
 
 ### R2. Shops, people and plans
-**Order of work (agreed 18 Oct 2026):** R2a, then R2c, then R2d, then R2b (email and hardening last, it needs a service chosen).
+One theme: who belongs to a shop and what a shop may do. All of it rests on `AccessAssignment`, the guard and the same navbar, so it is one design.
+**Order of work (agreed 18 Oct 2026, updated after decision 8):** R2a (done), **B1 Business level**, then R2c team and invites (scope-aware: business or shop), then R2d plans and user management (plan on the business), then R2b real email and hardening (last, it needs a service chosen). Invites before email are **copy-link** invites.
+
+**B1, Business level (built 18 Oct 2026, being verified)**
+- [x] Schema: `Business`, `Provider.businessId` (nullable for now), `AccessAssignment.businessId`, `AccessScope.BUSINESS`; audit line for `Business` (added by hand to the migration)
+- [x] Permission model: business keys (`business.profile`, `business.shop`, `business.team`), BUSINESS roles (Business owner, Business accountant), inheritance into shops in `lib/access/evaluate.ts` (a shop check passes the shop's `businessId`), `lib/access/reach.ts`, tested
+- [x] Guard and loaders follow it: `requireShop` (inherited shops), new `requireBusiness`, shop switcher (names the business when you work in several), notification recipients include business-level members, last-owner rule can run on a business (`assertKeepsAnOwner`)
+- [x] Apply creates the business with the shop; "Create shop" adds to a business you own (or a separate one, `lib/business-choice.ts`); approve makes the applicant business owner; reject and withdraw remove an empty business
+- [x] `scripts/backfill-businesses.ts` (`npm run db:backfill-businesses`, `--dry` first) and `npm run access:sync` (creates the business roles) for existing data
+- [x] **Business** page (`/provider/business`, server-rendered so it always shows the business of the shop in front of you) with legal and billing details, saved through `/api/provider/business`; legal fields only for the business owner
+- [ ] **Contract step:** after the backfill, a later migration makes `Provider.businessId` required (and `prisma/tests/audit-foundation.sql` must then insert a Business first)
+- [x] The "Create shop" form asks which business the shop belongs to ("Add to X" or "A separate business"); a first application has no choice to make
+- [ ] Team page (business or shop level) is R2c: it must call `assertKeepsAnOwner` and use `business.team.*` / `team.member.*`
 
 **R2a, shops per person (built 18 Oct 2026, being verified)**
 - [x] `Provider.userId` is no longer unique: one person can apply for and own several shops (`User.providers`). Ownership and roles stay in `AccessAssignment`
@@ -512,7 +535,6 @@ Everything here touches products, the catalogue or configuration, and none of it
 - [x] **Last-owner rule** (`lib/access/owners.ts`): `checkOwnerRule` / `assertKeepsAnOwner`, tested. Nothing calls it yet because there are no team routes; R2c (remove, suspend, change role) and R2d (close account) must call it
 - [ ] `proxy.ts` is unchanged on purpose: it runs without database access, so it still gates by role. Access to a shop is checked by the guard, `requireProvider()` and the API routes
 - [ ] Closing the last owner's account suspends the shop and notifies admin (R2d, user management)
-One theme: who belongs to a shop and what a shop may do. All of it rests on `AccessAssignment`, the guard and the same navbar, so it is one design.
 - **Shop switcher, active shop cookie, "Create shop"**, drop the unique on `Provider.userId`, gate `/provider` by assignment in `proxy.ts` (decision 5)
 - **Membership rules:** the last owner is protected, ownership transfer with a step-up check (decision 5)
 - **Real email sending** (Resend or similar), then everything that needs it in the same release: invite links, password reset links, an email channel for notifications

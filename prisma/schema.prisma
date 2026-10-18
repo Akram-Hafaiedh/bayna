@@ -52,7 +52,8 @@ enum LocationSource {
 
 enum AccessScope {
   PLATFORM
-  SHOP
+  BUSINESS // applies to every shop of one business
+  SHOP // applies to one shop
 }
 
 enum AssignmentStatus {
@@ -135,11 +136,42 @@ model Provider {
   deletedAt   DateTime?
   deletedById String?
 
+  // The business this shop belongs to. Nullable only until `npm run db:backfill-businesses` has run;
+  // a later migration makes it required.
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
   products          Product[]
   suggestions       CatalogSuggestion[]
   accessAssignments AccessAssignment[]
 
   @@index([userId])
+  @@index([businessId])
+}
+
+// The trader or company behind one or more shops (one legal entity). A shop is one outlet of it.
+// Holds what is true for the whole business: legal and billing details, its owners (business-level
+// assignments, which apply to every shop) and, later, its plan. Address, map pin, hours, stock and
+// orders belong to the shop.
+model Business {
+  id             String  @id @default(cuid())
+  name           String // trade name, shown to staff
+  legalName      String? // official company name
+  taxId          String? // matricule fiscal
+  registryNumber String? // trade registry number (RNE)
+  billingEmail   String?
+  billingPhone   String?
+  billingAddress String?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdById String?
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
+
+  shops             Provider[]
+  accessAssignments AccessAssignment[]
 }
 
 model Category {
@@ -436,8 +468,10 @@ model AccessAssignment {
   roleId     String
   role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
   scope      AccessScope
-  providerId String? // null for PLATFORM, the shop for SHOP
+  providerId String? // the shop, for SHOP scope; null otherwise
   provider   Provider?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  businessId String? // the business, for BUSINESS scope; null otherwise
+  business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
 
   grants    String[] // extra permission keys for this person
@@ -453,6 +487,7 @@ model AccessAssignment {
 
   @@index([userId, status])
   @@index([providerId])
+  @@index([businessId])
   @@index([roleId])
 }
 

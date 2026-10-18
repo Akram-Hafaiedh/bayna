@@ -4,7 +4,7 @@
 import { auth } from "@/auth"
 import { loadAccess } from "./load"
 import { can } from "./evaluate"
-import type { ShopPermission } from "./catalogue"
+import type { BusinessPermission, ShopPermission } from "./catalogue"
 
 export async function shopCan<K extends ShopPermission>(providerId: string, keys: readonly K[]): Promise<Record<K, boolean>> {
     const session = await auth()
@@ -13,6 +13,21 @@ export async function shopCan<K extends ShopPermission>(providerId: string, keys
     const out = {} as Record<K, boolean>
     for (const k of keys) {
         out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, { providerId }, now)
+    }
+    return out
+}
+
+/** The same for business-level keys: what may this person do for this business? */
+export async function businessCan<K extends BusinessPermission | ShopPermission>(
+    businessId: string,
+    keys: readonly K[]
+): Promise<Record<K, boolean>> {
+    const session = await auth()
+    const access = session?.user?.id ? await loadAccess(session.user.id) : null
+    const now = new Date()
+    const out = {} as Record<K, boolean>
+    for (const k of keys) {
+        out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, { businessId }, now)
     }
     return out
 }

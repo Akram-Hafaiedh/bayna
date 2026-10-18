@@ -3,6 +3,8 @@
 // DELETE withdraws it. A person may run several shops, so a provider can apply again for another one
 // (one application at a time). The fields are checked by the same parser as the shop profile.
 // The role stays CLIENT until an admin approves.
+// Every shop belongs to a business. A first application creates the business together with the shop;
+// a business owner adding another shop chooses an existing business (body.businessId) or "new".
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
@@ -10,6 +12,8 @@ import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 import { parsePhone, parseProfileFields } from "@/lib/provider-input"
+import { businessesForNewShop } from "@/lib/access/business-options"
+import { resolveBusinessChoice } from "@/lib/business-choice"
 
 const unauthorized = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 const failed = () => NextResponse.json({ error: "Something went wrong" }, { status: 500 })
@@ -46,10 +50,20 @@ export async function POST(req: Request) {
         }
         if (!data.phone) return NextResponse.json({ error: "A phone number is required" }, { status: 400 })
 
-        const provider = await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
-            tx.provider.create({
+        // Which business: a new one, or one the person may add shops to
+        const options = await businessesForNewShop(userId)
+        const choice = resolveBusinessChoice(options.map((b) => b.id), (body as { businessId?: unknown } | null)?.businessId)
+        if (!choice.ok) return NextResponse.json({ error: choice.error }, { status: 400 })
+
+        const provider = await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
+            const businessId =
+                choice.kind === "existing"
+                    ? choice.businessId
+                    : (await tx.business.create({ data: { name: data.businessName! }, select: { id: true } })).id
+            return tx.provider.create({
                 data: {
                     userId,
+                    businessId,
                     businessName: data.businessName!,
                     city: data.city!,
                     governorate: data.governorate!,
@@ -63,7 +77,7 @@ export async function POST(req: Request) {
                     isVerified: false,
                 },
             })
-        )
+        })
 
         return NextResponse.json(
             { message: "Application submitted. Waiting for admin approval.", providerId: provider.id, status: "pending" },
@@ -85,9 +99,11 @@ export async function GET() {
             where: { userId: session.user.id, isVerified: false, deletedAt: null },
             orderBy: { createdAt: "desc" },
         })
-        if (!provider) return NextResponse.json({ status: "none" })
+        // The businesses a new shop could be added to (for the "Create shop" form)
+        const businesses = await businessesForNewShop(session.user.id)
+        if (!provider) return NextResponse.json({ status: "none", businesses })
 
-        return NextResponse.json({ status: "pending", provider })
+        return NextResponse.json({ status: "pending", provider, businesses })
     } catch (error) {
         console.error("Get provider status error:", error)
         return failed()
@@ -137,9 +153,15 @@ export async function DELETE(req: Request) {
         if ("error" in found) return found.error
         const { session, provider } = found
 
-        await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
-            tx.provider.delete({ where: { id: provider.id } })
-        )
+        await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
+            await tx.provider.delete({ where: { id: provider.id } })
+            // A business created only for this application goes with it
+            if (provider.businessId) {
+                await tx.business.deleteMany({
+                    where: { id: provider.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
+                })
+            }
+        })
         return NextResponse.json({ message: "Application withdrawn" })
     } catch (error) {
         console.error("Withdraw application error:", error)

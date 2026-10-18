@@ -17,6 +17,8 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
     const box = useRef<HTMLDivElement>(null)
 
     const active = shops.find((s) => s.id === activeId)
+    // Name the business only when the person works in more than one
+    const severalBusinesses = new Set(shops.map((s) => s.businessName).filter(Boolean)).size > 1
 
     useEffect(() => {
         if (!open) return
@@ -102,7 +104,9 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                                         <span className="min-w-0 flex-1">
                                             <span className="block truncate text-sm font-medium text-zinc-900">{shop.name}</span>
                                             <span className="block truncate text-xs text-zinc-400">
-                                                {pending ? "Waiting for approval" : [shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
+                                                {pending
+                                                    ? "Waiting for approval"
+                                                    : [severalBusinesses ? shop.businessName : null, shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
                                             </span>
                                         </span>
                                         {isActive && (

@@ -33,6 +33,9 @@ export default function BecomeProviderPage() {
     const [version, setVersion] = useState(0)
     const [message, setMessage] = useState("")
     const [withdrawing, setWithdrawing] = useState(false)
+    // Businesses a new shop could be added to, and which one is chosen ("new" = a separate business)
+    const [businesses, setBusinesses] = useState<{ id: string; name: string }[]>([])
+    const [businessChoice, setBusinessChoice] = useState("")
     const confirm = useConfirm()
     const toast = useToast()
 
@@ -43,6 +46,9 @@ export default function BecomeProviderPage() {
             try {
                 const res = await fetch("/api/provider/apply")
                 const data = await res.json()
+                const options: { id: string; name: string }[] = Array.isArray(data.businesses) ? data.businesses : []
+                setBusinesses(options)
+                setBusinessChoice((c) => c || options[0]?.id || "")
                 if (data.status === "pending") {
                     setApplication(toValues(data.provider))
                     setAppStatus("pending")
@@ -79,10 +85,12 @@ export default function BecomeProviderPage() {
     async function save(body: Record<string, unknown>): Promise<string | null> {
         setMessage("")
         const pending = appStatus === "pending"
+        // Only a new application picks a business (a waiting one keeps the one it has)
+        const payload = !pending && businesses.length > 0 ? { ...body, businessId: businessChoice || businesses[0].id } : body
         const res = await fetch("/api/provider/apply", {
             method: pending ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+            body: JSON.stringify(payload),
         })
         const data = await res.json()
         if (!res.ok) return data.error || "Application failed"
@@ -179,6 +187,41 @@ export default function BecomeProviderPage() {
 
             {message && (
                 <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">{message}</div>
+            )}
+
+            {!pending && businesses.length > 0 && (
+                <fieldset className="rounded-xl border border-zinc-200 bg-white p-6">
+                    <legend className="px-1 text-base font-semibold text-zinc-900">Which business is this shop part of?</legend>
+                    <p className="mt-1 text-sm text-zinc-500">
+                        Shops of the same business share its owners, legal details and plan.
+                    </p>
+                    <div className="mt-3 space-y-2">
+                        {businesses.map((b) => (
+                            <label key={b.id} className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-800">
+                                <input
+                                    type="radio"
+                                    name="business"
+                                    value={b.id}
+                                    checked={businessChoice === b.id}
+                                    onChange={() => setBusinessChoice(b.id)}
+                                    className="h-4 w-4 accent-zinc-900"
+                                />
+                                Add to <span className="font-medium">{b.name}</span>
+                            </label>
+                        ))}
+                        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-zinc-800">
+                            <input
+                                type="radio"
+                                name="business"
+                                value="new"
+                                checked={businessChoice === "new"}
+                                onChange={() => setBusinessChoice("new")}
+                                className="h-4 w-4 accent-zinc-900"
+                            />
+                            A separate business (new company)
+                        </label>
+                    </div>
+                </fieldset>
             )}
 
             <ProviderProfileForm

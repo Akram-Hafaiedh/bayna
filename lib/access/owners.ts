@@ -1,5 +1,5 @@
 // lib/access/owners.ts
-// The rule "a shop always has an owner". Every action that can take an owner away (remove, suspend,
+// The rule "a business (and a shop) always has an owner". Every action that can take an owner away (remove, suspend,
 // change role, close the account) asks here first. The team routes (R2c) and account closing (R2d)
 // call assertKeepsAnOwner(); the check itself is pure and unit tested.
 import type { Tx } from "@/lib/audit/run"
@@ -8,7 +8,7 @@ import { isLive, type AssignmentInput } from "./evaluate"
 export const OWNER_ROLE_KEY = "OWNER"
 
 export type ShopMember = {
-    id: string // the assignment id
+    id: string // the assignment id (a member of a business or of a shop)
     roleKey: string
     /** active, unexpired, and the person's account is open */
     live: boolean
@@ -22,7 +22,7 @@ export type OwnerChange =
 export type OwnerCheck = { ok: true } | { ok: false; error: string }
 
 const LAST_OWNER =
-    "A shop must always have an owner. Make someone else an owner first (transfer ownership), then try again."
+    "There must always be an owner. Make someone else an owner first (transfer ownership), then try again."
 
 /** Would this change leave the shop without a live owner? Changes that do not touch an owner always pass. */
 export function checkOwnerRule(members: readonly ShopMember[], change: OwnerChange): OwnerCheck {
@@ -37,14 +37,25 @@ export function checkOwnerRule(members: readonly ShopMember[], change: OwnerChan
     return otherOwners.length > 0 ? { ok: true } : { ok: false, error: LAST_OWNER }
 }
 
-/** Reads the shop's people inside the transaction and applies the rule. */
-export async function assertKeepsAnOwner(tx: Tx, providerId: string, change: OwnerChange, now: Date = new Date()): Promise<OwnerCheck> {
+/**
+ * Reads the people at that level inside the transaction and applies the rule. The owners that count
+ * are business-level owners for a business, shop-level owners for a single shop (a franchise-style
+ * branch owner).
+ */
+export async function assertKeepsAnOwner(
+    tx: Tx,
+    target: { businessId: string } | { providerId: string },
+    change: OwnerChange,
+    now: Date = new Date()
+): Promise<OwnerCheck> {
+    const where = "businessId" in target ? { scope: "BUSINESS" as const, businessId: target.businessId } : { scope: "SHOP" as const, providerId: target.providerId }
     const rows = await tx.accessAssignment.findMany({
-        where: { scope: "SHOP", providerId },
+        where,
         select: {
             id: true,
             scope: true,
             providerId: true,
+            businessId: true,
             status: true,
             expiresAt: true,
             grants: true,

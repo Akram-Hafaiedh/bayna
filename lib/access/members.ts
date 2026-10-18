@@ -6,17 +6,21 @@ import { can, type AssignmentInput } from "./evaluate"
 
 export type MemberAssignment = AssignmentInput & { userId: string }
 
-/** Pure: the distinct people who hold `key` in `providerId`, from a list of assignments. */
+/**
+ * Pure: the distinct people who hold `key` in `providerId`, from a list of assignments. Pass the
+ * shop's `businessId` so business-level members (an owner, an accountant) count too.
+ */
 export function membersWithPermission(
     rows: readonly MemberAssignment[],
     providerId: string,
     key: ShopPermission,
-    now: Date = new Date()
+    now: Date = new Date(),
+    businessId: string | null = null
 ): string[] {
     const byUser = new Map<string, AssignmentInput[]>()
     for (const r of rows) byUser.set(r.userId, [...(byUser.get(r.userId) ?? []), r])
     return [...byUser.entries()]
-        .filter(([, list]) => can(list, key, { providerId }, now))
+        .filter(([, list]) => can(list, key, { providerId, businessId }, now))
         .map(([userId]) => userId)
 }
 
@@ -30,17 +34,24 @@ export async function loadShopMembersWith(
     const out = new Map<string, string[]>()
     if (providerIds.length === 0) return out
 
+    const shops = await tx.provider.findMany({ where: { id: { in: providerIds } }, select: { id: true, businessId: true } })
+    const businessOf = new Map(shops.map((s) => [s.id, s.businessId]))
+    const businessIds = [...new Set(shops.flatMap((s) => (s.businessId ? [s.businessId] : [])))]
+
     const rows = await tx.accessAssignment.findMany({
         where: {
-            scope: "SHOP",
             status: "ACTIVE",
-            providerId: { in: providerIds },
             user: { status: "ACTIVE", deletedAt: null },
+            OR: [
+                { scope: "SHOP", providerId: { in: providerIds } },
+                { scope: "BUSINESS", businessId: { in: businessIds } },
+            ],
         },
         select: {
             userId: true,
             scope: true,
             providerId: true,
+            businessId: true,
             status: true,
             expiresAt: true,
             grants: true,
@@ -49,7 +60,7 @@ export async function loadShopMembersWith(
         },
     })
     for (const id of providerIds) {
-        out.set(id, membersWithPermission(rows, id, key, now))
+        out.set(id, membersWithPermission(rows, id, key, now, businessOf.get(id) ?? null))
     }
     return out
 }

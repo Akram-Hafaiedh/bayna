@@ -5,13 +5,17 @@
 //   - default deny
 //   - effective permissions = role permissions + grants - denies, and a deny always wins
 //   - only ACTIVE, unexpired assignments count
-//   - a check that names a shop looks only at that shop's assignments; one that does not looks only
-//     at platform assignments
+//   - a check that names a shop looks at that shop's own assignments and at the business-level
+//     assignments of the business the shop belongs to (a business owner is an owner in every shop of
+//     the business). A check that names only a business looks at that business's assignments. One that
+//     names neither looks only at platform assignments. Nothing ever reaches another shop or business
 //   - nobody can hand out a key they do not hold themselves (canGrant)
 
 export type AssignmentInput = {
-    scope: "PLATFORM" | "SHOP"
+    scope: "PLATFORM" | "BUSINESS" | "SHOP"
     providerId: string | null
+    /** The business, for BUSINESS scope. Optional so shop and platform rows need not carry it. */
+    businessId?: string | null
     status: "INVITED" | "ACTIVE" | "SUSPENDED"
     expiresAt: Date | null
     grants: string[]
@@ -22,6 +26,8 @@ export type AssignmentInput = {
 export type CheckContext = {
     /** The shop the action targets. Leave out for platform-level actions. */
     providerId?: string | null
+    /** The business that shop belongs to (or the business itself for business-level actions). */
+    businessId?: string | null
 }
 
 export type Effective = {
@@ -36,7 +42,12 @@ export function isLive(a: AssignmentInput, now: Date): boolean {
 }
 
 export function applies(a: AssignmentInput, ctx: CheckContext): boolean {
-    if (ctx.providerId) return a.scope === "SHOP" && a.providerId === ctx.providerId
+    if (ctx.providerId) {
+        if (a.scope === "SHOP" && a.providerId === ctx.providerId) return true
+        // inherited from the business, only when the context says which business the shop is in
+        return a.scope === "BUSINESS" && !!ctx.businessId && a.businessId === ctx.businessId
+    }
+    if (ctx.businessId) return a.scope === "BUSINESS" && a.businessId === ctx.businessId
     return a.scope === "PLATFORM"
 }
 

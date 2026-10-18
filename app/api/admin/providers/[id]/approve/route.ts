@@ -33,9 +33,13 @@ export async function POST(
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
         }
 
-        // The applicant becomes OWNER of the shop. Permissions come from this assignment.
+        // The applicant becomes OWNER of the business (which reaches every shop of it). Permissions
+        // come from this assignment. A shop not yet linked to a business (before the businesses
+        // backfill) keeps the old shop-level owner.
+        const businessId = provider.businessId
+        const ownerScope = businessId ? "BUSINESS" : "SHOP"
         const ownerRole = await prisma.accessRole.findFirst({
-            where: { scope: "SHOP", providerId: null, key: "OWNER" },
+            where: { scope: ownerScope, providerId: null, key: "OWNER" },
             select: { id: true },
         })
         if (!ownerRole) {
@@ -45,7 +49,9 @@ export async function POST(
             )
         }
         const alreadyOwner = await prisma.accessAssignment.findFirst({
-            where: { userId: provider.userId, providerId: id, roleId: ownerRole.id },
+            where: businessId
+                ? { userId: provider.userId, scope: "BUSINESS", businessId, roleId: ownerRole.id }
+                : { userId: provider.userId, scope: "SHOP", providerId: id, roleId: ownerRole.id },
             select: { id: true },
         })
 
@@ -64,8 +70,9 @@ export async function POST(
                     data: {
                         userId: provider.userId,
                         roleId: ownerRoleId,
-                        scope: "SHOP",
-                        providerId: id,
+                        scope: ownerScope,
+                        businessId: businessId ?? null,
+                        providerId: businessId ? null : id,
                         status: "ACTIVE",
                         invitedById: guard.userId,
                     },

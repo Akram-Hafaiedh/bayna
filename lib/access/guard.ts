@@ -15,10 +15,11 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/actor"
-import type { PlatformPermission, ShopPermission } from "./catalogue"
-import { effective, has, isLive, roleKeys } from "./evaluate"
+import type { BusinessPermission, PlatformPermission, ShopPermission } from "./catalogue"
+import { effective, has, roleKeys } from "./evaluate"
 import { loadAccess, type Access } from "./load"
 import { pickActiveShop } from "./active-shop"
+import { reachableBusinessIds, reachableShopIds } from "./reach"
 import { readActiveShopHint } from "./active-cookie"
 
 export type GuardFail = { ok: false; error: string; status: 401 | 403 | 404 }
@@ -35,9 +36,18 @@ export type ShopGuard = {
     ok: true
     userId: string
     access: Access
-    provider: { id: string }
+    provider: { id: string; businessId: string | null }
     actor: AuditActor
     can: (key: ShopPermission) => boolean
+}
+
+export type BusinessGuard = {
+    ok: true
+    userId: string
+    access: Access
+    business: { id: string }
+    actor: AuditActor
+    can: (key: BusinessPermission | ShopPermission) => boolean
 }
 
 const fail = (error: string, status: GuardFail["status"]): GuardFail => ({ ok: false, error, status })
@@ -101,13 +111,8 @@ export async function requireShop(
     if (!a.ok) return a
 
     const now = new Date()
-    const shopIds = [
-        ...new Set(
-            a.access.assignments
-                .filter((x) => x.scope === "SHOP" && x.providerId && isLive(x, now))
-                .map((x) => x.providerId as string)
-        ),
-    ].sort()
+    // Own shops plus every shop of the businesses the person is a business-level member of
+    const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
 
     let providerId = opts.providerId
     if (providerId) {
@@ -126,12 +131,13 @@ export async function requireShop(
 
     const provider = await prisma.provider.findUnique({
         where: { id: providerId },
-        select: { id: true, isVerified: true, deletedAt: true },
+        select: { id: true, isVerified: true, deletedAt: true, businessId: true },
     })
     if (!provider || provider.deletedAt) return fail("Provider profile not found", 404)
     if (!provider.isVerified) return fail("Provider not verified yet", 403)
 
-    const ctx = { providerId: provider.id }
+    // businessId lets a business-level role (owner, accountant) count inside this shop
+    const ctx = { providerId: provider.id, businessId: provider.businessId }
     const eff = effective(a.access.assignments, ctx, now)
     if (!has(eff, key)) return fail("Forbidden", 403)
 
@@ -140,7 +146,50 @@ export async function requireShop(
         ok: true,
         userId: a.access.userId,
         access: a.access,
-        provider: { id: provider.id },
+        provider: { id: provider.id, businessId: provider.businessId },
+        actor: actorFor(a.access, a.meta, label),
+        can: (k) => has(eff, k),
+    }
+}
+
+/**
+ * Action on the business behind the shop the person is working in (legal and billing details,
+ * business-level team). The business is the one the active shop belongs to; if they have no shop
+ * yet, the first business they belong to. Needs a business-level assignment: being a shop manager
+ * does not open the business.
+ */
+export async function requireBusiness(
+    key: BusinessPermission | ShopPermission,
+    req?: Request
+): Promise<BusinessGuard | GuardFail> {
+    const a = await authenticate(req)
+    if (!a.ok) return a
+
+    const now = new Date()
+    const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
+    const activeShop = pickActiveShop(shopIds, await readActiveShopHint())
+
+    let businessId: string | null = null
+    if (activeShop) {
+        const shop = await prisma.provider.findUnique({ where: { id: activeShop }, select: { businessId: true } })
+        businessId = shop?.businessId ?? null
+    }
+    if (!businessId) businessId = reachableBusinessIds(a.access.assignments, now)[0] ?? null
+    if (!businessId) return fail("Forbidden", 403)
+
+    const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, deletedAt: true } })
+    if (!business || business.deletedAt) return fail("Business not found", 404)
+
+    const ctx = { businessId: business.id }
+    const eff = effective(a.access.assignments, ctx, now)
+    if (!has(eff, key)) return fail("Forbidden", 403)
+
+    const label = roleKeys(a.access.assignments, ctx, now).map((r) => `business:${r}`).join(",")
+    return {
+        ok: true,
+        userId: a.access.userId,
+        access: a.access,
+        business: { id: business.id },
         actor: actorFor(a.access, a.meta, label),
         can: (k) => has(eff, k),
     }

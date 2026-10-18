@@ -6,6 +6,7 @@
 // later reaches an existing role only when someone edits that role below and re-syncs.
 
 import {
+    ALL_BUSINESS_KEYS,
     ALL_PLATFORM_KEYS,
     ALL_SHOP_KEYS,
     isKnownKey,
@@ -16,7 +17,7 @@ export type SystemRole = {
     key: string
     name: string
     description: string
-    scope: "PLATFORM" | "SHOP"
+    scope: "PLATFORM" | "BUSINESS" | "SHOP"
     /** Explicit keys, or ["*"] for SUPER_ADMIN only */
     permissions: string[]
 }
@@ -25,7 +26,7 @@ type Def = {
     key: string
     name: string
     description: string
-    scope: "PLATFORM" | "SHOP"
+    scope: "PLATFORM" | "BUSINESS" | "SHOP"
     include: string[]
     exclude?: string[]
 }
@@ -174,14 +175,38 @@ const DEFS: Def[] = [
             "insight.dashboard.view", "team.member.view", "review.rating.view",
         ],
     },
+
+    // ---- Business (applies in every shop of the business) --------------------------------------
+    {
+        key: "OWNER",
+        name: "Business owner",
+        description: "Everything for the business and all its shops. Protected: the last owner cannot be removed.",
+        scope: "BUSINESS",
+        include: ["*"],
+    },
+    {
+        key: "ACCOUNTANT",
+        name: "Business accountant",
+        description: "Order totals, billing, tax settings, insights and reports across all shops, and the business details (read-only).",
+        scope: "BUSINESS",
+        include: [
+            "business.profile.view",
+            "order.request.view_all", "order.request.export",
+            "billing.subscription.view", "billing.invoice.view",
+            "insight.*", "pricing.tax.manage", "product.listing.view",
+        ],
+    },
 ]
 
 function build(def: Def): SystemRole {
     const base = { key: def.key, name: def.name, description: def.description, scope: def.scope }
     // Only SUPER_ADMIN stores the wildcard; every other role gets explicit keys.
     if (def.key === "SUPER_ADMIN") return { ...base, permissions: ["*"] }
-    const all = def.scope === "PLATFORM" ? ALL_PLATFORM_KEYS : ALL_SHOP_KEYS
-    return { ...base, permissions: expandPatterns(all, def.include, def.exclude ?? []) }
+    return { ...base, permissions: expandPatterns(keysFor(def.scope), def.include, def.exclude ?? []) }
+}
+
+function keysFor(scope: Def["scope"]): readonly string[] {
+    return scope === "PLATFORM" ? ALL_PLATFORM_KEYS : scope === "BUSINESS" ? ALL_BUSINESS_KEYS : ALL_SHOP_KEYS
 }
 
 export const SYSTEM_ROLES: SystemRole[] = DEFS.map(build)
@@ -204,7 +229,7 @@ export function validateSystemRoles(roles: SystemRole[] = SYSTEM_ROLES): string[
         }
     }
     for (const def of DEFS) {
-        const all = def.scope === "PLATFORM" ? ALL_PLATFORM_KEYS : ALL_SHOP_KEYS
+        const all = keysFor(def.scope)
         for (const p of def.include) {
             if (def.key === SUPER_ADMIN_KEY) continue
             if (expandPatterns(all, [p]).length === 0) problems.push(`${def.key}: "${p}" matches no key`)

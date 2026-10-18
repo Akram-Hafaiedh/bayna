@@ -14,6 +14,8 @@ export type Access = {
     routingRole: Role
     status: UserStatus
     assignments: AssignmentInput[]
+    /** For each business the person holds a business-level assignment for: that business's live shops */
+    businessShops: Record<string, string[]>
 }
 
 export const loadAccess = cache(async (userId: string): Promise<Access | null> => {
@@ -30,6 +32,7 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
                 select: {
                     scope: true,
                     providerId: true,
+                    businessId: true,
                     status: true,
                     expiresAt: true,
                     grants: true,
@@ -41,6 +44,22 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
     })
     if (!user || user.deletedAt) return null
 
+    // Business-level assignments reach every shop of the business: find those shops
+    const businessIds = [
+        ...new Set(user.accessAssignments.flatMap((a) => (a.scope === "BUSINESS" && a.businessId ? [a.businessId] : []))),
+    ]
+    const businessShops: Record<string, string[]> = {}
+    if (businessIds.length > 0) {
+        const shops = await prisma.provider.findMany({
+            where: { businessId: { in: businessIds }, deletedAt: null },
+            select: { id: true, businessId: true },
+        })
+        for (const s of shops) {
+            if (!s.businessId) continue
+            ;(businessShops[s.businessId] ??= []).push(s.id)
+        }
+    }
+
     return {
         userId: user.id,
         name: user.name,
@@ -48,5 +67,6 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
         routingRole: user.role,
         status: user.status,
         assignments: user.accessAssignments,
+        businessShops,
     }
 })

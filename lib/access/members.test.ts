@@ -51,3 +51,34 @@ test("a person with two assignments in one shop is listed once", () => {
     const rows = [shopRole("a", "s1", ["product.price.edit"]), shopRole("a", "s1", ["product.stock.edit"])]
     assert.deepEqual(membersWithPermission(rows, "s1", "product.price.edit", NOW), ["a"])
 })
+
+function businessRole(userId: string, businessId: string, permissions: string[], extra: Partial<MemberAssignment> = {}): MemberAssignment {
+    return {
+        userId,
+        scope: "BUSINESS",
+        providerId: null,
+        businessId,
+        status: "ACTIVE",
+        expiresAt: null,
+        grants: [],
+        denies: [],
+        role: { key: "X", permissions },
+        ...extra,
+    }
+}
+
+test("a business-level member counts in every shop of the business, and only there", () => {
+    const rows = [
+        businessRole("bizOwner", "b1", ["product.price.edit"]),
+        shopRole("clerk", "s1", ["product.stock.edit"]),
+        businessRole("elsewhere", "b2", ["product.price.edit"]),
+    ]
+    assert.deepEqual(membersWithPermission(rows, "s1", "product.price.edit", NOW, "b1"), ["bizOwner"])
+    assert.deepEqual(membersWithPermission(rows, "s2", "product.price.edit", NOW, "b1"), ["bizOwner"])
+    assert.deepEqual(membersWithPermission(rows, "s3", "product.price.edit", NOW, "b2"), ["elsewhere"])
+})
+
+test("without the shop's business, business-level members are not counted", () => {
+    const rows = [businessRole("bizOwner", "b1", ["product.price.edit"])]
+    assert.deepEqual(membersWithPermission(rows, "s1", "product.price.edit", NOW), [])
+})

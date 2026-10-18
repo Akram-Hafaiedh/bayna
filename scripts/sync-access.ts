@@ -9,7 +9,9 @@
 //   1. Creates or updates every system role (name, description, permission list).
 //   2. Every user with User.role = ADMIN and no platform assignment becomes SUPER_ADMIN
 //      (today's admins already have full power; narrow them afterwards if you want).
-//   3. Every verified shop whose owner has no assignment for it gives that user the OWNER role.
+//   3. Every verified shop that nobody has an assignment for gives its applicant the OWNER role:
+//      business-level for a shop that belongs to a business, shop-level for one that does not yet
+//      (before `npm run db:backfill-businesses`).
 //   4. Warns about stored roles that hold keys no longer in the catalogue.
 // Changes are written as the "Access sync" actor, so they show up in ActivityLog with source SEED.
 import "dotenv/config"
@@ -87,17 +89,35 @@ async function main() {
         }
 
         // 3. Verified shops get their owner
-        const ownerId = roleIds.get(`SHOP:${OWNER_KEY}`)
+        const shopOwnerId = roleIds.get(`SHOP:${OWNER_KEY}`)
+        const businessOwnerId = roleIds.get(`BUSINESS:${OWNER_KEY}`)
         const shops = await tx.provider.findMany({
-            where: { isVerified: true, deletedAt: null, accessAssignments: { none: {} } },
-            select: { id: true, userId: true, businessName: true },
+            where: {
+                isVerified: true,
+                deletedAt: null,
+                accessAssignments: { none: {} },
+                OR: [{ businessId: null }, { business: { accessAssignments: { none: {} } } }],
+            },
+            select: { id: true, userId: true, businessName: true, businessId: true },
         })
+        const doneBusinesses = new Set<string>()
         for (const shop of shops) {
-            log.push(`assign OWNER of "${shop.businessName}" to its applicant`)
-            if (!dry && ownerId) {
-                await tx.accessAssignment.create({
-                    data: { userId: shop.userId, roleId: ownerId, scope: "SHOP", providerId: shop.id, status: "ACTIVE" },
-                })
+            if (shop.businessId) {
+                if (doneBusinesses.has(shop.businessId)) continue // several shops, one business owner
+                doneBusinesses.add(shop.businessId)
+                log.push(`assign business OWNER of "${shop.businessName}" to its applicant`)
+                if (!dry && businessOwnerId) {
+                    await tx.accessAssignment.create({
+                        data: { userId: shop.userId, roleId: businessOwnerId, scope: "BUSINESS", businessId: shop.businessId, status: "ACTIVE" },
+                    })
+                }
+            } else {
+                log.push(`assign OWNER of "${shop.businessName}" to its applicant`)
+                if (!dry && shopOwnerId) {
+                    await tx.accessAssignment.create({
+                        data: { userId: shop.userId, roleId: shopOwnerId, scope: "SHOP", providerId: shop.id, status: "ACTIVE" },
+                    })
+                }
             }
         }
 

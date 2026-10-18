@@ -4,6 +4,8 @@
 // Pure and dependency-free (unit tested without a database).
 //
 // Scopes
+//   BUSINESS  what people can do for a whole business: its own keys (business.*) plus every SHOP key,
+//             which then apply in each shop of the business (see evaluate.ts)
 //   SHOP      what people working inside a shop can do (evaluated for one shop at a time)
 //   PLATFORM  what Bayna staff can do across the marketplace
 //   CLIENT    self-service abilities. Enforced by ownership ("my own orders"), no role needed.
@@ -49,6 +51,14 @@ export const SHOP_PERMISSIONS = {
     "integration.api_key": ["manage"],
     "integration.webhook": ["manage"],
     "review.rating": ["view", "reply"],
+} as const
+
+// Keys that only exist at business level. A business-level role may also hold any SHOP key; those
+// keys then work in every shop of the business.
+export const BUSINESS_PERMISSIONS = {
+    "business.profile": ["view", "edit", "edit_legal"],
+    "business.shop": ["create"],
+    "business.team": ["view", "invite", "update_role", "suspend", "remove", "transfer_ownership"],
 } as const
 
 export const PLATFORM_PERMISSIONS = {
@@ -108,6 +118,7 @@ type KeysOf<T extends Record<string, readonly string[]>> = {
 }[keyof T & string]
 
 export type ShopPermission = KeysOf<typeof SHOP_PERMISSIONS>
+export type BusinessPermission = KeysOf<typeof BUSINESS_PERMISSIONS>
 export type PlatformPermission = KeysOf<typeof PLATFORM_PERMISSIONS>
 export type ClientPermission = KeysOf<typeof CLIENT_PERMISSIONS>
 export type Permission = ShopPermission | PlatformPermission | ClientPermission
@@ -117,11 +128,15 @@ function flatten(table: Record<string, readonly string[]>): string[] {
 }
 
 export const ALL_SHOP_KEYS = flatten(SHOP_PERMISSIONS) as ShopPermission[]
+export const ALL_BUSINESS_ONLY_KEYS = flatten(BUSINESS_PERMISSIONS) as BusinessPermission[]
+/** What a business-level role may hold: the business keys and every shop key. */
+export const ALL_BUSINESS_KEYS: string[] = [...ALL_BUSINESS_ONLY_KEYS, ...ALL_SHOP_KEYS]
 export const ALL_PLATFORM_KEYS = flatten(PLATFORM_PERMISSIONS) as PlatformPermission[]
 export const ALL_CLIENT_KEYS = flatten(CLIENT_PERMISSIONS) as ClientPermission[]
 
 /** Keys a role of this scope may hold. "*" is allowed only on SUPER_ADMIN (checked in roles.ts). */
-export function isKnownKey(scope: "PLATFORM" | "SHOP", key: string): boolean {
+export function isKnownKey(scope: "PLATFORM" | "BUSINESS" | "SHOP", key: string): boolean {
     if (key === "*") return scope === "PLATFORM"
-    return (scope === "PLATFORM" ? ALL_PLATFORM_KEYS : ALL_SHOP_KEYS).includes(key as never)
+    const keys: readonly string[] = scope === "PLATFORM" ? ALL_PLATFORM_KEYS : scope === "BUSINESS" ? ALL_BUSINESS_KEYS : ALL_SHOP_KEYS
+    return keys.includes(key)
 }
