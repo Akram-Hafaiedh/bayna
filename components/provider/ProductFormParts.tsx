@@ -90,7 +90,7 @@ export function OfferFields({
                         type="number"
                         inputMode="decimal"
                         step="0.001"
-                        min="0"
+                        min="0.001"
                         value={form.price}
                         onChange={(e) => set("price", e.target.value)}
                         className={inputClass}

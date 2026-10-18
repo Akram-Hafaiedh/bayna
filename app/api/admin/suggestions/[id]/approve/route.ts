@@ -10,6 +10,9 @@ import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { slugify } from "@/lib/slug"
 import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalog-input"
+import { unitChangeReason } from "@/lib/price-review"
+import { loadShopMembersWith } from "@/lib/access/members"
+import { notifications, notify } from "@/lib/notifications"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
@@ -29,11 +32,11 @@ export async function POST(
         if (!suggestion) return bad("Request not found", 404)
         if (suggestion.status !== "PENDING") return bad("This request was already reviewed", 409)
 
-        let item: { id: string; unit: typeof suggestion.unit; categoryId: string }
+        let item: { id: string; name: string; unit: typeof suggestion.unit; categoryId: string }
         if (mergeId) {
             const existing = await prisma.catalogItem.findFirst({
                 where: { id: mergeId, isActive: true },
-                select: { id: true, unit: true, categoryId: true },
+                select: { id: true, name: true, unit: true, categoryId: true },
             })
             if (!existing) return bad("Catalogue item not found", 404)
             item = existing
@@ -45,9 +48,16 @@ export async function POST(
                     catalogItemId: existing.id,
                     NOT: { id: suggestion.productId ?? undefined },
                 },
-                select: { id: true },
+                select: { id: true, deletedAt: true },
             })
-            if (clash) return bad("This provider already lists that catalogue item", 409)
+            if (clash) {
+                return bad(
+                    clash.deletedAt
+                        ? "This provider removed that catalogue item earlier. Ask them to list it again instead of merging."
+                        : "This provider already lists that catalogue item",
+                    409
+                )
+            }
         } else {
             // Corrected fields from the admin win over what the provider typed
             const fields = await parseCatalogFields({
@@ -68,12 +78,21 @@ export async function POST(
             item = await withAudit(guard.actor, (tx) =>
                 tx.catalogItem.create({
                     data: { ...fields.value, slug },
-                    select: { id: true, unit: true, categoryId: true },
+                    select: { id: true, name: true, unit: true, categoryId: true },
                 })
             )
         }
 
         const approved = item
+        // The product takes the catalogue item's unit. If that differs from the unit the shop priced it
+        // in, the price is doubtful, so it is flagged and the shop is told.
+        const product = suggestion.productId
+            ? await prisma.product.findUnique({
+                where: { id: suggestion.productId },
+                select: { unit: true, providerId: true, deletedAt: true },
+            })
+            : null
+        const unitDiffers = !!product && product.unit !== approved.unit
         await withAudit(guard.actor, async (tx) => {
             await tx.catalogSuggestion.update({
                 where: { id },
@@ -83,8 +102,27 @@ export async function POST(
                 await tx.product.update({
                     where: { id: suggestion.productId },
                     // Linked products inherit unit and category from the catalogue item
-                    data: { catalogItemId: approved.id, unit: approved.unit, categoryId: approved.categoryId },
+                    data: {
+                        catalogItemId: approved.id,
+                        unit: approved.unit,
+                        categoryId: approved.categoryId,
+                        ...(unitDiffers && product
+                            ? { needsPriceReview: true, priceReviewReason: unitChangeReason(product.unit, approved.unit) }
+                            : {}),
+                    },
                 })
+                if (unitDiffers && product && !product.deletedAt) {
+                    const members = await loadShopMembersWith(tx, [product.providerId], "product.price.edit")
+                    await notify(
+                        tx,
+                        members.get(product.providerId) ?? [],
+                        notifications.priceReviewNeeded({
+                            itemName: approved.name,
+                            reason: unitChangeReason(product.unit, approved.unit),
+                            count: 1,
+                        })
+                    )
+                }
             }
         })
 

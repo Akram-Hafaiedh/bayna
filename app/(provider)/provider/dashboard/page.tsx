@@ -37,13 +37,20 @@ async function ProviderStats() {
 
     const provider = await prisma.provider.findUnique({
         where: { userId: user.id },
-        include: { _count: { select: { products: true } } },
     })
 
-    const productCount = provider?._count.products ?? 0
+    const live = { deletedAt: null }
+    const productCount = provider
+        ? await prisma.product.count({ where: { providerId: provider.id, ...live } })
+        : 0
     const lowStock = provider
         ? await prisma.product.count({
-            where: { providerId: provider.id, stock: { lt: 5 } },
+            where: { providerId: provider.id, ...live, stock: { lt: 5 } },
+        })
+        : 0
+    const needsReview = provider
+        ? await prisma.product.count({
+            where: { providerId: provider.id, ...live, needsPriceReview: true },
         })
         : 0
 
@@ -54,6 +61,18 @@ async function ProviderStats() {
                     Your account is not verified yet. Product listing may be
                     limited until an admin approves you.
                 </div>
+            )}
+
+            {needsReview > 0 && (
+                <Link
+                    href="/provider/products?review=yes"
+                    className="mt-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 hover:bg-amber-100"
+                >
+                    <span className="font-medium">
+                        {needsReview} product{needsReview === 1 ? " needs" : "s need"} a price check.
+                    </span>{" "}
+                    A catalogue item changed its unit, so the old price may be wrong. Review them.
+                </Link>
             )}
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useToast } from "@/components/ui/Toast"
 import type { CategoryTree, ProductDetail } from "@/lib/provider-products"
 import { UNIT_NAMES } from "@/lib/units"
 import CatalogPicker, { type CatalogResult } from "./CatalogPicker"
@@ -67,6 +68,7 @@ export default function ProductForm({
     product?: ProductDetail
 }) {
     const router = useRouter()
+    const toast = useToast()
     const [form, setForm] = useState<FormValues>(product ? fromProduct(product) : EMPTY)
     const [catalog, setCatalog] = useState<{ id: string; name: string } | null>(
         product?.catalogItem ?? null
@@ -148,7 +150,9 @@ export default function ProductForm({
             const data = await res.json()
             if (!res.ok) {
                 setError(data.error || "Failed to save product")
-                if (data.productId) {
+                if (data.inTrash) {
+                    setExisting({ href: "/provider/products/trash", label: "Open the Trash" })
+                } else if (data.productId) {
                     setExisting({
                         href: `/provider/products/${data.productId}/edit`,
                         label: "Edit it",
@@ -158,6 +162,7 @@ export default function ProductForm({
                 }
                 return
             }
+            toast.success(isEdit ? `Saved "${form.name || product.name}"` : `Added "${data.product?.name ?? form.name}"`)
             router.push("/provider/products")
             router.refresh()
         } catch {
@@ -312,8 +317,8 @@ function SourceChoice({
                         aria-checked={on}
                         onClick={() => onChange(o.id)}
                         className={`rounded-lg border p-3.5 text-left transition ${on
-                                ? "border-zinc-900 ring-1 ring-zinc-900"
-                                : "border-zinc-200 hover:border-zinc-400"
+                            ? "border-zinc-900 ring-1 ring-zinc-900"
+                            : "border-zinc-200 hover:border-zinc-400"
                             }`}
                     >
                         <span className="block text-sm font-medium text-zinc-900">{o.title}</span>

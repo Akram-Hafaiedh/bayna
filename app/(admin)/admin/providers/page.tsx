@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useConfirm } from "@/components/ui/ConfirmDialog"
+import { useToast } from "@/components/ui/Toast"
 
 type ProviderRow = {
     id: string
@@ -27,6 +29,9 @@ export default function AdminProvidersPage() {
     const [loading, setLoading] = useState(true)
     const [actionId, setActionId] = useState<string | null>(null)
     const [error, setError] = useState("")
+    const confirm = useConfirm()
+    const toast = useToast()
+    const nameOf = (id: string) => providers.find((p) => p.id === id)?.businessName ?? "The shop"
 
     async function load(f = filter) {
         setLoading(true)
@@ -60,8 +65,10 @@ export default function AdminProvidersPage() {
             if (!res.ok) {
                 const data = await res.json()
                 setError(data.error || "Approve failed")
+                toast.error("Could not approve", { description: data.error })
                 return
             }
+            toast.success(`${nameOf(id)} approved`, { description: "The shop owner was notified." })
             await load()
         } catch {
             setError("Approve failed")
@@ -77,8 +84,10 @@ export default function AdminProvidersPage() {
             if (!res.ok) {
                 const data = await res.json()
                 setError(data.error || "Could not mark as reviewed")
+                toast.error("Could not mark as reviewed", { description: data.error })
                 return
             }
+            toast.success(`${nameOf(id)} marked as reviewed`, { description: "The shop owner was notified." })
             await load()
         } catch {
             setError("Could not mark as reviewed")
@@ -88,9 +97,13 @@ export default function AdminProvidersPage() {
     }
 
     async function reject(id: string) {
-        if (!confirm("Reject this application? The provider profile will be removed.")) {
-            return
-        }
+        const yes = await confirm({
+            title: `Reject ${nameOf(id)}?`,
+            message: "The provider profile will be removed and the applicant will be told it was not approved.",
+            confirmLabel: "Reject application",
+            tone: "danger",
+        })
+        if (!yes) return
         setActionId(id)
         try {
             const res = await fetch(`/api/admin/providers/${id}/reject`, {
@@ -99,8 +112,10 @@ export default function AdminProvidersPage() {
             if (!res.ok) {
                 const data = await res.json()
                 setError(data.error || "Reject failed")
+                toast.error("Could not reject", { description: data.error })
                 return
             }
+            toast.success("Application rejected", { description: "The applicant was notified." })
             await load()
         } catch {
             setError("Reject failed")
@@ -127,8 +142,8 @@ export default function AdminProvidersPage() {
                             type="button"
                             onClick={() => setFilter(f)}
                             className={`px-3 py-1.5 text-sm rounded-md capitalize ${filter === f
-                                    ? "bg-zinc-900 text-white"
-                                    : "text-zinc-600 hover:bg-zinc-50"
+                                ? "bg-zinc-900 text-white"
+                                : "text-zinc-600 hover:bg-zinc-50"
                                 }`}
                         >
                             {f === "review" ? "needs review" : f}

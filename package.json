@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -11,6 +12,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "access:sync": "npx tsx scripts/sync-access.ts",
+    "db:normalize-emails": "npx tsx scripts/normalize-emails.ts",
     "audit:check": "npx tsx scripts/check-audit-schema.ts",
     "test:unit": "vitest run",
     "test:watch": "vitest",

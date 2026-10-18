@@ -38,10 +38,21 @@ test("links must be paths inside the app", () => {
 })
 
 test("the ready-made messages are valid", () => {
-    for (const make of Object.values(notifications)) {
-        const [row] = buildNotifications("u1", make())
+    const sample = { itemName: "Cement", reason: "Unit changed from Piece to Bag", count: 2 }
+    const messages = [
+        notifications.applicationApproved(),
+        notifications.applicationRejected(),
+        notifications.priceReviewNeeded(sample),
+        notifications.profileReviewed(),
+    ]
+    // Fails if a builder is added to `notifications` without being listed here.
+    assert.equal(messages.length, Object.keys(notifications).length)
+    for (const message of messages) {
+        const [row] = buildNotifications("u1", message)
         assert.ok(row.title.length > 0 && row.href?.startsWith("/"))
     }
+    assert.match(notifications.priceReviewNeeded(sample).body ?? "", /2 products/)
+    assert.match(notifications.priceReviewNeeded({ ...sample, count: 1 }).body ?? "", /1 product\b/)
 })
 
 test("timeAgo", () => {

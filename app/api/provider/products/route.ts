@@ -67,10 +67,18 @@ export async function POST(req: Request) {
 
             const existing = await prisma.product.findFirst({
                 where: { providerId, catalogItemId: catalog.id },
-                select: { id: true },
+                select: { id: true, deletedAt: true },
             })
-            if (existing) {
+            if (existing && !existing.deletedAt) {
                 return bad("You already list this catalogue item", 409, { productId: existing.id })
+            }
+            // A shop lists a catalogue item at most once, so a removed listing blocks a new one.
+            // It is restored from the Trash, never silently brought back by adding it again.
+            if (existing) {
+                return bad("You removed this item earlier. Restore it from your Trash instead of adding it again.", 409, {
+                    inTrash: true,
+                    productId: existing.id,
+                })
             }
         }
 
@@ -154,6 +162,7 @@ export async function POST(req: Request) {
                     minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
                     categoryId,
                     isActive: body.isActive !== false,
+                    priceUpdatedAt: new Date(),
                     images: [],
                     ...(wantsSuggestion && categoryId
                         ? {

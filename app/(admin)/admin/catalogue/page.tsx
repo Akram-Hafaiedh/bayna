@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react"
 import type { Unit } from "@/app/generated/prisma/enums"
 import { UNIT_LABELS } from "@/lib/units"
+import { useConfirm } from "@/components/ui/ConfirmDialog"
+import { useToast } from "@/components/ui/Toast"
 import {
     CatalogItemForm,
     CategorySelect,
@@ -36,6 +38,8 @@ export default function AdminCataloguePage() {
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
+    const confirm = useConfirm()
+    const toast = useToast()
     const [editing, setEditing] = useState<string | "new" | null>(null)
 
     useEffect(() => {
@@ -72,15 +76,26 @@ export default function AdminCataloguePage() {
         load()
     }, [load])
 
-    async function save(id: string | "new", v: ItemValues): Promise<string | null> {
+    async function save(id: string | "new", v: ItemValues, confirmUnitChange = false): Promise<string | null> {
         const res = await fetch(id === "new" ? "/api/admin/catalog" : `/api/admin/catalog/${id}`, {
             method: id === "new" ? "POST" : "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(v),
+            body: JSON.stringify(confirmUnitChange ? { ...v, confirmUnitChange: true } : v),
         })
         const data = await res.json()
+        // A new unit flags the linked products for a price review: show who is affected and ask first
+        if (res.status === 409 && data.needsConfirmation && !confirmUnitChange) {
+            const yes = await confirm({
+                title: "Change the unit?",
+                message: data.message,
+                confirmLabel: "Change unit and flag products",
+            })
+            if (!yes) return "Not saved. The unit was left as it is."
+            return save(id, v, true)
+        }
         if (!res.ok) return data.error || "Failed to save"
         setEditing(null)
+        toast.success(id === "new" ? `"${v.name}" added to the catalogue` : `"${v.name}" saved`)
         await load()
         return null
     }
@@ -97,6 +112,7 @@ export default function AdminCataloguePage() {
             setError(data.error || "Failed to update")
             return
         }
+        toast.success(isActive ? `"${item.name}" is active again` : `"${item.name}" archived`)
         await load()
     }
 

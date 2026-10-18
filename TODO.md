@@ -107,13 +107,14 @@ Never expose admin promotion in the public UI.
   - [x] Create product (link to CatalogItem or free-form niche item)
   - [x] Edit product: price, stock, active flag
   - [ ] Edit product: **images**. **Deferred 16 Oct 2026:** no storage service chosen (the candidates are not free and coverage in Tunisia is uncertain). Products show a placeholder until then; revisit when the shop count justifies a paid plan
-  - [ ] Delete product is a **hard delete** today ("cannot be undone"). Move to soft delete / Active flag before orders exist
+  - [x] Delete is now a **soft delete** (`deletedAt`). Removed products sit in **Trash** (`/provider/products/trash`) and come back with **Restore** (needs `product.listing.restore`, owner and manager). Adding a trashed catalogue item again is refused ("restore it from your Trash"), never restored silently. On restore a linked product takes the catalogue's current unit and category, and is flagged for a price check if the unit changed; a catalogue item archived meanwhile blocks the restore. Delete offers **Undo** in a toast (built 18 Oct 2026)
+  - [ ] Permanent removal of old trash (retention rule) once orders exist and show what must be kept. Today nothing is ever purged
 - [x] Product form redesign: choose catalogue vs custom up front, short linked form, one action bar
 - [x] Suggest a custom product for the catalogue on create (CatalogSuggestion)
 - [ ] Suggest an existing custom product for the catalogue from edit
-- [ ] Inline / quick edit of price and stock on the products table
+- [x] Inline / quick edit of price and stock on the products table (built 17 Oct 2026; each field needs its own permission)
 - [ ] Bulk edit, CSV import / export, quick-add from the catalogue
-- [ ] Price history and a "price last confirmed" date (`priceUpdatedAt`, not just `updatedAt`)
+- [ ] Price history. **Done 17 Oct 2026:** the "price last confirmed" date (`priceUpdatedAt`, shown in the products table; null means unknown for older products). The history of past prices is R3
 - [ ] **Custom taxes per shop. Decided 16 Oct 2026** (see “Decisions of 16 Oct 2026”, 2): the provider enters the price before tax (HT), applies one or several of his own taxes (percentage or fixed, calculated on the base or on the running total), buyers always see the tax-inclusive price (TTC); tax changes never need a developer
 - [ ] Quantity price tiers (by pallet / ton) and delivery fee
 
@@ -251,14 +252,14 @@ this was tested against a local Postgres 16 instead:
 ## Phase 9 – Fixes and production readiness
 
 Fix first (small, and they affect data or deploys):
-- [ ] **Deploy:** `app/generated/prisma` is gitignored and there is no `postinstall: prisma generate`; a fresh clone / Vercel build has no client
+- [x] **Deploy:** `app/generated/prisma` is gitignored and there was no `postinstall: prisma generate` (added 17 Oct 2026; not yet tried on a real deploy); a fresh clone / Vercel build has no client
 - [x] **Prisma 7 config:** `prisma7.config.ts` is picked up automatically (`prisma validate` loaded it on 15 Oct 2026). Nothing to rename
-- [ ] Lowercase / trim emails on register, login, forgot and reset (avoid duplicate accounts)
-- [ ] Price must be greater than 0 (`parsePrice` accepts 0, which would top every comparison)
-- [ ] **Unit changes. Decided 16 Oct 2026** (moved to “Decisions of 16 Oct 2026”, 7): linked products get `needsPriceReview = true`, drop out of comparison and ordering until the provider confirms the price, and the provider is notified and sees an alert on the dashboard
-- [ ] Navbar and provider sub-nav link to `/provider/orders`, which does not exist
-- [ ] Page metadata still says "Create Next App"; add `error`, `not-found` and `loading` pages
-- [ ] Remove the stale "WORKSPACE NOTE" comment in the provider reject route
+- [x] Lowercase / trim emails on register, login, forgot and reset (avoid duplicate accounts). Built 17 Oct 2026; existing accounts are cleaned with `npm run db:normalize-emails`
+- [x] Price must be greater than 0 (`parsePrice` accepts 0, which would top every comparison)
+- [x] **Unit changes. Decided 16 Oct 2026, built 17 Oct** (moved to “Decisions of 16 Oct 2026”, 7): linked products get `needsPriceReview = true`, drop out of comparison and ordering until the provider confirms the price, and the provider is notified and sees an alert on the dashboard
+- [x] Navbar and provider sub-nav link to `/provider/orders`, which does not exist. Links removed; add them back with the orders page in R5
+- [x] Page metadata still says "Create Next App"; add `error`, `not-found` and `loading` pages
+- [x] Remove the stale "WORKSPACE NOTE" comment in the provider reject route (already gone)
 
 Then:
 - [ ] Real email sending (Resend or similar); reset links are only `console.log`ged
@@ -266,7 +267,7 @@ Then:
 - [ ] Password reset should set `passwordChangedAt` and revoke sessions; `passwordChangedAt` is written but never read
 - [ ] JWT callback does up to 3 queries + a write on every `auth()` call (15 call sites); throttle the `lastActiveAt` update
 - [ ] Hash reset tokens at rest
-- [ ] Tests for the pure logic (`product-input`, `product-filters`, slug / catalogue input) and a CI workflow
+- [x] Tests for the pure logic (`product-input`, `product-filters`, `slug`, `email-input`, `price-review`, `members`) and a CI workflow (`.github/workflows/ci.yml`: generate, `tsc`, unit tests). Catalogue input needs a database and is not covered
 - [ ] Verify end to end: a newly approved provider can reach `/provider/*` without logging out (proxy reads the role from the JWT cookie)
 
 ---
@@ -488,12 +489,13 @@ release the steps are in the order to build them. Reorder releases freely, but c
 (map pin, review flag, edit / withdraw application), notifications (bell, `notify()`, approved /
 rejected / reviewed).
 
-### R1. Clean base (small, no big design questions)
+### R1. Clean base (built 17 Oct 2026, being verified)
 Everything here touches products, the catalogue or configuration, and none of it needs a new concept.
 - **Fix list (Phase 9, "fix first"):** `postinstall: prisma generate`, price must be above 0, lowercase and trim emails, dead `/provider/orders` link, page metadata, `error` / `not-found` / `loading` pages, stale comment in the reject route
 - **One product migration** for the four columns that three items need: `needsPriceReview` + `priceReviewReason` (unit-change guard, decision 7), `deletedAt` (soft delete) and `priceUpdatedAt` ("price last confirmed")
 - **Unit-change guard** (decision 7): admin preview and confirm, flag linked products, notify, dashboard alert, leave flagged products out of comparison
-- **Product soft delete**, then **inline price and stock edit** on the products table (price edit stays owner and manager only)
+- **Product soft delete** with a Trash page and Restore, then **inline price and stock edit** on the products table (price edit stays owner and manager only)
+- **Interface basics** (`components/ui`): `useConfirm()` replaces every browser `confirm()` / `alert()` with a styled dialog; `useToast()` reports what just happened (saved, removed, approved) with an optional button such as Undo. Rule for new code: ask with `useConfirm`, report with `useToast`, never `window.confirm`. Wired so far: products (delete, undo, restore, inline edit, save), price confirm, admin providers (approve, reject, reviewed), admin catalogue (save, archive, unit change), catalogue requests, withdraw application. Not yet: account profile and password pages, category reorder
 - **Tests for the pure logic** (`product-input`, `product-filters`, slug and catalogue input) and a CI workflow; a first deploy to a staging environment so deploy problems show up early
 - **Needs:** nothing. **Gate:** `test:unit`, `tsc`, a flagged product disappears from comparison data and reappears after the price is confirmed
 

@@ -2,11 +2,19 @@
 // PATCH /api/admin/catalog/:id   edit fields and/or { isActive }
 // Linked products inherit unit and category from their catalogue item, so changing
 // either one here is applied to every linked product in the same transaction.
+//
+// A changed unit makes every linked product's price doubtful (a price per piece is not a price per
+// box). So the admin is first shown how many products and shops it affects and must confirm
+// (resend with confirmUnitChange: true). Those products are then flagged for a price review and
+// their shops are notified.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { parseCatalogFields } from "@/lib/catalog-input"
+import { countAffected, describeCounts, unitChangeReason, unitName } from "@/lib/price-review"
+import { loadShopMembersWith } from "@/lib/access/members"
+import { notifications, notify } from "@/lib/notifications"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
@@ -43,6 +51,33 @@ export async function PATCH(
         })
         if (!fields.ok) return bad(fields.error)
 
+        // A different unit needs a confirmation that says who is affected
+        const unitChanged = fields.value.unit !== current.unit
+        const linked = unitChanged
+            ? await prisma.product.findMany({
+                where: { catalogItemId: id },
+                select: { id: true, providerId: true, deletedAt: true },
+            })
+            : []
+        const live = linked.filter((p) => !p.deletedAt)
+        if (unitChanged && live.length > 0 && body.confirmUnitChange !== true) {
+            const counts = countAffected(live)
+            return NextResponse.json(
+                {
+                    error: "Confirm the unit change",
+                    needsConfirmation: true,
+                    ...counts,
+                    from: current.unit,
+                    to: fields.value.unit,
+                    message:
+                        `Changing the unit from ${unitName(current.unit)} to ${unitName(fields.value.unit)} will flag ` +
+                        `${describeCounts(counts)} for a price review. Their shops are notified and the products stay out of ` +
+                        `comparison until the price is confirmed. Continue?`,
+                },
+                { status: 409 }
+            )
+        }
+
         const item = await withAudit(guard.actor, async (tx) => {
             const updated = await tx.catalogItem.update({
                 where: { id },
@@ -51,10 +86,29 @@ export async function PATCH(
                     ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
                 },
             })
+            const reason = unitChangeReason(current.unit, fields.value.unit)
             await tx.product.updateMany({
                 where: { catalogItemId: id },
-                data: { unit: fields.value.unit, categoryId: fields.value.categoryId },
+                data: {
+                    unit: fields.value.unit,
+                    categoryId: fields.value.categoryId,
+                    ...(unitChanged ? { needsPriceReview: true, priceReviewReason: reason } : {}),
+                },
             })
+
+            // One notification per shop, to the people who may edit prices
+            if (unitChanged && live.length > 0) {
+                const perShop = new Map<string, number>()
+                for (const p of live) perShop.set(p.providerId, (perShop.get(p.providerId) ?? 0) + 1)
+                const members = await loadShopMembersWith(tx, [...perShop.keys()], "product.price.edit")
+                for (const [providerId, count] of perShop) {
+                    await notify(
+                        tx,
+                        members.get(providerId) ?? [],
+                        notifications.priceReviewNeeded({ itemName: updated.name, reason, count })
+                    )
+                }
+            }
             return updated
         })
 

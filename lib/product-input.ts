@@ -13,10 +13,13 @@ export function parsePrice(v: unknown): Parsed<string> {
         return fail("Valid price is required")
     }
     const n = Number(v)
-    if (!Number.isFinite(n) || n < 0 || n > 999_999_999) {
+    if (!Number.isFinite(n) || n > 999_999_999) {
         return fail("Valid price is required")
     }
-    return ok(n.toFixed(3))
+    // A price of 0 (or less than a millime, which rounds to 0) would top every comparison
+    const fixed = n.toFixed(3)
+    if (!(Number(fixed) > 0)) return fail("Price must be greater than 0")
+    return ok(fixed)
 }
 
 /** Whole, non-negative number that fits a Postgres Int. */

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useToast } from "@/components/ui/Toast"
 import type { Unit } from "@/app/generated/prisma/enums"
 import { CatalogItemForm, useAdminCategories } from "@/components/admin/catalog-shared"
 
@@ -34,6 +35,7 @@ export default function CatalogueRequestsPage() {
     const [rejecting, setRejecting] = useState<string | null>(null)
     const [reviewNote, setReviewNote] = useState("")
     const [error, setError] = useState("")
+    const toast = useToast()
 
     async function load(f = filter) {
         setLoading(true)
@@ -77,6 +79,7 @@ export default function CatalogueRequestsPage() {
             setRejecting(null)
             setReviewing(null)
             setReviewNote("")
+            toast.success(action === "approve" ? "Request approved" : "Request rejected")
             await load()
             return null
         } catch {

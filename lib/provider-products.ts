@@ -20,6 +20,10 @@ export type ProductRow = {
     minOrderQty: number | null
     catalogItemId: string | null
     updatedAt: string
+    /** When the shop last set or confirmed the price; null = from before this was tracked */
+    priceUpdatedAt: string | null
+    needsPriceReview: boolean
+    priceReviewReason: string | null
     category: { id: string; name: string } | null
 }
 
@@ -47,13 +51,21 @@ const rowSelect = {
     minOrderQty: true,
     catalogItemId: true,
     updatedAt: true,
+    priceUpdatedAt: true,
+    needsPriceReview: true,
+    priceReviewReason: true,
     category: { select: { id: true, name: true } },
 } satisfies Prisma.ProductSelect
 
 type RowRecord = Prisma.ProductGetPayload<{ select: typeof rowSelect }>
 
 function toRow(p: RowRecord): ProductRow {
-    return { ...p, price: p.price.toString(), updatedAt: p.updatedAt.toISOString() }
+    return {
+        ...p,
+        price: p.price.toString(),
+        updatedAt: p.updatedAt.toISOString(),
+        priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null,
+    }
 }
 
 /** Every word must match at least one of name, Arabic name, brand or SKU. */
@@ -76,6 +88,7 @@ async function buildWhere(
     f: ProductFilters
 ): Promise<Prisma.ProductWhereInput> {
     const and: Prisma.ProductWhereInput[] = searchClauses(f.q)
+    // Deleted products are hidden everywhere here; they live in the Trash (listTrash)
 
     if (f.categoryId) {
         // Picking a parent category also matches its sub-categories
@@ -94,10 +107,11 @@ async function buildWhere(
 
     if (f.linked === "yes") and.push({ catalogItemId: { not: null } })
     if (f.linked === "no") and.push({ catalogItemId: null })
+    if (f.review === "yes") and.push({ needsPriceReview: true })
 
     if (f.unit) and.push({ unit: f.unit })
 
-    return { providerId, AND: and }
+    return { providerId, deletedAt: null, AND: and }
 }
 
 export async function listProducts(
@@ -125,18 +139,97 @@ export async function listProducts(
 // ---------------------------------------------------------------------------
 // Header stats + filter options
 // ---------------------------------------------------------------------------
-export type ProductStats = { total: number; hidden: number; lowStock: number; outOfStock: number }
+export type ProductStats = {
+    total: number
+    hidden: number
+    lowStock: number
+    outOfStock: number
+    needsReview: number
+    /** Products in the trash */
+    trashed: number
+}
 
 export async function getProductStats(providerId: string): Promise<ProductStats> {
-    const [total, hidden, lowStock, outOfStock] = await Promise.all([
-        prisma.product.count({ where: { providerId } }),
-        prisma.product.count({ where: { providerId, isActive: false } }),
+    const live = { providerId, deletedAt: null }
+    const [total, hidden, lowStock, outOfStock, needsReview, trashed] = await Promise.all([
+        prisma.product.count({ where: live }),
+        prisma.product.count({ where: { ...live, isActive: false } }),
         prisma.product.count({
-            where: { providerId, stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } },
+            where: { ...live, stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } },
         }),
-        prisma.product.count({ where: { providerId, stock: { lte: 0 } } }),
+        prisma.product.count({ where: { ...live, stock: { lte: 0 } } }),
+        prisma.product.count({ where: { ...live, needsPriceReview: true } }),
+        prisma.product.count({ where: { providerId, deletedAt: { not: null } } }),
     ])
-    return { total, hidden, lowStock, outOfStock }
+    return { total, hidden, lowStock, outOfStock, needsReview, trashed }
+}
+
+// ---------------------------------------------------------------------------
+// Trash
+// ---------------------------------------------------------------------------
+export type TrashRow = {
+    id: string
+    name: string
+    brand: string | null
+    sku: string | null
+    unit: Unit
+    price: string
+    stock: number
+    catalogItemId: string | null
+    deletedAt: string
+    deletedByName: string | null
+    category: { id: string; name: string } | null
+}
+
+export const TRASH_LIMIT = 200
+
+/** Removed products, most recently removed first. */
+export async function listTrash(providerId: string): Promise<{ items: TrashRow[]; total: number }> {
+    const where = { providerId, deletedAt: { not: null } } satisfies Prisma.ProductWhereInput
+    const [total, rows] = await Promise.all([
+        prisma.product.count({ where }),
+        prisma.product.findMany({
+            where,
+            orderBy: [{ deletedAt: "desc" }, { id: "asc" }],
+            take: TRASH_LIMIT,
+            select: {
+                id: true,
+                name: true,
+                brand: true,
+                sku: true,
+                unit: true,
+                price: true,
+                stock: true,
+                catalogItemId: true,
+                deletedAt: true,
+                deletedById: true,
+                category: { select: { id: true, name: true } },
+            },
+        }),
+    ])
+
+    const ids = [...new Set(rows.map((r) => r.deletedById).filter((v): v is string => !!v))]
+    const people = ids.length
+        ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true } })
+        : []
+    const names = new Map(people.map((u) => [u.id, u.name || u.email]))
+
+    return {
+        total,
+        items: rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            brand: r.brand,
+            sku: r.sku,
+            unit: r.unit,
+            price: r.price.toString(),
+            stock: r.stock,
+            catalogItemId: r.catalogItemId,
+            deletedAt: (r.deletedAt as Date).toISOString(),
+            deletedByName: r.deletedById ? names.get(r.deletedById) ?? null : null,
+            category: r.category,
+        })),
+    }
 }
 
 export type CategoryOption = {
@@ -150,7 +243,7 @@ export type CategoryOption = {
 export async function getFilterCategories(providerId: string): Promise<CategoryOption[]> {
     const groups = await prisma.product.groupBy({
         by: ["categoryId"],
-        where: { providerId, categoryId: { not: null } },
+        where: { providerId, deletedAt: null, categoryId: { not: null } },
         _count: { _all: true },
     })
     const counts = new Map(groups.map((g) => [g.categoryId as string, g._count._all]))
@@ -210,6 +303,9 @@ export type ProductDetail = {
     stock: number
     minOrderQty: number | null
     isActive: boolean
+    priceUpdatedAt: string | null
+    needsPriceReview: boolean
+    priceReviewReason: string | null
     catalogItem: { id: string; name: string } | null
     /** Latest request to add this product to the shared catalogue, if any. */
     suggestion: { status: SuggestionStatus; reviewNote: string | null } | null
@@ -221,7 +317,7 @@ export async function getProviderProduct(
     id: string
 ): Promise<ProductDetail | null> {
     const p = await prisma.product.findFirst({
-        where: { id, providerId },
+        where: { id, providerId, deletedAt: null },
         select: {
             id: true,
             name: true,
@@ -235,9 +331,14 @@ export async function getProviderProduct(
             stock: true,
             minOrderQty: true,
             isActive: true,
+            priceUpdatedAt: true,
+            needsPriceReview: true,
+            priceReviewReason: true,
             catalogItem: { select: { id: true, name: true } },
             suggestion: { select: { status: true, reviewNote: true } },
         },
     })
-    return p ? { ...p, price: p.price.toString() } : null
+    return p
+        ? { ...p, price: p.price.toString(), priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null }
+        : null
 }

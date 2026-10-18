@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { normalizeEmail } from "@/lib/email-input"
 import type { Role } from "@/app/generated/prisma/enums"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -24,9 +25,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null
                 }
 
-                const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
-                })
+                const email = normalizeEmail(String(credentials.email))
+                // Exact match first; the case-insensitive lookup covers accounts saved before
+                // emails were normalised (see scripts/normalize-emails.ts)
+                const user =
+                    (await prisma.user.findUnique({ where: { email } })) ??
+                    (await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } }))
 
                 if (!user || !user.password) {
                     return null

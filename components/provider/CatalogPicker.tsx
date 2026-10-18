@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useToast } from "@/components/ui/Toast"
+import { PRICE_CHECK_NOTE, restoreProduct } from "./restore-product"
 import type { Unit } from "@/app/generated/prisma/enums"
 import { UNIT_LABELS } from "@/lib/units"
 
@@ -13,6 +16,8 @@ export type CatalogResult = {
     unit: Unit
     category: { id: string; name: string }
     listedProductId: string | null
+    /** The shop removed this item earlier: it is in the trash */
+    trashedProductId: string | null
 }
 
 export default function CatalogPicker({
@@ -27,6 +32,21 @@ export default function CatalogPicker({
     const [items, setItems] = useState<CatalogResult[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
+    const [restoring, setRestoring] = useState<string | null>(null)
+    const router = useRouter()
+    const toast = useToast()
+
+    async function restoreFromTrash(productId: string) {
+        setRestoring(productId)
+        const result = await restoreProduct(productId)
+        setRestoring(null)
+        if (!result.ok) {
+            toast.error("Could not restore", { description: result.error })
+            return
+        }
+        toast.success(`Restored "${result.name}"`, { description: result.needsPriceReview ? PRICE_CHECK_NOTE : "Check its price and stock." })
+        router.push(`/provider/products/${result.id}/edit`)
+    }
 
     useEffect(() => {
         const ctrl = new AbortController()
@@ -84,7 +104,17 @@ export default function CatalogPicker({
                                     .join(" · ")}
                             </p>
                         </div>
-                        {item.listedProductId ? (
+                        {item.trashedProductId ? (
+                            <button
+                                type="button"
+                                onClick={() => restoreFromTrash(item.trashedProductId as string)}
+                                disabled={restoring === item.trashedProductId}
+                                className="shrink-0 h-8 px-3 rounded-lg border border-zinc-200 text-sm text-zinc-700 hover:border-zinc-400 disabled:opacity-50"
+                                title="You removed this item earlier"
+                            >
+                                {restoring === item.trashedProductId ? "Restoring..." : "In trash · Restore"}
+                            </button>
+                        ) : item.listedProductId ? (
                             <Link
                                 href={`/provider/products/${item.listedProductId}/edit`}
                                 className="shrink-0 text-xs text-zinc-500 hover:text-zinc-900"

@@ -12,6 +12,7 @@ export const NOTIFICATION_TYPES = {
     applicationApproved: "provider.application.approved",
     applicationRejected: "provider.application.rejected",
     profileReviewed: "provider.profile.reviewed",
+    priceReviewNeeded: "catalog.unit.changed",
 } as const
 
 export type NotificationInput = {
@@ -38,6 +39,13 @@ export const notifications = {
         title: "Your application was not approved",
         body: "You can review your details and apply again.",
         href: "/become-provider",
+    }),
+    /** One per shop: `itemName` changed unit, `count` of the shop's products need a price check. */
+    priceReviewNeeded: (a: { itemName: string; reason: string; count: number }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.priceReviewNeeded,
+        title: `Price check needed: ${a.itemName}`,
+        body: `${a.reason}. Confirm the price of ${a.count} product${a.count === 1 ? "" : "s"}; until then ${a.count === 1 ? "it is" : "they are"} left out of comparison.`,
+        href: "/provider/products?review=yes",
     }),
     profileReviewed: (): NotificationInput => ({
         type: NOTIFICATION_TYPES.profileReviewed,

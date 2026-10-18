@@ -247,6 +247,15 @@ model Product {
   isActive    Boolean @default(true)
   minOrderQty Int?
 
+  // When the price was last set or confirmed by the shop. Null for products from before this was
+  // tracked, which reads as "unknown", not as "today".
+  priceUpdatedAt    DateTime?
+  // Raised when something outside the shop makes the price doubtful (for example the catalogue unit
+  // changed from piece to box). Such a product is left out of comparison and cannot be ordered until a
+  // person who may edit prices confirms the price.
+  needsPriceReview  Boolean   @default(false)
+  priceReviewReason String?
+
   // Useful for free-form products that have no catalogItem
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])

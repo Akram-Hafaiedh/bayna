@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { requireProvider } from "@/lib/provider-auth"
+import { shopCan } from "@/lib/access/page"
 import {
     getFilterCategories,
     getProductStats,
@@ -64,10 +65,11 @@ async function ProductsContent({ searchParams }: { searchParams: SearchParams })
         )
     }
 
-    const [result, stats, categories] = await Promise.all([
+    const [result, stats, categories, perms] = await Promise.all([
         listProducts(provider.id, filters),
         getProductStats(provider.id),
         getFilterCategories(provider.id),
+        shopCan(provider.id, ["product.price.edit", "product.stock.edit"] as const),
     ])
 
     if (stats.total === 0) {
@@ -83,11 +85,21 @@ async function ProductsContent({ searchParams }: { searchParams: SearchParams })
                 >
                     Add your first product
                 </Link>
+                {stats.trashed > 0 && (
+                    <p className="mt-4 text-sm text-zinc-500">
+                        {stats.trashed} removed product{stats.trashed === 1 ? "" : "s"} in the{" "}
+                        <Link href="/provider/products/trash" className="font-medium text-zinc-900 underline">Trash</Link>
+                    </p>
+                )}
             </div>
         )
     }
 
     const chips = [
+        {
+            label: "Price check needed", count: stats.needsReview, active: filters.review === "yes",
+            href: buildProductsHref(filters, { review: filters.review === "yes" ? "all" : "yes" })
+        },
         {
             label: "Out of stock", count: stats.outOfStock, active: filters.stock === "out",
             href: buildProductsHref(filters, { stock: filters.stock === "out" ? "all" : "out" })
@@ -114,14 +126,43 @@ async function ProductsContent({ searchParams }: { searchParams: SearchParams })
                             href={c.href}
                             aria-pressed={c.active}
                             className={`rounded-full border px-3 py-1 ${c.active
-                                    ? "border-zinc-900 bg-zinc-900 text-white"
-                                    : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
+                                ? "border-zinc-900 bg-zinc-900 text-white"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300"
                                 }`}
                         >
                             {c.label} · {c.count}
                         </Link>
                     ))}
+                {stats.trashed > 0 && (
+                    <Link
+                        href="/provider/products/trash"
+                        className="ml-auto rounded-full border border-zinc-200 bg-white px-3 py-1 text-zinc-600 hover:border-zinc-300"
+                    >
+                        Trash · {stats.trashed}
+                    </Link>
+                )}
             </div>
+
+            {stats.needsReview > 0 && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                    <p className="font-medium">
+                        {stats.needsReview} product{stats.needsReview === 1 ? "" : "s"} need a price check
+                    </p>
+                    <p className="mt-0.5 text-amber-800">
+                        The catalogue changed what {stats.needsReview === 1 ? "this product is" : "these products are"} sold by
+                        (for example from piece to box), so the old price may be wrong. Until you confirm the price,
+                        {stats.needsReview === 1 ? " it is" : " they are"} left out of comparison.
+                    </p>
+                    {filters.review !== "yes" && (
+                        <Link
+                            href={buildProductsHref(filters, { review: "yes" })}
+                            className="mt-2 inline-block font-medium underline"
+                        >
+                            Show them
+                        </Link>
+                    )}
+                </div>
+            )}
 
             <ProductsToolbar filters={filters} categories={categories} />
 
@@ -136,7 +177,12 @@ async function ProductsContent({ searchParams }: { searchParams: SearchParams })
                 </div>
             ) : (
                 <>
-                    <ProductsTable items={result.items} filters={filters} />
+                    <ProductsTable
+                        items={result.items}
+                        filters={filters}
+                        canEditPrice={perms["product.price.edit"]}
+                        canEditStock={perms["product.stock.edit"]}
+                    />
                     <Pagination
                         filters={filters}
                         page={result.page}

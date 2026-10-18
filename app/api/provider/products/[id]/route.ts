@@ -5,6 +5,7 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import type { ShopPermission } from "@/lib/access/catalogue"
+import { priceEffect } from "@/lib/price-review"
 import {
     parseMinOrderQty,
     parsePrice,
@@ -20,7 +21,7 @@ async function getOwnedProduct(productId: string, key: ShopPermission, req: Requ
     if (!guard.ok) return { ok: false as const, error: guard.error, status: guard.status }
 
     const product = await prisma.product.findFirst({
-        where: { id: productId, providerId: guard.provider.id },
+        where: { id: productId, providerId: guard.provider.id, deletedAt: null },
         include: {
             category: { select: { id: true, name: true } },
             catalogItem: { select: { id: true, name: true, slug: true } },
@@ -136,6 +137,23 @@ export async function PATCH(
             return bad("You do not have permission to change stock", 403)
         }
 
+        // Saving a different price, or choosing "keep this price", confirms the price: it stamps the
+        // date and clears a pending price review. Sending the same price again changes nothing.
+        const confirm = body.confirmPrice === true
+        if (confirm && !result.guard.can("product.price.edit")) {
+            return bad("You do not have permission to confirm prices", 403)
+        }
+        const effect = priceEffect({
+            currentPrice: Number(current.price),
+            nextPrice: data.price !== undefined ? Number(data.price) : undefined,
+            confirm,
+        })
+        if (effect.stampDate) data.priceUpdatedAt = new Date()
+        if (effect.clearReview && current.needsPriceReview) {
+            data.needsPriceReview = false
+            data.priceReviewReason = null
+        }
+
         const product = await withAudit(result.guard.actor, (tx) => tx.product.update({ where: { id }, data }))
         return NextResponse.json({ product })
     } catch (error) {
@@ -153,8 +171,19 @@ export async function DELETE(
         const result = await getOwnedProduct(id, "product.listing.delete", req)
         if (!result.ok) return bad(result.error, result.status)
 
-        await withAudit(result.guard.actor, (tx) => tx.product.delete({ where: { id } }))
-        return NextResponse.json({ message: "Product deleted" })
+        // Soft delete: the row stays (orders will point at it) but disappears from every list.
+        // It sits in the shop's Trash until someone with product.listing.restore brings it back.
+        await withAudit(result.guard.actor, (tx) =>
+            tx.product.update({
+                where: { id },
+                data: { deletedAt: new Date(), deletedById: result.guard.userId },
+            })
+        )
+        return NextResponse.json({
+            message: "Product moved to trash",
+            // Lets the screen offer "Undo" only to people who may restore
+            canRestore: result.guard.can("product.listing.restore"),
+        })
     } catch (error) {
         console.error("Delete product error:", error)
         return bad("Something went wrong", 500)

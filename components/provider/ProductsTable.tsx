@@ -8,7 +8,9 @@ import {
     type SortKey,
 } from "@/lib/product-filters"
 import { UNIT_LABELS } from "@/lib/units"
+import { timeAgo } from "@/lib/time-ago"
 import DeleteProductButton from "./DeleteProductButton"
+import InlineEdit from "./InlineEdit"
 
 function SortHeader({
     label,
@@ -45,9 +47,13 @@ function SortHeader({
 export default function ProductsTable({
     items,
     filters,
+    canEditPrice,
+    canEditStock,
 }: {
     items: ProductRow[]
     filters: ProductFilters
+    canEditPrice: boolean
+    canEditStock: boolean
 }) {
     return (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
@@ -73,7 +79,7 @@ export default function ProductsTable({
                         const out = p.stock <= 0
                         const low = !out && p.stock < LOW_STOCK_THRESHOLD
                         return (
-                            <tr key={p.id} className="hover:bg-zinc-50/60">
+                            <tr key={p.id} className={p.needsPriceReview ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-zinc-50/60"}>
                                 <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
                                         <span className="font-medium text-zinc-900">{p.name}</span>
@@ -83,6 +89,19 @@ export default function ProductsTable({
                                             </span>
                                         )}
                                     </div>
+                                    {p.needsPriceReview && (
+                                        <div className="mt-1">
+                                            <span
+                                                title={p.priceReviewReason ?? undefined}
+                                                className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                                            >
+                                                Price check needed
+                                            </span>
+                                            {p.priceReviewReason && (
+                                                <span className="ml-2 text-xs text-amber-700">{p.priceReviewReason}</span>
+                                            )}
+                                        </div>
+                                    )}
                                     {(p.brand || p.sku) && (
                                         <div className="mt-0.5 text-xs text-zinc-400">
                                             {[p.brand, p.sku].filter(Boolean).join(" · ")}
@@ -93,27 +112,34 @@ export default function ProductsTable({
                                     {p.category?.name ?? "—"}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-zinc-900">
-                                    {Number(p.price).toFixed(3)} TND
-                                    <span className="text-xs text-zinc-400"> / {UNIT_LABELS[p.unit]}</span>
+                                    <InlineEdit productId={p.id} field="price" value={p.price} canEdit={canEditPrice}>
+                                        {Number(p.price).toFixed(3)} TND
+                                        <span className="text-xs text-zinc-400"> / {UNIT_LABELS[p.unit]}</span>
+                                    </InlineEdit>
                                     {p.minOrderQty && (
                                         <div className="text-xs text-zinc-400">min. {p.minOrderQty}</div>
                                     )}
+                                    <div className="text-xs text-zinc-400">
+                                        {p.priceUpdatedAt ? `Price set ${timeAgo(p.priceUpdatedAt)}` : "Price date unknown"}
+                                    </div>
                                 </td>
                                 <td
                                     className={`whitespace-nowrap px-4 py-3 ${out
-                                            ? "font-medium text-red-600"
-                                            : low
-                                                ? "font-medium text-amber-600"
-                                                : "text-zinc-700"
+                                        ? "font-medium text-red-600"
+                                        : low
+                                            ? "font-medium text-amber-600"
+                                            : "text-zinc-700"
                                         }`}
                                 >
-                                    {out ? "Out of stock" : p.stock}
+                                    <InlineEdit productId={p.id} field="stock" value={p.stock} canEdit={canEditStock}>
+                                        {out ? "Out of stock" : p.stock}
+                                    </InlineEdit>
                                 </td>
                                 <td className="hidden px-4 py-3 md:table-cell">
                                     <span
                                         className={`rounded-full px-2 py-0.5 text-xs ${p.isActive
-                                                ? "bg-emerald-50 text-emerald-700"
-                                                : "bg-zinc-100 text-zinc-500"
+                                            ? "bg-emerald-50 text-emerald-700"
+                                            : "bg-zinc-100 text-zinc-500"
                                             }`}
                                     >
                                         {p.isActive ? "Active" : "Hidden"}

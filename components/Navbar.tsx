@@ -133,13 +133,6 @@ export default function Navbar() {
                                                 >
                                                     My Products
                                                 </Link>
-                                                <Link
-                                                    href="/provider/orders"
-                                                    onClick={() => setMenuOpen(false)}
-                                                    className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
-                                                >
-                                                    Orders
-                                                </Link>
                                             </>
                                         )}
 

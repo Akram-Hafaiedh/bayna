@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useConfirm } from "@/components/ui/ConfirmDialog"
+import { useToast } from "@/components/ui/Toast"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import ProviderProfileForm, { EMPTY_PROFILE, type ProfileValues } from "@/components/provider/ProviderProfileForm"
@@ -31,6 +33,8 @@ export default function BecomeProviderPage() {
     const [version, setVersion] = useState(0)
     const [message, setMessage] = useState("")
     const [withdrawing, setWithdrawing] = useState(false)
+    const confirm = useConfirm()
+    const toast = useToast()
 
     const role = session?.user?.role
 
@@ -118,7 +122,13 @@ export default function BecomeProviderPage() {
     }
 
     async function withdraw() {
-        if (!confirm("Withdraw your application? You can apply again later.")) return
+        const yes = await confirm({
+            title: "Withdraw your application?",
+            message: "Your shop details will be removed from the review queue. You can apply again later.",
+            confirmLabel: "Withdraw",
+            tone: "danger",
+        })
+        if (!yes) return
         setWithdrawing(true)
         try {
             const res = await fetch("/api/provider/apply", { method: "DELETE" })
@@ -127,6 +137,7 @@ export default function BecomeProviderPage() {
                 setMessage("")
                 setVersion((x) => x + 1)
                 setAppStatus("none")
+                toast.success("Application withdrawn", { description: "You can apply again whenever you like." })
             } else {
                 const data = await res.json()
                 setMessage(data.error || "Could not withdraw")

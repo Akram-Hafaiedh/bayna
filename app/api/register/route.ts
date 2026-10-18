@@ -5,13 +5,20 @@ import { prisma } from "@/lib/prisma"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
+import { parseEmail } from "@/lib/email-input"
 
 export async function POST(req: Request) {
     try {
         const body = await req.json()
-        const { email, password, name } = body
+        const { password, name } = body
 
-        if (!email || !password) {
+        const parsedEmail = parseEmail(body.email)
+        if (!parsedEmail.ok) {
+            return NextResponse.json({ error: parsedEmail.error }, { status: 400 })
+        }
+        const email = parsedEmail.value
+
+        if (!password) {
             return NextResponse.json(
                 { error: "Email and password are required" },
                 { status: 400 }
@@ -26,8 +33,10 @@ export async function POST(req: Request) {
         }
 
         // Check if user already exists
-        const existingUser = await prisma.user.findUnique({
-            where: { email },
+        // Case-insensitive, so an old account saved as "Sami@Mail.com" still counts
+        const existingUser = await prisma.user.findFirst({
+            where: { email: { equals: email, mode: "insensitive" } },
+            select: { id: true },
         })
 
         if (existingUser) {

@@ -1,0 +1,27 @@
+# .github/workflows/ci.yml
+# Runs on every push and pull request to main: install, generate the Prisma client, type-check, unit tests.
+# The database tests (npm run test:audit-db) need a Postgres server and are run by hand for now.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Prisma only needs a well-formed URL to generate the client; nothing connects to it
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bayna
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - run: npm run test:unit

@@ -4,20 +4,19 @@ import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
+import { parseEmail } from "@/lib/email-input"
 
 export async function POST(req: Request) {
     try {
-        const { email } = await req.json()
-
-        if (!email) {
-            return NextResponse.json(
-                { error: "Email is required" },
-                { status: 400 }
-            )
+        const body = await req.json()
+        const parsedEmail = parseEmail(body?.email)
+        if (!parsedEmail.ok) {
+            return NextResponse.json({ error: parsedEmail.error }, { status: 400 })
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email },
+        // Case-insensitive, so accounts saved before emails were normalised can still reset
+        const user = await prisma.user.findFirst({
+            where: { email: { equals: parsedEmail.value, mode: "insensitive" } },
         })
 
         // Always return success to avoid email enumeration
@@ -26,6 +25,9 @@ export async function POST(req: Request) {
                 message: "If an account exists with this email, a reset link has been sent.",
             })
         }
+
+        // The token carries the address exactly as stored on the account
+        const email = user.email
 
         // Create a secure token
         const token = crypto.randomBytes(32).toString("hex")

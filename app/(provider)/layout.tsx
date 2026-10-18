@@ -13,7 +13,6 @@ export default function ProviderLayout({
                 items={[
                     { href: "/provider/dashboard", label: "Overview" },
                     { href: "/provider/products", label: "Products" },
-                    { href: "/provider/orders", label: "Orders" },
                     { href: "/provider/profile", label: "Profile" },
                 ]}
             />

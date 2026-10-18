@@ -57,7 +57,7 @@ export default function ProductsToolbar({
     function clearAll() {
         setQ("")
         setPushedQ("")
-        go({ q: "", categoryId: null, status: "all", stock: "all", linked: "all", unit: null })
+        go({ q: "", categoryId: null, status: "all", stock: "all", linked: "all", review: "all", unit: null })
     }
 
     return (
