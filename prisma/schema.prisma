@@ -62,6 +62,12 @@ enum AssignmentStatus {
   SUSPENDED
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
 // AUDIT COLUMNS (every model except ActivityLog)
 //   createdAt, updatedAt, createdById, updatedById are maintained by database triggers
 //   (see prisma/migrations/*_audit_triggers). Do not set them in application code.
@@ -144,6 +150,7 @@ model Provider {
   products          Product[]
   suggestions       CatalogSuggestion[]
   accessAssignments AccessAssignment[]
+  invites           AccessInvite[]
 
   @@index([userId])
   @@index([businessId])
@@ -172,6 +179,7 @@ model Business {
 
   shops             Provider[]
   accessAssignments AccessAssignment[]
+  invites           AccessInvite[]
 }
 
 model Category {
@@ -454,6 +462,7 @@ model AccessRole {
   updatedById String?
 
   assignments AccessAssignment[]
+  invites     AccessInvite[]
 
   @@unique([scope, providerId, key])
   @@index([scope])
@@ -489,6 +498,40 @@ model AccessAssignment {
   @@index([providerId])
   @@index([businessId])
   @@index([roleId])
+}
+
+// An invitation to join a business or a shop with a role (R2c). The owner copies the link and sends
+// it; only a hash of the token is stored, so the link cannot be shown again (make a new one instead).
+// Bound to one email address: whoever opens the link must be signed in with that address.
+// Whether it is still usable is worked out from status + expiresAt (lib/access/invite-token.ts).
+model AccessInvite {
+  id         String      @id @default(cuid())
+  scope      AccessScope // SHOP or BUSINESS (never PLATFORM)
+  providerId String? // the shop, for SHOP scope
+  provider   Provider?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  businessId String? // the business, for BUSINESS scope
+  business   Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  roleId     String
+  role       AccessRole  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  email     String // normalised (trimmed, lowercase)
+  tokenHash String       @unique // sha256 of the token in the link
+  status    InviteStatus @default(PENDING)
+  expiresAt DateTime
+
+  acceptedAt   DateTime?
+  acceptedById String? // plain id, like the audit columns
+  revokedAt    DateTime?
+  invitedById  String? // who handed this invitation out
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([providerId, status])
+  @@index([businessId, status])
+  @@index([email])
 }
 
 // A message for one person, shown in the bell in the header. Created by notify() inside the same

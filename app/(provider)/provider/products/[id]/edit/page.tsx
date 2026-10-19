@@ -5,6 +5,8 @@ import { getCategoryTree, getProviderProduct } from "@/lib/provider-products"
 import ProductForm from "@/components/provider/ProductForm"
 import ConfirmPriceButton from "@/components/provider/ConfirmPriceButton"
 import { shopCan } from "@/lib/access/page"
+import { prisma } from "@/lib/prisma"
+import { timeAgo } from "@/lib/time-ago"
 
 export default function EditProductPage({
     params,
@@ -36,8 +38,20 @@ async function EditProductContent({ params }: { params: Promise<{ id: string }> 
     ])
     if (!product) notFound()
 
+    // "Last changed by": the audit columns hold who and when (set by the database, not the app)
+    const stamp = await prisma.product.findUnique({ where: { id: product.id }, select: { updatedAt: true, updatedById: true } })
+    const changer = stamp?.updatedById
+        ? await prisma.user.findUnique({ where: { id: stamp.updatedById }, select: { name: true, email: true } })
+        : null
+
     return (
         <div className="space-y-6">
+            {stamp && (
+                <p className="text-xs text-zinc-500">
+                    Last changed {timeAgo(stamp.updatedAt)}
+                    {changer ? ` by ${changer.name || changer.email}` : stamp.updatedById ? "" : " (no person recorded)"}
+                </p>
+            )}
             {product.needsPriceReview && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                     <p className="font-medium">Check the price of this product</p>

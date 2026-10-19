@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { safeNextPath } from "@/lib/parse"
 
 export default function RegisterPage() {
     const router = useRouter()
@@ -34,7 +35,9 @@ export default function RegisterPage() {
             }
 
             // After successful registration → go to login
-            router.push("/login")
+            // Keep going to where they were headed (for example an invitation link)
+            const next = safeNextPath(new URLSearchParams(window.location.search).get("next"))
+            router.push(next ? `/login?next=${encodeURIComponent(next)}` : "/login")
         } catch {
             setError("Something went wrong")
         } finally {

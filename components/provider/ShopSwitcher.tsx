@@ -56,8 +56,27 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
             }
             setOpen(false)
             toast.success(`Now working in ${shop.name}`)
-            router.push("/provider/dashboard")
-            router.refresh()
+
+            // Tell client pages (profile, business, …) that the active shop changed
+            window.dispatchEvent(new Event("bayna:shop-switched"))
+
+            // Stay on profile / business / dashboard pages so data can refresh.
+            // For products and other lists, go to the dashboard.
+            const path = window.location.pathname
+            const stay =
+                path === "/provider/dashboard" ||
+                path.startsWith("/provider/profile") ||
+                path.startsWith("/provider/business") ||
+                path.startsWith("/provider/taxes") ||
+                path.startsWith("/provider/bank") ||
+                path.startsWith("/provider/statistics")
+
+            if (stay) {
+                router.refresh()
+            } else {
+                router.push("/provider/dashboard")
+                router.refresh()
+            }
         } catch {
             toast.error("Something went wrong", { description: "The shop was not switched." })
         } finally {

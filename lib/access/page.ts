@@ -10,9 +10,14 @@ export async function shopCan<K extends ShopPermission>(providerId: string, keys
     const session = await auth()
     const access = session?.user?.id ? await loadAccess(session.user.id) : null
     const now = new Date()
+    // A business-level role (owner, accountant) counts inside every shop of its business. loadAccess
+    // already knows which shops belong to which business, so no extra query is needed.
+    const businessId = access
+        ? (Object.entries(access.businessShops).find(([, shops]) => shops.includes(providerId))?.[0] ?? null)
+        : null
     const out = {} as Record<K, boolean>
     for (const k of keys) {
-        out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, { providerId }, now)
+        out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, { providerId, businessId }, now)
     }
     return out
 }

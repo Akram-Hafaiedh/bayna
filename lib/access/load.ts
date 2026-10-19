@@ -14,7 +14,7 @@ export type Access = {
     routingRole: Role
     status: UserStatus
     assignments: AssignmentInput[]
-    /** For each business the person holds a business-level assignment for: that business's live shops */
+    /** For each business the person holds a business-level assignment for: that business's approved shops */
     businessShops: Record<string, string[]>
 }
 
@@ -51,12 +51,13 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
     const businessShops: Record<string, string[]> = {}
     if (businessIds.length > 0) {
         const shops = await prisma.provider.findMany({
-            where: { businessId: { in: businessIds }, deletedAt: null },
+            // approved shops only: a shop still waiting for approval cannot be worked in
+            where: { businessId: { in: businessIds }, deletedAt: null, isVerified: true },
             select: { id: true, businessId: true },
         })
         for (const s of shops) {
             if (!s.businessId) continue
-            ;(businessShops[s.businessId] ??= []).push(s.id)
+                ; (businessShops[s.businessId] ??= []).push(s.id)
         }
     }
 

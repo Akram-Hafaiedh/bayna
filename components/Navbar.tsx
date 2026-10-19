@@ -28,6 +28,7 @@ function getRoleBadgeClass(role?: string) {
 export default function Navbar() {
     const { data: session, status } = useSession()
     const [menuOpen, setMenuOpen] = useState(false)
+    const [hasBusiness, setHasBusiness] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
     useEffect(() => {
@@ -42,6 +43,17 @@ export default function Navbar() {
 
     const user = session?.user
     const role = user?.role as Role | undefined
+
+    // The "Business" entry is only for people who hold a business-level role (owner, accountant)
+    useEffect(() => {
+        if (role !== "PROVIDER") return
+        let cancelled = false
+        fetch("/api/me/businesses", { cache: "no-store" })
+            .then((r) => (r.ok ? r.json() : { businesses: [] }))
+            .then((d) => { if (!cancelled) setHasBusiness(Array.isArray(d.businesses) && d.businesses.length > 0) })
+            .catch(() => { if (!cancelled) setHasBusiness(false) })
+        return () => { cancelled = true }
+    }, [role])
     const dashboardHref = getDashboardHref(role)
 
     const initials = user?.name
@@ -133,6 +145,15 @@ export default function Navbar() {
                                                 >
                                                     My Products
                                                 </Link>
+                                                {hasBusiness && (
+                                                    <Link
+                                                        href="/business/profile"
+                                                        onClick={() => setMenuOpen(false)}
+                                                        className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+                                                    >
+                                                        Business
+                                                    </Link>
+                                                )}
                                             </>
                                         )}
 

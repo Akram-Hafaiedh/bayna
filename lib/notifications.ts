@@ -13,6 +13,11 @@ export const NOTIFICATION_TYPES = {
     applicationRejected: "provider.application.rejected",
     profileReviewed: "provider.profile.reviewed",
     priceReviewNeeded: "catalog.unit.changed",
+    teamJoined: "team.member.joined",
+    teamRoleChanged: "team.member.role_changed",
+    teamSuspended: "team.member.suspended",
+    teamReinstated: "team.member.reinstated",
+    teamRemoved: "team.member.removed",
 } as const
 
 export type NotificationInput = {
@@ -46,6 +51,38 @@ export const notifications = {
         title: `Price check needed: ${a.itemName}`,
         body: `${a.reason}. Confirm the price of ${a.count} product${a.count === 1 ? "" : "s"}; until then ${a.count === 1 ? "it is" : "they are"} left out of comparison.`,
         href: "/provider/products?review=yes",
+    }),
+    /** To the person who sent the invite: `who` accepted it and now works in `where` (a shop or business name). */
+    teamJoined: (a: { who: string; where: string; role: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.teamJoined,
+        title: `${a.who} joined ${a.where}`,
+        body: `They now work there as ${a.role}.`,
+        href: "/provider/team",
+    }),
+    /** To the member: their role in `where` changed to `role`. */
+    teamRoleChanged: (a: { where: string; role: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.teamRoleChanged,
+        title: `Your role in ${a.where} changed`,
+        body: `You are now: ${a.role}.`,
+        href: "/provider/dashboard",
+    }),
+    teamSuspended: (a: { where: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.teamSuspended,
+        title: `Your access to ${a.where} was suspended`,
+        body: "You cannot work in it until an owner or manager reinstates you.",
+        href: "/profile",
+    }),
+    teamReinstated: (a: { where: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.teamReinstated,
+        title: `Your access to ${a.where} is back`,
+        body: null,
+        href: "/provider/dashboard",
+    }),
+    teamRemoved: (a: { where: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.teamRemoved,
+        title: `You were removed from ${a.where}`,
+        body: null,
+        href: "/profile",
     }),
     profileReviewed: (): NotificationInput => ({
         type: NOTIFICATION_TYPES.profileReviewed,

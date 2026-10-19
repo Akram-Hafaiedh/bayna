@@ -134,8 +134,8 @@ Admin and Client do **not** get shop membership.
 - [ ] Replace `getVerifiedProvider()` / `requireProvider()` with a provider context: provider + roles + `can(permission)`
 - [ ] Stop gating `/provider` on the global role in `proxy.ts`; derive it from an active membership. Let provider users also act as clients
 - [ ] Invite by email (token + expiry); needs real email sending first
-- [ ] Team page: invite, change role, suspend / remove; protect the last owner; removing a member revokes their sessions
-- [ ] Activity page for owner / manager (filter by member and entity) + "last changed by" on product and order pages
+- [x] Team page: invite, change role, suspend / remove; protect the last owner (built 18 Oct 2026, R2c). Still open: removing a member does not revoke their sessions yet (R6, sessions)
+- [x] Activity page for owner / manager (`/provider/activity`, filter: everything / products / shop profile / team) + "last changed by" on the product edit page (R2c). Open: filter by member, order pages, business-level events (they carry no shop id, so the shop feed does not show them yet)
 - [x] **Decided 16 Oct 2026:** one person can work for several shops. Shop switcher in the navbar, `activeProviderId` in a cookie, guards check it against the person's live assignments (see “Decisions of 16 Oct 2026”, 5). Not built yet
 
 ### 3e – Shop lifecycle & insights
@@ -412,7 +412,7 @@ Notifications, Activity, Help & support.
 - [ ] **Activity:** the person's own history (logins, password and role changes, support access) from `ActivityLog`
 - [ ] **Notification settings:** per event type and channel (email now, WhatsApp / SMS later); stored per user
 - [ ] **Step-up check** (recent password / 2FA) before sensitive actions: role changes, ownership transfer, impersonation, data export (already listed in Phase 7)
-- [ ] **Person profile** (shop staff and business-client staff need their own details): name, photo, phone, job title, language, timezone, and "where I work" (shops / organisations with my role)
+- [ ] **Person profile** (shop staff and business-client staff need their own details): name, photo, phone, job title, language, timezone. "Where I work" (shops and roles) is built (R2c, on `/profile`); the rest is open
 - [ ] **Admin detail pages** so support and admins can read an account without impersonating it: one for a client, one for a provider (shop details, team, listings, orders, tickets, activity timeline). Read-only first; uses the audit timeline and the `user.account.view` / `shop.provider.view` permissions
 - Questions: SMS / WhatsApp codes besides the authenticator app. **Decided 16 Oct 2026:** 2FA is mandatory for SUPER_ADMIN and impersonating staff, optional for providers and clients
 
@@ -512,7 +512,7 @@ Everything here touches products, the catalogue or configuration, and none of it
 
 ### R2. Shops, people and plans
 One theme: who belongs to a shop and what a shop may do. All of it rests on `AccessAssignment`, the guard and the same navbar, so it is one design.
-**Order of work (agreed 18 Oct 2026, updated after decision 8):** R2a (done), **B1 Business level**, then R2c team and invites (scope-aware: business or shop), then R2d plans and user management (plan on the business), then R2b real email and hardening (last, it needs a service chosen). Invites before email are **copy-link** invites.
+**Order of work (agreed 18 Oct 2026, updated after decisions 8 and 9):** R2a (done), **B1 Business level** (done), R2c team and invites and the Business area (built), then R2d plans and user management (plan on the business), then R2b real email and hardening (last, it needs a service chosen). Invites before email are **copy-link** invites.
 
 **B1, Business level (built 18 Oct 2026, being verified)**
 - [x] Schema: `Business`, `Provider.businessId` (nullable for now), `AccessAssignment.businessId`, `AccessScope.BUSINESS`; audit line for `Business` (added by hand to the migration)
@@ -520,10 +520,34 @@ One theme: who belongs to a shop and what a shop may do. All of it rests on `Acc
 - [x] Guard and loaders follow it: `requireShop` (inherited shops), new `requireBusiness`, shop switcher (names the business when you work in several), notification recipients include business-level members, last-owner rule can run on a business (`assertKeepsAnOwner`)
 - [x] Apply creates the business with the shop; "Create shop" adds to a business you own (or a separate one, `lib/business-choice.ts`); approve makes the applicant business owner; reject and withdraw remove an empty business
 - [x] `scripts/backfill-businesses.ts` (`npm run db:backfill-businesses`, `--dry` first) and `npm run access:sync` (creates the business roles) for existing data
-- [x] **Business** page (`/provider/business`, server-rendered so it always shows the business of the shop in front of you) with legal and billing details, saved through `/api/provider/business`; legal fields only for the business owner
+- [x] **Business** page (now `/business/profile`, in the Business area; `/provider/business` redirects there) with legal and billing details, saved through `/api/provider/business`; legal fields only for the business owner
 - [ ] **Contract step:** after the backfill, a later migration makes `Provider.businessId` required (and `prisma/tests/audit-foundation.sql` must then insert a Business first)
 - [x] The "Create shop" form asks which business the shop belongs to ("Add to X" or "A separate business"); a first application has no choice to make
-- [ ] Team page (business or shop level) is R2c: it must call `assertKeepsAnOwner` and use `business.team.*` / `team.member.*`
+- [x] Team page (business or shop level): built in R2c below
+
+**R2c, team and invitations (built 18 Oct 2026, verified in use)**
+- [x] Schema: `AccessInvite` (shop or business scope, role, email, hashed token, expiry, status PENDING / ACCEPTED / REVOKED) + enum `InviteStatus`; audit line `SELECT audit_attach('AccessInvite', '', 'tokenHash');` goes in the migration by hand
+- [x] **Copy-link invites** (decision: email later, R2b): the link is shown once, only its hash is stored; "New link" replaces the old one for the same person; valid 7 days; bound to one email address (whoever opens it must be signed in with that address); opens `/invite/[token]`, which sends people to sign in or register and back (`?next=`, only paths inside the site). The accept checks are a pure, tested function (`lib/access/invite-accept.ts`); single use is an atomic claim in the route
+- [x] **Shop team page** (`/provider/team`): the shop's people. Invite, change role, suspend / reinstate, remove, leave, cancel invitation. People who work through the business are listed read-only, with a link to the Business team for those who manage it. Styled confirm dialogs and toasts
+- [x] **Rules** (`lib/access/team-rules.ts`, tested): nobody gives, changes or removes access they do not hold themselves (a manager cannot create or touch an owner); nobody changes their own role or suspends themselves (leaving is allowed); a business always keeps a business owner; a shop keeps an owner, and a live owner of its business counts, so a branch needs no owner of its own
+- [x] **Ownership transfer** = an owner makes someone else owner (role change), then may step down. The extra step-up check (password / 2FA) comes with R6
+- [x] Accepting makes a plain client a provider for routing (`User.role`); removing the last place someone works sends them back to client (an admin is never touched)
+- [x] Everything is audited (triggers) and written to the activity feed in plain words (`TEAM_INVITED`, `TEAM_JOINED`, `TEAM_ROLE_CHANGED`, `TEAM_SUSPENDED`, `TEAM_REINSTATED`, `TEAM_REMOVED`, `TEAM_INVITE_CANCELLED`); the member gets a notification, and the inviter is told when someone joins
+- [x] **Activity page** (`/provider/activity`) and "last changed by" on the product edit page; **Where I work** on `/profile`
+- [x] Fix found on the way (B1 follow-up): page-side `shopCan()` ignored business-level roles, so a business owner would have lost the price, stock and restore controls after the backfill
+- [ ] Open: removing a member does not revoke their login sessions (R6); invitation emails (R2b); per-person extra permissions and custom roles; seat limits from plans (R2d)
+
+**R2c-2, Business area (built 18 Oct 2026, being verified)**
+Decision 9 (18 Oct 2026): the Business is part of the **account**, not of the shop. It does not go in the shop sub-nav or the shop switcher (the switcher stays about shops only). Plan and billing (R2d) will live in the same place. Security (2FA, sessions, password) stays **personal**: it belongs to the person, not the business. Later a business may require 2FA for its team (R6).
+- [x] **Business area** at `/business` with its own sub-nav: Profile (name, legal, billing), Shops, Team; "Back to my shop" link; the header names the business. Plan and billing joins in R2d. No schema change
+- [x] **Business picker** for people who belong to several businesses: cookie `bayna_business`, never trusted (checked against live business-level roles on every request, `lib/access/active-business.ts`), `POST /api/me/active-business`. The guard (`requireBusiness`) and the pages use the same choice; without one it is the business of the shop you are working in
+- [x] **Entry in the account menu**: "Business" shows only for people who hold a business-level role (`GET /api/me/businesses`); a shop-only manager never sees it. The "Business" link is gone from the provider sub-nav and `/provider/business` redirects to `/business/profile`; `proxy.ts` gates `/business` like `/provider`
+- [x] **Business → Shops:** the business's shops with status, "Open shop" (switches the active shop) and "Create shop" (needs `business.shop.create`)
+- [x] **Business → Team:** "Everyone" overview (each person once, with their business role and role in each shop), the business team, and a collapsible team per live shop; owners manage shop-level people from here too. Invites name their target (shop or business), so they work from this page
+- [x] **"Where I work"** on the account page (businesses, shops, role in each)
+- [x] Tests: invite token (hash, expiry, state), accept rules (wrong email, expired, cancelled, used, deleted target), role limits (nobody grants above their own), last-owner cases, active business pick, people overview
+- [ ] Open: Business → Activity (business-level events carry no shop id, so they need their own query); a business accountant sees only the profile for now; Plan and billing (R2d)
+- [ ] **Gate:** invite someone to one shop and to the whole business by link, accept both, switch businesses with the picker, open a shop from Business → Shops, try to remove the last owner (must fail), sign in as a shop-only manager and confirm there is no Business entry and `/business` sends you back to the dashboard
 
 **R2a, shops per person (built 18 Oct 2026, being verified)**
 - [x] `Provider.userId` is no longer unique: one person can apply for and own several shops (`User.providers`). Ownership and roles stay in `AccessAssignment`

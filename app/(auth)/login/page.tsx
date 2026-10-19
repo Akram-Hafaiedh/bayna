@@ -4,6 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { safeNextPath } from "@/lib/parse"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -30,7 +31,8 @@ export default function LoginPage() {
             return
         }
 
-        router.push("/")
+        // Come back to where they were going (for example an invitation link), else home
+        router.push(safeNextPath(new URLSearchParams(window.location.search).get("next")) ?? "/")
         router.refresh()
     }
 

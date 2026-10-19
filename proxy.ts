@@ -31,6 +31,7 @@ function homeFor(role?: Role) {
 const RULES: { prefix: string; roles?: Role[] }[] = [
     { prefix: "/admin", roles: ["ADMIN"] },
     { prefix: "/provider", roles: ["PROVIDER"] },
+    { prefix: "/business", roles: ["PROVIDER"] },
     { prefix: "/dashboard", roles: ["CLIENT"] },
     { prefix: "/profile" },
     { prefix: "/become-provider" },

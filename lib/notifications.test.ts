@@ -44,6 +44,11 @@ test("the ready-made messages are valid", () => {
         notifications.applicationRejected(),
         notifications.priceReviewNeeded(sample),
         notifications.profileReviewed(),
+        notifications.teamJoined({ who: "Sami", where: "Sfax BTP", role: "Manager" }),
+        notifications.teamRoleChanged({ where: "Sfax BTP", role: "Viewer" }),
+        notifications.teamSuspended({ where: "Sfax BTP" }),
+        notifications.teamReinstated({ where: "Sfax BTP" }),
+        notifications.teamRemoved({ where: "Sfax BTP" }),
     ]
     // Fails if a builder is added to `notifications` without being listed here.
     assert.equal(messages.length, Object.keys(notifications).length)

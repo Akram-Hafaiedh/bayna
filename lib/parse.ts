@@ -7,6 +7,15 @@ export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
 export const ok = <T>(value: T): Parsed<T> => ({ ok: true, value })
 export const fail = <T>(error: string): Parsed<T> => ({ ok: false, error })
 
+/**
+ * Where to go after signing in or registering: the ?next= value, only when it is a path inside this
+ * site ("/invite/abc"). Anything else ("https://evil.example", "//evil.example", "/\\evil") is ignored.
+ */
+export function safeNextPath(next: string | null | undefined): string | null {
+    if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return null
+    return next
+}
+
 export const isBlank = (v: unknown) => v === undefined || v === null || v === ""
 
 /** Trimmed text; empty becomes null. Rejects non-strings and over-long values. */

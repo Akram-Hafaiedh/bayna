@@ -21,6 +21,8 @@ import { loadAccess, type Access } from "./load"
 import { pickActiveShop } from "./active-shop"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
 import { readActiveShopHint } from "./active-cookie"
+import { pickActiveBusiness } from "./active-business"
+import { readActiveBusinessHint } from "./active-business-cookie"
 
 export type GuardFail = { ok: false; error: string; status: 401 | 403 | 404 }
 
@@ -153,28 +155,41 @@ export async function requireShop(
 }
 
 /**
- * Action on the business behind the shop the person is working in (legal and billing details,
- * business-level team). The business is the one the active shop belongs to; if they have no shop
- * yet, the first business they belong to. Needs a business-level assignment: being a shop manager
- * does not open the business.
+ * Action on a business (legal and billing details, business-level team). The business is the one
+ * chosen in the Business area; without a choice, the one the active shop belongs to; else the first
+ * they belong to. Needs a business-level assignment: being a shop manager does not open the business.
  */
 export async function requireBusiness(
     key: BusinessPermission | ShopPermission,
-    req?: Request
+    req?: Request,
+    opts: { businessId?: string } = {}
 ): Promise<BusinessGuard | GuardFail> {
     const a = await authenticate(req)
     if (!a.ok) return a
 
     const now = new Date()
-    const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
-    const activeShop = pickActiveShop(shopIds, await readActiveShopHint())
+    const reachable = reachableBusinessIds(a.access.assignments, now)
 
-    let businessId: string | null = null
-    if (activeShop) {
-        const shop = await prisma.provider.findUnique({ where: { id: activeShop }, select: { businessId: true } })
-        businessId = shop?.businessId ?? null
+    // A caller may name the business (the team routes act on the business of a member or invite);
+    // it still has to be one the person belongs to at business level.
+    if (opts.businessId && !reachable.includes(opts.businessId)) return fail("Forbidden", 403)
+
+    let businessId: string | null = opts.businessId ?? null
+    if (!businessId) {
+        // The business chosen in the Business area (a cookie, checked), else the business of the
+        // shop they are working in, else the first one they belong to.
+        const hint = await readActiveBusinessHint()
+        let ofActiveShop: string | null = null
+        if (!(hint && reachable.includes(hint))) {
+            const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
+            const activeShop = pickActiveShop(shopIds, await readActiveShopHint())
+            if (activeShop) {
+                const shop = await prisma.provider.findUnique({ where: { id: activeShop }, select: { businessId: true } })
+                ofActiveShop = shop?.businessId ?? null
+            }
+        }
+        businessId = pickActiveBusiness(reachable, hint, ofActiveShop)
     }
-    if (!businessId) businessId = reachableBusinessIds(a.access.assignments, now)[0] ?? null
     if (!businessId) return fail("Forbidden", 403)
 
     const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, deletedAt: true } })
