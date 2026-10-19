@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
+import WhereIWork from "@/components/account/WhereIWork"
 
 type SessionRow = {
     id: string
@@ -175,6 +176,8 @@ export default function ProfilePage() {
                     Manage your account details and security
                 </p>
             </div>
+
+            <WhereIWork />
 
             {/* Basic info */}
             <section className="rounded-xl border border-zinc-200 bg-white p-6">
