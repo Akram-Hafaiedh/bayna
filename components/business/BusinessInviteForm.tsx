@@ -16,7 +16,7 @@ const inputClass =
     "h-10 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:bg-zinc-50"
 
 const keyOf = (t: InviteTarget) => `${t.scope}:${t.id}`
-const firstRole = (t: InviteTarget) => t.roles.find((r) => r.key !== "OWNER")?.key ?? t.roles[0]?.key ?? ""
+const firstRole = (t: InviteTarget) => t.roles.find((r) => !r.isOwner)?.id ?? t.roles[0]?.id ?? ""
 
 type Result = { key: string; label: string; roleName: string; url?: string; expiresAt?: string; error?: string }
 
@@ -44,13 +44,13 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
         setBusy(true)
         const results: Result[] = []
         for (const t of chosen) {
-            const roleKey = roles[keyOf(t)]
-            const roleName = t.roles.find((r) => r.key === roleKey)?.name ?? roleKey
+            const roleId = roles[keyOf(t)]
+            const roleName = t.roles.find((r) => r.id === roleId)?.name ?? roleId
             try {
                 const res = await fetch("/api/provider/team/invites", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ scope: t.scope, email, roleKey, targetId: t.id }),
+                    body: JSON.stringify({ scope: t.scope, email, roleId, targetId: t.id }),
                 })
                 const data = await res.json().catch(() => ({}))
                 if (!res.ok) results.push({ key: keyOf(t), label: t.label, roleName, error: data.error || "Could not create the invitation" })
@@ -106,7 +106,7 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
                     disabled={busy || !ticked[k]}
                 >
                     {t.roles.map((r) => (
-                        <option key={r.key} value={r.key}>{r.name}</option>
+                        <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                 </select>
             </li>

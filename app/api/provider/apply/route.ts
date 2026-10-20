@@ -14,6 +14,7 @@ import { Role } from "@/app/generated/prisma/enums"
 import { parsePhone, parseProfileFields } from "@/lib/provider-input"
 import { businessesForNewShop } from "@/lib/access/business-options"
 import { resolveBusinessChoice } from "@/lib/business-choice"
+import { seedBusinessRoles, seedShopRoles } from "@/lib/access/role-seed"
 
 const unauthorized = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 const failed = () => NextResponse.json({ error: "Something went wrong" }, { status: 500 })
@@ -56,11 +57,15 @@ export async function POST(req: Request) {
         if (!choice.ok) return NextResponse.json({ error: choice.error }, { status: 400 })
 
         const provider = await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
-            const businessId =
-                choice.kind === "existing"
-                    ? choice.businessId
-                    : (await tx.business.create({ data: { name: data.businessName! }, select: { id: true } })).id
-            return tx.provider.create({
+            let businessId: string
+            if (choice.kind === "existing") {
+                businessId = choice.businessId
+            } else {
+                businessId = (await tx.business.create({ data: { name: data.businessName! }, select: { id: true } })).id
+                // A new business starts with its own copy of the default business roles
+                await seedBusinessRoles(tx, businessId)
+            }
+            const shop = await tx.provider.create({
                 data: {
                     userId,
                     businessId,
@@ -77,6 +82,9 @@ export async function POST(req: Request) {
                     isVerified: false,
                 },
             })
+            // ... and every shop starts with its own copy of the default shop roles
+            await seedShopRoles(tx, shop.id)
+            return shop
         })
 
         return NextResponse.json(

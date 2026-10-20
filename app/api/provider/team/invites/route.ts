@@ -1,5 +1,5 @@
 // app/api/provider/team/invites/route.ts
-// POST { scope: "SHOP" | "BUSINESS", email, roleKey }: invite someone to the shop you are working in, or
+// POST { scope: "SHOP" | "BUSINESS", email, roleId }: invite someone to the shop you are working in, or
 // to its business. Returns the link token ONCE: only its hash is stored, so a lost link is replaced
 // by making a new one (which cancels the older one for the same person).
 // Rules: you need the invite permission at that level, and you can only hand out a role whose every
@@ -9,14 +9,14 @@ import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { guardTeam, targetLabel, TeamError } from "@/lib/access/team-actions"
 import { hashInviteToken, inviteExpiry, newInviteToken } from "@/lib/access/invite-token"
-import { checkInvitee, missingKeys, parseInviteInput } from "@/lib/access/team-rules"
+import { checkInvitee, missingKeys, parseInviteInput, roleUsableAt } from "@/lib/access/team-rules"
 
 export async function POST(req: Request) {
     try {
         const body = await req.json().catch(() => null)
         const parsed = parseInviteInput(body)
         if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-        const { scope, email, roleKey, targetId } = parsed.value
+        const { scope, email, roleId, targetId } = parsed.value
 
         // A named shop or business (the Business area invites into any of its shops); otherwise the one
         // the person is working in. Either way they must really work there and hold the permission.
@@ -28,11 +28,20 @@ export async function POST(req: Request) {
         )
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
-        const role = await prisma.accessRole.findFirst({
-            where: { scope, providerId: null, key: roleKey },
-            select: { id: true, name: true, permissions: true },
+        // The role must belong to this business, or to this shop (or its business, for a shop)
+        const role = await prisma.accessRole.findUnique({
+            where: { id: roleId },
+            select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
         })
-        if (!role) return NextResponse.json({ error: "Unknown role" }, { status: 400 })
+        const usable =
+            !!role &&
+            roleUsableAt(
+                role,
+                scope === "SHOP"
+                    ? { scope, providerId: guard.providerId!, businessId: guard.businessId }
+                    : { scope, businessId: guard.businessId! }
+            )
+        if (!role || !usable) return NextResponse.json({ error: "Unknown role" }, { status: 400 })
         if (missingKeys(role.permissions, guard.can).length > 0) {
             return NextResponse.json({ error: "You cannot invite someone to a role with more access than your own." }, { status: 403 })
         }

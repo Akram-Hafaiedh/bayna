@@ -32,7 +32,7 @@ export async function POST(req: Request) {
             where: { tokenHash: hashInviteToken(token) },
             select: {
                 id: true, scope: true, providerId: true, businessId: true, email: true, status: true, expiresAt: true, invitedById: true,
-                role: { select: { id: true, key: true, name: true } },
+                role: { select: { id: true, name: true, permissions: true, businessId: true, providerId: true } },
                 provider: { select: { id: true, businessId: true, deletedAt: true } },
                 business: { select: { id: true, deletedAt: true } },
             },
@@ -69,21 +69,19 @@ export async function POST(req: Request) {
 
             const existing = await tx.accessAssignment.findFirst({
                 where: scope === "SHOP" ? { userId: user.id, scope, providerId: levelId } : { userId: user.id, scope, businessId: levelId },
-                select: { id: true, role: { select: { key: true } } },
+                select: { id: true },
             })
             if (existing) {
                 // A second invitation to someone already on the team sets their role (and ends a suspension).
                 // It must not strip the last owner.
-                if (existing.role.key === "OWNER" && invite.role.key !== "OWNER") {
-                    const owner = await assertTeamKeepsOwner(
-                        tx,
-                        scope === "SHOP"
-                            ? { scope, providerId: levelId, businessId: invite.provider?.businessId ?? null }
-                            : { scope, businessId: levelId },
-                        { type: "set_role", assignmentId: existing.id, roleKey: invite.role.key }
-                    )
-                    if (!owner.ok) throw new TeamError(owner.error, 409)
-                }
+                const owner = await assertTeamKeepsOwner(
+                    tx,
+                    scope === "SHOP"
+                        ? { scope, providerId: levelId, businessId: invite.provider?.businessId ?? null }
+                        : { scope, businessId: levelId },
+                    { type: "set_role", assignmentId: existing.id, newPermissions: invite.role.permissions }
+                )
+                if (!owner.ok) throw new TeamError(owner.error, 409)
                 await tx.accessAssignment.update({ where: { id: existing.id }, data: { roleId: invite.role.id, status: "ACTIVE" } })
             } else {
                 await tx.accessAssignment.create({

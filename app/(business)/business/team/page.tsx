@@ -46,9 +46,8 @@ async function TeamContent() {
         select: { id: true, businessName: true, city: true },
     })
 
-    const [bizRoles, shopRoles, bizMembers, bizInvites] = await Promise.all([
-        loadRoleOptions("BUSINESS"),
-        loadRoleOptions("SHOP"),
+    const [bizRoles, bizMembers, bizInvites] = await Promise.all([
+        loadRoleOptions({ scope: "BUSINESS", businessId: business.id }),
         loadMembers({ scope: "BUSINESS", businessId: business.id }),
         canBiz(teamPermission("BUSINESS", "invite")) ? loadInvites({ scope: "BUSINESS", businessId: business.id }) : [],
     ])
@@ -59,13 +58,15 @@ async function TeamContent() {
             const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
             const can = (k: string) => has(eff, k)
             const visible = can(teamPermission("SHOP", "view"))
-            const [members, invites] = visible
+            const [members, invites, roles] = visible
                 ? await Promise.all([
                     loadMembers({ scope: "SHOP", providerId: shop.id }),
                     can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", providerId: shop.id }) : [],
+                    // the shop's own roles plus the roles of the business
+                    loadRoleOptions({ scope: "SHOP", providerId: shop.id, businessId: business.id }),
                 ])
-                : [[], []]
-            return { shop, can, visible, members, invites }
+                : [[], [], []]
+            return { shop, can, visible, members, invites, roles }
         })
     )
 
@@ -85,13 +86,13 @@ async function TeamContent() {
     const people = groupPeople(rows)
 
     // Where this person may invite, with the roles they may hand out in each place
-    const bizRoleChoices = toRoleChoices(bizRoles, canBiz)
+    const bizRoleChoices = toRoleChoices(bizRoles, canBiz, "BUSINESS")
     const inviteTargets: InviteTarget[] = [
         ...(canBiz(teamPermission("BUSINESS", "invite")) && bizRoleChoices.length > 0
             ? [{ id: business.id, scope: "BUSINESS" as const, label: "The whole business", roles: bizRoleChoices }]
             : []),
         ...perShop.flatMap((s) => {
-            const roles = toRoleChoices(shopRoles, s.can)
+            const roles = toRoleChoices(s.roles, s.can, "SHOP")
             return s.visible && s.can(teamPermission("SHOP", "invite")) && roles.length > 0
                 ? [{ id: s.shop.id, scope: "SHOP" as const, label: s.shop.businessName, roles }]
                 : []
@@ -147,7 +148,7 @@ async function TeamContent() {
                 subtitle="People who work in every shop of this business, such as owners and accountants."
                 members={bizMembers.map((m) => toMemberView(m, canBiz, userId))}
                 invites={bizInvites.map((i) => toInviteView(i, bizRoles, canBiz))}
-                roles={toRoleChoices(bizRoles, canBiz)}
+                roles={toRoleChoices(bizRoles, canBiz, "BUSINESS")}
                 can={{
                     invite: canBiz(teamPermission("BUSINESS", "invite")),
                     setRole: canBiz(teamPermission("BUSINESS", "set_role")),
@@ -180,8 +181,8 @@ async function TeamContent() {
                             title={`Team of ${s.shop.businessName}`}
                             subtitle="People who work in this shop only."
                             members={s.members.map((m) => toMemberView(m, s.can, userId))}
-                            invites={s.invites.map((i) => toInviteView(i, shopRoles, s.can))}
-                            roles={toRoleChoices(shopRoles, s.can)}
+                            invites={s.invites.map((i) => toInviteView(i, s.roles, s.can))}
+                            roles={toRoleChoices(s.roles, s.can, "SHOP")}
                             can={{
                                 invite: s.can(teamPermission("SHOP", "invite")),
                                 setRole: s.can(teamPermission("SHOP", "set_role")),

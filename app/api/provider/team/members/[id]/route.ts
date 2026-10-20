@@ -1,6 +1,6 @@
 // app/api/provider/team/members/[id]/route.ts
 // The people in a shop or business. [id] is the assignment id.
-//   PATCH { action: "set_role", roleKey } | { action: "suspend" } | { action: "reinstate" }
+//   PATCH { action: "set_role", roleId } | { action: "suspend" } | { action: "reinstate" }
 //   DELETE   remove the person
 // Rules, in order: you need the permission for that action at that level; you cannot change yourself
 // (except leave); you cannot touch or create someone with more access than you hold; and a business
@@ -10,7 +10,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { assertTeamKeepsOwner, demoteIfNoLongerWorking, guardTeam, targetLabel, TeamError } from "@/lib/access/team-actions"
-import { checkMemberAction, describeAction, nextStatus, parseMemberAction, type MemberAction } from "@/lib/access/team-rules"
+import { checkMemberAction, describeAction, nextStatus, parseMemberAction, roleUsableAt, type MemberAction } from "@/lib/access/team-rules"
 import { notifications, notify } from "@/lib/notifications"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -20,7 +20,7 @@ async function run(req: Request, id: string, action: MemberAction) {
         where: { id },
         select: {
             id: true, userId: true, scope: true, providerId: true, businessId: true, status: true,
-            role: { select: { id: true, key: true, name: true, permissions: true } },
+            role: { select: { id: true, name: true, permissions: true } },
             user: { select: { name: true, email: true } },
         },
     })
@@ -30,12 +30,23 @@ async function run(req: Request, id: string, action: MemberAction) {
     const guard = await guardTeam(scope, action.type, req, { providerId: member.providerId, businessId: member.businessId })
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
-    const newRole =
+    const roleRow =
         action.type === "set_role"
-            ? await prisma.accessRole.findFirst({
-                where: { scope, providerId: null, key: action.roleKey },
-                select: { id: true, key: true, name: true, permissions: true },
+            ? await prisma.accessRole.findUnique({
+                where: { id: action.roleId },
+                select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
             })
+            : null
+    // The new role must belong to this business, or to this shop (or its business, for a shop)
+    const newRole =
+        roleRow &&
+        roleUsableAt(
+            roleRow,
+            scope === "SHOP"
+                ? { scope, providerId: member.providerId!, businessId: guard.businessId }
+                : { scope, businessId: member.businessId! }
+        )
+            ? roleRow
             : null
     if (action.type === "set_role" && !newRole) return NextResponse.json({ error: "Unknown role" }, { status: 400 })
 
@@ -71,7 +82,7 @@ async function run(req: Request, id: string, action: MemberAction) {
                 tx,
                 ownerTarget,
                 action.type === "set_role"
-                    ? { type: "set_role", assignmentId: id, roleKey: action.roleKey }
+                    ? { type: "set_role", assignmentId: id, newPermissions: newRole?.permissions ?? [] }
                     : { type: action.type, assignmentId: id }
             )
             if (!owner.ok) throw new TeamError(owner.error, 409)

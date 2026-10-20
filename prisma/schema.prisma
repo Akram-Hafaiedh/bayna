@@ -150,6 +150,7 @@ model Provider {
   products          Product[]
   suggestions       CatalogSuggestion[]
   accessAssignments AccessAssignment[]
+  accessRoles       AccessRole[]
   invites           AccessInvite[]
 
   @@index([userId])
@@ -179,6 +180,7 @@ model Business {
 
   shops             Provider[]
   accessAssignments AccessAssignment[]
+  accessRoles       AccessRole[]
   invites           AccessInvite[]
 }
 
@@ -442,18 +444,25 @@ model ActivityLog {
 }
 
 // ACCESS CONTROL (see docs/access-audit-support.md section 1, and lib/access)
-// A role is a named list of permission keys ("module.resource.action"). The keys live in code
-// (lib/access/catalogue.ts); the database only stores strings, so adding a permission never
-// needs a migration. providerId null = system role (seeded by `npm run access:sync`);
-// a value = a custom role owned by that shop (not used yet).
+// A role is a named list of permission keys ("module.resource.action"; "*" = everything). The keys
+// live in code (lib/access/catalogue.ts); the database only stores strings, so adding a permission
+// never needs a migration. Every role works the same way: there are no special roles. "Owner",
+// "Manager" and the rest are only defaults that are copied into a business or a shop when it is
+// created (lib/access/role-templates.ts, lib/access/role-seed.ts) and can be edited or deleted.
+// Who owns the role decides where it can be used:
+//   businessId set  = a business role: usable in that business and in any of its shops (scope BUSINESS)
+//   providerId set  = a shop role: usable in that one shop only (scope SHOP)
+//   neither         = a platform role for Bayna staff (scope PLATFORM)
+// Never both. Names are unique per owner (checked in code, lib/access/role-seed.ts).
 model AccessRole {
   id          String      @id @default(cuid())
-  key         String // e.g. "OWNER", "SUPPORT_AGENT"
   name        String
   description String?
-  scope       AccessScope
+  scope       AccessScope // follows the owner, kept for easy queries
+  businessId  String?
+  business    Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   providerId  String?
-  isSystem    Boolean     @default(false)
+  provider    Provider?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
   permissions String[]
 
   createdAt   DateTime @default(now())
@@ -464,12 +473,15 @@ model AccessRole {
   assignments AccessAssignment[]
   invites     AccessInvite[]
 
-  @@unique([scope, providerId, key])
   @@index([scope])
+  @@index([businessId])
+  @@index([providerId])
 }
 
-// Gives one user one role, platform-wide or inside one shop. A user can hold several.
-// Effective permissions = role.permissions + grants - denies (deny wins).
+// Gives one user one role, platform-wide, for a whole business, or inside one shop. A user can hold
+// several. Effective permissions = the union of the permissions of their live roles (no grants, no
+// denies). A business role may be given for one shop of its business (scope SHOP); a shop role only
+// for its own shop.
 model AccessAssignment {
   id         String           @id @default(cuid())
   userId     String
@@ -483,8 +495,6 @@ model AccessAssignment {
   business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
 
-  grants    String[] // extra permission keys for this person
-  denies    String[] // keys removed for this person
   expiresAt DateTime? // time-boxed access
 
   invitedById String? // who handed this access out (plain id, like the audit columns)

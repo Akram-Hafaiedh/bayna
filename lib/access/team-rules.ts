@@ -11,7 +11,7 @@ import type { BusinessPermission, ShopPermission } from "./catalogue"
 
 export type TeamScope = "SHOP" | "BUSINESS"
 export type MemberAction =
-    | { type: "set_role"; roleKey: string }
+    | { type: "set_role"; roleId: string }
     | { type: "suspend" }
     | { type: "reinstate" }
     | { type: "remove" }
@@ -29,6 +29,21 @@ export function teamPermission(scope: TeamScope, name: TeamPermissionName): Shop
     // The keys are checked against the catalogue in team-rules.test.ts
     return `${prefix}.${action}` as ShopPermission | BusinessPermission
 }
+
+/** Where a role may be used: the business or shop being managed. */
+export type RoleTarget = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; providerId: string; businessId: string | null }
+
+/**
+ * Can this role be given at this place? A business role works in its own business and in any shop of
+ * it; a shop role only in its own shop. Platform roles are never given from a team page.
+ */
+export function roleUsableAt(role: { businessId: string | null; providerId: string | null }, target: RoleTarget): boolean {
+    if (target.scope === "BUSINESS") return role.businessId === target.businessId && role.providerId === null
+    if (role.providerId !== null) return role.providerId === target.providerId
+    return role.businessId !== null && role.businessId === target.businessId
+}
+
+const ID = /^[A-Za-z0-9_-]{1,64}$/
 
 /** The keys of `permissions` that the actor does not hold. Empty = the actor could hold this role. */
 export function missingKeys(permissions: readonly string[], can: (key: string) => boolean): string[] {
@@ -75,7 +90,7 @@ export function checkMemberAction(input: {
 }
 
 /** targetId: the shop or business to invite to; null = the one the person is working in. */
-export type InviteInput = { scope: TeamScope; email: string; roleKey: string; targetId: string | null }
+export type InviteInput = { scope: TeamScope; email: string; roleId: string; targetId: string | null }
 
 /** Body of POST /api/provider/team/invites. */
 export function parseInviteInput(body: unknown): Parsed<InviteInput> {
@@ -84,13 +99,13 @@ export function parseInviteInput(body: unknown): Parsed<InviteInput> {
     if (b.scope !== "SHOP" && b.scope !== "BUSINESS") return fail("Choose whether to invite to the shop or to the business")
     const email = parseEmail(b.email)
     if (!email.ok) return fail(email.error)
-    if (typeof b.roleKey !== "string" || !/^[A-Z_]{2,40}$/.test(b.roleKey)) return fail("Choose a role")
+    if (typeof b.roleId !== "string" || !ID.test(b.roleId)) return fail("Choose a role")
     let targetId: string | null = null
     if (b.targetId !== undefined && b.targetId !== null) {
         if (typeof b.targetId !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(b.targetId)) return fail("Unknown shop or business")
         targetId = b.targetId
     }
-    return ok({ scope: b.scope, email: email.value, roleKey: b.roleKey, targetId })
+    return ok({ scope: b.scope, email: email.value, roleId: b.roleId, targetId })
 }
 
 /** Body of PATCH /api/provider/team/members/[id]. (Removing is DELETE and needs no body.) */
@@ -100,8 +115,8 @@ export function parseMemberAction(body: unknown): Parsed<MemberAction> {
     if (b.action === "suspend") return ok({ type: "suspend" })
     if (b.action === "reinstate") return ok({ type: "reinstate" })
     if (b.action === "set_role") {
-        if (typeof b.roleKey !== "string" || !/^[A-Z_]{2,40}$/.test(b.roleKey)) return fail("Choose a role")
-        return ok({ type: "set_role", roleKey: b.roleKey })
+        if (typeof b.roleId !== "string" || !ID.test(b.roleId)) return fail("Choose a role")
+        return ok({ type: "set_role", roleId: b.roleId })
     }
     return fail("Unknown action")
 }

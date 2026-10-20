@@ -1,15 +1,17 @@
 // lib/access/evaluate.ts
 // Decides whether someone may do something, from their assignments. Pure: no database, no session.
 //
-// Rules (docs/access-audit-support.md section 1.2)
+// Rules
 //   - default deny
-//   - effective permissions = role permissions + grants - denies, and a deny always wins
-//   - only ACTIVE, unexpired assignments count
+//   - effective permissions = the union of the permissions of the person's live roles. There are no
+//     per-person grants or denies: to change what someone can do, change or swap their role
+//   - only ACTIVE, unexpired assignments count (expiresAt makes access time-boxed)
+//   - every role works the same way: nothing here looks at a role's name, only at its permissions
 //   - a check that names a shop looks at that shop's own assignments and at the business-level
 //     assignments of the business the shop belongs to (a business owner is an owner in every shop of
 //     the business). A check that names only a business looks at that business's assignments. One that
 //     names neither looks only at platform assignments. Nothing ever reaches another shop or business
-//   - nobody can hand out a key they do not hold themselves (canGrant)
+//   - nobody can hand out a key they do not hold themselves (ungrantable)
 
 export type AssignmentInput = {
     scope: "PLATFORM" | "BUSINESS" | "SHOP"
@@ -18,9 +20,7 @@ export type AssignmentInput = {
     businessId?: string | null
     status: "INVITED" | "ACTIVE" | "SUSPENDED"
     expiresAt: Date | null
-    grants: string[]
-    denies: string[]
-    role: { key: string; permissions: string[] }
+    role: { name: string; permissions: string[] }
 }
 
 export type CheckContext = {
@@ -31,10 +31,9 @@ export type CheckContext = {
 }
 
 export type Effective = {
-    /** true when a held "*" applies (SUPER_ADMIN) */
+    /** true when a held "*" applies ("everything") */
     all: boolean
     allow: ReadonlySet<string>
-    deny: ReadonlySet<string>
 }
 
 export function isLive(a: AssignmentInput, now: Date): boolean {
@@ -57,7 +56,6 @@ export function effective(
     now: Date = new Date()
 ): Effective {
     const allow = new Set<string>()
-    const deny = new Set<string>()
     let all = false
     for (const a of assignments) {
         if (!isLive(a, now) || !applies(a, ctx)) continue
@@ -65,14 +63,11 @@ export function effective(
             if (k === "*") all = true
             else allow.add(k)
         }
-        for (const k of a.grants) allow.add(k)
-        for (const k of a.denies) deny.add(k)
     }
-    return { all, allow, deny }
+    return { all, allow }
 }
 
 export function has(eff: Effective, key: string): boolean {
-    if (eff.deny.has(key)) return false
     return eff.all || eff.allow.has(key)
 }
 
@@ -95,15 +90,16 @@ export function listAllowed(eff: Effective, catalogue: readonly string[]): strin
  * Returns the keys they may not give.
  */
 export function ungrantable(actor: Effective, keys: readonly string[]): string[] {
-    return keys.filter((k) => !has(actor, k))
+    // handing out "*" needs "*"
+    return keys.filter((k) => (k === "*" ? !actor.all : !has(actor, k)))
 }
 
-/** Keys of the live roles that apply here, for labelling the actor in the audit log ("ADMIN", "MANAGER"). */
-export function roleKeys(
+/** Names of the live roles that apply here, for labelling the actor in the audit log ("Admin", "Manager"). */
+export function roleNames(
     assignments: readonly AssignmentInput[],
     ctx: CheckContext = {},
     now: Date = new Date()
 ): string[] {
-    const keys = assignments.filter((a) => isLive(a, now) && applies(a, ctx)).map((a) => a.role.key)
-    return [...new Set(keys)].sort()
+    const names = assignments.filter((a) => isLive(a, now) && applies(a, ctx)).map((a) => a.role.name)
+    return [...new Set(names)].sort()
 }

@@ -17,21 +17,28 @@ export default function BusinessRolesPage() {
 }
 
 async function RolesContent() {
-    await requireBusinessArea()
+    const { business } = await requireBusinessArea()
+    // The business's own roles, and the roles of each of its shops
     const roles = await prisma.accessRole.findMany({
-        where: { scope: { in: ["BUSINESS", "SHOP"] }, providerId: null, isSystem: true },
+        where: { OR: [{ businessId: business.id }, { provider: { businessId: business.id } }] },
         orderBy: [{ scope: "asc" }, { name: "asc" }],
-        select: { id: true, key: true, name: true, description: true, scope: true, permissions: true },
+        select: { id: true, name: true, description: true, scope: true, permissions: true, provider: { select: { id: true, businessName: true } } },
     })
+    const shops = [...new Map(roles.flatMap((r) => (r.scope === "SHOP" && r.provider ? [[r.provider.id, r.provider.businessName] as const] : []))).entries()]
+        .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]))
     const sections = [
-        { title: "Business roles", note: "Given to someone for the whole business. Their shop permissions work in every shop.", rows: roles.filter((r) => r.scope === "BUSINESS") },
-        { title: "Shop roles", note: "Given to someone for one shop.", rows: roles.filter((r) => r.scope === "SHOP") },
+        { title: "Business roles", note: "Owned by the business. Given for the whole business (their shop permissions then work in every shop) or for one of its shops.", rows: roles.filter((r) => r.scope === "BUSINESS") },
+        ...shops.map(([id, name]) => ({
+            title: `Roles of ${name}`,
+            note: "Owned by this shop. Can only be given in this shop.",
+            rows: roles.filter((r) => r.scope === "SHOP" && r.provider?.id === id),
+        })),
     ]
     return (
         <>
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Roles</h1>
-                <p className="mt-1 text-sm text-zinc-500">What each role can do. Roles are given from the Team page. Custom roles are planned.</p>
+                <p className="mt-1 text-sm text-zinc-500">What each role can do. Roles are given from the Team page. Creating and editing roles is coming next.</p>
             </div>
             {sections.map((s) => (
                 <section key={s.title} className="space-y-2">
@@ -40,7 +47,7 @@ async function RolesContent() {
                         <p className="text-xs text-zinc-500">{s.note}</p>
                     </div>
                     {s.rows.length === 0 ? (
-                        <p className="rounded-xl border border-zinc-200 bg-white px-5 py-6 text-center text-sm text-zinc-500">No roles found. Run the access sync.</p>
+                        <p className="rounded-xl border border-zinc-200 bg-white px-5 py-6 text-center text-sm text-zinc-500">No roles yet.</p>
                     ) : (
                         <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
                             {s.rows.map((r) => (

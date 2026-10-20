@@ -16,7 +16,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/actor"
 import type { BusinessPermission, PlatformPermission, ShopPermission } from "./catalogue"
-import { effective, has, roleKeys } from "./evaluate"
+import { effective, has, roleNames } from "./evaluate"
 import { loadAccess, type Access } from "./load"
 import { pickActiveShop } from "./active-shop"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
@@ -94,7 +94,7 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
         ok: true,
         userId: a.access.userId,
         access: a.access,
-        actor: actorFor(a.access, a.meta, roleKeys(a.access.assignments, {}, now).join(",")),
+        actor: actorFor(a.access, a.meta, roleNames(a.access.assignments, {}, now).join(", ")),
         can: (k) => has(eff, k),
     }
 }
@@ -143,7 +143,7 @@ export async function requireShop(
     const eff = effective(a.access.assignments, ctx, now)
     if (!has(eff, key)) return fail("Forbidden", 403)
 
-    const label = roleKeys(a.access.assignments, ctx, now).map((r) => `shop:${r}`).join(",")
+    const label = roleNames(a.access.assignments, ctx, now).map((r) => `shop:${r}`).join(", ")
     return {
         ok: true,
         userId: a.access.userId,
@@ -199,7 +199,7 @@ export async function requireBusiness(
     const eff = effective(a.access.assignments, ctx, now)
     if (!has(eff, key)) return fail("Forbidden", 403)
 
-    const label = roleKeys(a.access.assignments, ctx, now).map((r) => `business:${r}`).join(",")
+    const label = roleNames(a.access.assignments, ctx, now).map((r) => `business:${r}`).join(", ")
     return {
         ok: true,
         userId: a.access.userId,

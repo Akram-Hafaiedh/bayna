@@ -4,6 +4,7 @@ import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { notifications, notify } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
+import { findOwnerRole } from "@/lib/access/role-seed"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(
@@ -33,25 +34,24 @@ export async function POST(
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
         }
 
-        // The applicant becomes OWNER of the business (which reaches every shop of it). Permissions
-        // come from this assignment. A shop not yet linked to a business (before the businesses
-        // backfill) keeps the old shop-level owner.
+        // The applicant becomes an owner of the business (which reaches every shop of it): they get the
+        // business role that holds the ownership key (there is no special "Owner" role). A shop not
+        // linked to a business keeps a shop-level owner.
         const businessId = provider.businessId
         const ownerScope = businessId ? "BUSINESS" : "SHOP"
-        const ownerRole = await prisma.accessRole.findFirst({
-            where: { scope: ownerScope, providerId: null, key: "OWNER" },
-            select: { id: true },
-        })
+        const ownerRole = await prisma.$transaction((tx) =>
+            findOwnerRole(tx, businessId ? { businessId } : { providerId: id })
+        )
         if (!ownerRole) {
             return NextResponse.json(
-                { error: "Access roles are not set up. Run: npm run access:sync" },
+                { error: "This business has no role that can own it. Create one with the ownership permission, then approve again." },
                 { status: 500 }
             )
         }
         const alreadyOwner = await prisma.accessAssignment.findFirst({
             where: businessId
-                ? { userId: provider.userId, scope: "BUSINESS", businessId, roleId: ownerRole.id }
-                : { userId: provider.userId, scope: "SHOP", providerId: id, roleId: ownerRole.id },
+                ? { userId: provider.userId, scope: "BUSINESS", businessId } // already works in the business, whatever the role
+                : { userId: provider.userId, scope: "SHOP", providerId: id },
             select: { id: true },
         })
 

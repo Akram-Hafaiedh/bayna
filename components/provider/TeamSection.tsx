@@ -12,7 +12,7 @@ export type TeamMemberView = {
     id: string
     name: string | null
     email: string
-    roleKey: string
+    roleId: string
     roleName: string
     status: "ACTIVE" | "SUSPENDED" | "INVITED"
     accountClosed: boolean
@@ -25,7 +25,7 @@ export type TeamMemberView = {
 export type TeamInviteView = {
     id: string
     email: string
-    roleKey: string
+    roleId: string
     roleName: string
     state: "pending" | "expired"
     expiresAt: string
@@ -33,7 +33,7 @@ export type TeamInviteView = {
     manageable: boolean
 }
 
-export type RoleChoice = { key: string; name: string; description: string | null }
+export type RoleChoice = { id: string; name: string; description: string | null; /** holds the ownership key: never the default choice */ isOwner: boolean }
 
 export type TeamCan = { invite: boolean; setRole: boolean; suspend: boolean; remove: boolean }
 
@@ -74,7 +74,7 @@ export default function TeamSection({
     const confirm = useConfirm()
     const toast = useToast()
     const [email, setEmail] = useState("")
-    const [roleKey, setRoleKey] = useState(roles.find((r) => r.key !== "OWNER")?.key ?? roles[0]?.key ?? "")
+    const [roleId, setRoleId] = useState(roles.find((r) => !r.isOwner)?.id ?? roles[0]?.id ?? "")
     const [busy, setBusy] = useState<string | null>(null)
     const [error, setError] = useState("")
     const [link, setLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null)
@@ -86,7 +86,7 @@ export default function TeamSection({
             const res = await fetch("/api/provider/team/invites", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ scope, email: toEmail, roleKey: toRole, targetId }),
+                body: JSON.stringify({ scope, email: toEmail, roleId: toRole, targetId }),
             })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
@@ -137,15 +137,15 @@ export default function TeamSection({
     }
 
     async function changeRole(m: TeamMemberView, key: string) {
-        if (key === m.roleKey) return
-        const next = roles.find((r) => r.key === key)
+        if (key === m.roleId) return
+        const next = roles.find((r) => r.id === key)
         if (!next) return
         const ok = await confirm({
             title: `Change ${m.name || m.email} to ${next.name}?`,
             message: next.description ?? undefined,
             confirmLabel: "Change role",
         })
-        if (ok) await call(m.id, { method: "PATCH", body: JSON.stringify({ action: "set_role", roleKey: key }) }, "Role changed")
+        if (ok) await call(m.id, { method: "PATCH", body: JSON.stringify({ action: "set_role", roleId: key }) }, "Role changed")
     }
 
     async function suspendOrReinstate(m: TeamMemberView) {
@@ -209,7 +209,7 @@ export default function TeamSection({
                     className="mt-5 flex flex-wrap items-end gap-3"
                     onSubmit={(e) => {
                         e.preventDefault()
-                        void sendInvite(email, roleKey)
+                        void sendInvite(email, roleId)
                     }}
                 >
                     <label className="block">
@@ -226,9 +226,9 @@ export default function TeamSection({
                     </label>
                     <label className="block">
                         <span className="mb-1.5 block text-xs font-medium text-zinc-700">Role</span>
-                        <select className={inputClass} value={roleKey} onChange={(e) => setRoleKey(e.target.value)} disabled={busy === "invite"}>
+                        <select className={inputClass} value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy === "invite"}>
                             {roles.map((r) => (
-                                <option key={r.key} value={r.key}>{r.name}</option>
+                                <option key={r.id} value={r.id}>{r.name}</option>
                             ))}
                         </select>
                     </label>
@@ -241,8 +241,8 @@ export default function TeamSection({
                     </button>
                 </form>
             )}
-            {roles.find((r) => r.key === roleKey)?.description && can.invite && !hideInviteForm && (
-                <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.key === roleKey)?.description}</p>
+            {roles.find((r) => r.id === roleId)?.description && can.invite && !hideInviteForm && (
+                <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.id === roleId)?.description}</p>
             )}
             {error && (
                 <div role="alert" className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
@@ -290,13 +290,13 @@ export default function TeamSection({
                                     <select
                                         aria-label={`Role of ${m.name || m.email}`}
                                         className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-800"
-                                        value={roles.some((r) => r.key === m.roleKey) ? m.roleKey : ""}
+                                        value={roles.some((r) => r.id === m.roleId) ? m.roleId : ""}
                                         disabled={busy === m.id}
                                         onChange={(e) => void changeRole(m, e.target.value)}
                                     >
-                                        {!roles.some((r) => r.key === m.roleKey) && <option value="" disabled>{m.roleName}</option>}
+                                        {!roles.some((r) => r.id === m.roleId) && <option value="" disabled>{m.roleName}</option>}
                                         {roles.map((r) => (
-                                            <option key={r.key} value={r.key}>{r.name}</option>
+                                            <option key={r.id} value={r.id}>{r.name}</option>
                                         ))}
                                     </select>
                                 ) : (
@@ -334,7 +334,7 @@ export default function TeamSection({
                                 </div>
                                 {can.invite && i.manageable && (
                                     <div className="flex gap-2">
-                                        <button className={ghostBtn} disabled={busy === "invite"} onClick={() => void sendInvite(i.email, i.roleKey)}>
+                                        <button className={ghostBtn} disabled={busy === "invite"} onClick={() => void sendInvite(i.email, i.roleId)}>
                                             New link
                                         </button>
                                         <button className={ghostBtn} disabled={busy === i.id} onClick={() => void cancelInvite(i)}>

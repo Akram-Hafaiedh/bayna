@@ -64,8 +64,9 @@ export async function guardTeam(
 }
 
 /**
- * The "there is always an owner" rule for either level. A business needs a business-level owner.
- * A shop needs an owner too, and a live owner of its business counts: a branch does not need its own.
+ * The "there is always an owner" rule for either level (see owners.ts): a business needs a person
+ * whose business-level role holds the ownership key. A shop needs one too, and a business-level
+ * holder of its business counts: a branch does not need its own.
  */
 export async function assertTeamKeepsOwner(
     tx: Tx,
@@ -73,22 +74,9 @@ export async function assertTeamKeepsOwner(
     change: OwnerChange,
     now: Date = new Date()
 ): Promise<OwnerCheck> {
-    if (target.scope === "BUSINESS") return assertKeepsAnOwner(tx, { businessId: target.businessId }, change, now)
-
-    const own = await assertKeepsAnOwner(tx, { providerId: target.providerId }, change, now)
-    if (own.ok || !target.businessId) return own
-
-    const businessOwners = await tx.accessAssignment.count({
-        where: {
-            scope: "BUSINESS",
-            businessId: target.businessId,
-            status: "ACTIVE",
-            role: { key: "OWNER" },
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-            user: { status: "ACTIVE", deletedAt: null },
-        },
-    })
-    return businessOwners > 0 ? { ok: true } : own
+    return target.scope === "BUSINESS"
+        ? assertKeepsAnOwner(tx, { businessId: target.businessId }, change, now)
+        : assertKeepsAnOwner(tx, { providerId: target.providerId, businessId: target.businessId }, change, now)
 }
 
 /** The name shown in messages: the shop's name, or the business's. */

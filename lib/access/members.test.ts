@@ -13,9 +13,7 @@ function shopRole(userId: string, providerId: string, permissions: string[], ext
         providerId,
         status: "ACTIVE",
         expiresAt: null,
-        grants: [],
-        denies: [],
-        role: { key: "X", permissions },
+        role: { name: "X", permissions },
         ...extra,
     }
 }
@@ -30,12 +28,9 @@ test("only people who hold the permission in that shop are returned", () => {
     assert.deepEqual(membersWithPermission(rows, "s2", "product.price.edit", NOW), ["other"])
 })
 
-test("a grant adds the permission and a deny removes it", () => {
-    const rows = [
-        shopRole("granted", "s1", [], { grants: ["product.price.edit"] }),
-        shopRole("denied", "s1", ["product.price.edit"], { denies: ["product.price.edit"] }),
-    ]
-    assert.deepEqual(membersWithPermission(rows, "s1", "product.price.edit", NOW), ["granted"])
+test("a wildcard role counts, and a role without the key does not", () => {
+    const rows = [shopRole("owner", "s1", ["*"]), shopRole("viewer", "s1", ["product.listing.view"])]
+    assert.deepEqual(membersWithPermission(rows, "s1", "product.price.edit", NOW), ["owner"])
 })
 
 test("suspended and expired assignments do not count", () => {
@@ -60,9 +55,7 @@ function businessRole(userId: string, businessId: string, permissions: string[],
         businessId,
         status: "ACTIVE",
         expiresAt: null,
-        grants: [],
-        denies: [],
-        role: { key: "X", permissions },
+        role: { name: "X", permissions },
         ...extra,
     }
 }

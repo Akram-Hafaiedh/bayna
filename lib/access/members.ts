@@ -54,9 +54,7 @@ export async function loadShopMembersWith(
             businessId: true,
             status: true,
             expiresAt: true,
-            grants: true,
-            denies: true,
-            role: { select: { key: true, permissions: true } },
+            role: { select: { name: true, permissions: true } },
         },
     })
     for (const id of providerIds) {

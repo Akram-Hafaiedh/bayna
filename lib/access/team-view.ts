@@ -4,6 +4,7 @@
 // the Business Team page.
 import type { RoleChoice, TeamInviteView, TeamMemberView } from "@/components/provider/TeamSection"
 import type { TeamInvite, TeamMember } from "./team"
+import { OWNERSHIP_KEY, holdsKey } from "./catalogue"
 import { assignableRoles, missingKeys } from "./team-rules"
 
 type Can = (key: string) => boolean
@@ -14,7 +15,7 @@ export function toMemberView(m: TeamMember, can: Can, userId: string): TeamMembe
         id: m.id,
         name: m.name,
         email: m.email,
-        roleKey: m.roleKey,
+        roleId: m.roleId,
         roleName: m.roleName,
         status: m.status,
         accountClosed: m.accountClosed,
@@ -25,12 +26,12 @@ export function toMemberView(m: TeamMember, can: Can, userId: string): TeamMembe
     }
 }
 
-export function toInviteView(i: TeamInvite, roles: readonly { key: string; permissions: readonly string[] }[], can: Can): TeamInviteView {
-    const role = roles.find((r) => r.key === i.roleKey)
+export function toInviteView(i: TeamInvite, roles: readonly { id: string; permissions: readonly string[] }[], can: Can): TeamInviteView {
+    const role = roles.find((r) => r.id === i.roleId)
     return {
         id: i.id,
         email: i.email,
-        roleKey: i.roleKey,
+        roleId: i.roleId,
         roleName: i.roleName,
         state: i.state === "expired" ? "expired" : "pending",
         expiresAt: i.expiresAt.toISOString(),
@@ -40,8 +41,15 @@ export function toInviteView(i: TeamInvite, roles: readonly { key: string; permi
 }
 
 export function toRoleChoices(
-    roles: readonly { key: string; name: string; description: string | null; permissions: readonly string[] }[],
-    can: Can
+    roles: readonly { id: string; label: string; description: string | null; permissions: readonly string[] }[],
+    can: Can,
+    level: "BUSINESS" | "SHOP"
 ): RoleChoice[] {
-    return assignableRoles(roles, can).map((r) => ({ key: r.key, name: r.name, description: r.description }))
+    return assignableRoles(roles, can).map((r) => ({
+        id: r.id,
+        name: r.label,
+        description: r.description,
+        // an owner-level role is never the default choice in the invite form
+        isOwner: holdsKey(r.permissions, OWNERSHIP_KEY[level]),
+    }))
 }

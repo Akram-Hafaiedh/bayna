@@ -4,56 +4,53 @@
 import { test } from "vitest"
 import assert from "node:assert/strict"
 import { ALL_BUSINESS_KEYS, ALL_SHOP_KEYS, isKnownKey } from "./catalogue"
-import { SYSTEM_ROLES, validateSystemRoles } from "./roles"
-import { can, roleKeys, type AssignmentInput } from "./evaluate"
+import { ROLE_TEMPLATES, validateTemplates } from "./role-templates"
+import { can, roleNames, type AssignmentInput } from "./evaluate"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
 
-const role = (scope: "BUSINESS" | "SHOP", key: string) => {
-    const r = SYSTEM_ROLES.find((x) => x.scope === scope && x.key === key)
-    if (!r) throw new Error(`role ${scope}:${key} is not defined`)
+const role = (scope: "BUSINESS" | "SHOP", id: string) => {
+    const r = ROLE_TEMPLATES.find((x) => x.scope === scope && x.id === id)
+    if (!r) throw new Error(`role ${scope}:${id} is not defined`)
     return r
 }
 
-const business = (roleKey: string, businessId: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => ({
+const business = (roleId: string, businessId: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => ({
     scope: "BUSINESS",
     providerId: null,
     businessId,
     status: "ACTIVE",
     expiresAt: null,
-    grants: [],
-    denies: [],
-    role: { key: roleKey, permissions: role("BUSINESS", roleKey).permissions },
+    role: { name: role("BUSINESS", roleId).name, permissions: role("BUSINESS", roleId).permissions },
     ...extra,
 })
 
-const shop = (roleKey: string, providerId: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => ({
+const shop = (roleId: string, providerId: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => ({
     scope: "SHOP",
     providerId,
     businessId: null,
     status: "ACTIVE",
     expiresAt: null,
-    grants: [],
-    denies: [],
-    role: { key: roleKey, permissions: role("SHOP", roleKey).permissions },
+    role: { name: role("SHOP", roleId).name, permissions: role("SHOP", roleId).permissions },
     ...extra,
 })
 
 const NOW = new Date("2026-10-18T12:00:00Z")
 
-test("business roles are valid and hold business keys plus shop keys", () => {
-    assert.deepEqual(validateSystemRoles(), [])
-    const owner = role("BUSINESS", "OWNER").permissions
-    assert.ok(owner.includes("business.profile.edit_legal"))
-    assert.ok(owner.includes("product.price.edit"))
-    assert.equal(owner.length, ALL_BUSINESS_KEYS.length)
+test("business roles are valid; the owner holds everything, HR holds business and shop team keys", () => {
+    assert.deepEqual(validateTemplates(), [])
+    assert.deepEqual(role("BUSINESS", "OWNER").permissions, ["*"])
+    const hr = role("BUSINESS", "HR").permissions
+    assert.ok(hr.includes("business.team.invite"))
+    assert.ok(hr.includes("team.member.invite")) // reaches the teams of every shop
+    assert.ok(hr.every((k) => ALL_BUSINESS_KEYS.includes(k)))
     assert.equal(isKnownKey("BUSINESS", "business.team.invite"), true)
     assert.equal(isKnownKey("SHOP", "business.team.invite"), false)
-    assert.equal(isKnownKey("BUSINESS", "*"), false)
+    assert.equal(isKnownKey("BUSINESS", "*"), true)
 })
 
 test("business keys never leak into shop roles", () => {
-    for (const r of SYSTEM_ROLES.filter((x) => x.scope === "SHOP")) {
-        assert.ok(!r.permissions.some((k) => k.startsWith("business.")), r.key)
+    for (const r of ROLE_TEMPLATES.filter((x) => x.scope === "SHOP")) {
+        assert.ok(!r.permissions.some((k) => k.startsWith("business.")), r.id)
     }
     assert.ok(!ALL_SHOP_KEYS.some((k) => k.startsWith("business.")))
 })
@@ -98,10 +95,31 @@ test("shop-level and business-level assignments add up inside the shop", () => {
     assert.equal(can(list, "product.stock.edit", { providerId: "s2", businessId: "b1" }, NOW), false)
 })
 
-test("a deny on a business assignment applies inside its shops", () => {
-    const list = [business("OWNER", "b1", { denies: ["product.price.edit"] })]
-    assert.equal(can(list, "product.price.edit", { providerId: "s1", businessId: "b1" }, NOW), false)
-    assert.equal(can(list, "product.stock.edit", { providerId: "s1", businessId: "b1" }, NOW), true)
+test("an HR role at business level reaches the teams of every shop but not their products", () => {
+    const list = [business("HR", "b1")]
+    for (const shopId of ["s1", "s2"]) {
+        const ctx = { providerId: shopId, businessId: "b1" }
+        assert.equal(can(list, "team.member.invite", ctx, NOW), true)
+        assert.equal(can(list, "product.price.edit", ctx, NOW), false)
+        assert.equal(can(list, "team.member.transfer_ownership", ctx, NOW), false)
+    }
+    assert.equal(can(list, "business.team.invite", { businessId: "b1" }, NOW), true)
+})
+
+test("an HR role in one shop (a shop role) reaches that shop only, not the business", () => {
+    const list = [shop("HR", "s1")]
+    assert.equal(can(list, "team.member.invite", { providerId: "s1", businessId: "b1" }, NOW), true)
+    assert.equal(can(list, "team.member.invite", { providerId: "s2", businessId: "b1" }, NOW), false)
+    assert.equal(can(list, "business.team.view", { businessId: "b1" }, NOW), false)
+})
+
+test("a business role given for one shop of the business works there only", () => {
+    // the assignment targets shop s1, the role is a business-owned one (here: Operations)
+    const ops = role("BUSINESS", "OPERATIONS")
+    const a: AssignmentInput = { scope: "SHOP", providerId: "s1", businessId: null, status: "ACTIVE", expiresAt: null, role: { name: ops.name, permissions: ops.permissions } }
+    assert.equal(can([a], "product.price.edit", { providerId: "s1", businessId: "b1" }, NOW), true)
+    assert.equal(can([a], "product.price.edit", { providerId: "s2", businessId: "b1" }, NOW), false)
+    assert.equal(can([a], "business.profile.view", { businessId: "b1" }, NOW), false)
 })
 
 test("suspended or expired business assignments grant nothing", () => {
@@ -110,9 +128,9 @@ test("suspended or expired business assignments grant nothing", () => {
     assert.equal(can([business("OWNER", "b1", { expiresAt: new Date("2026-10-01T00:00:00Z") })], "product.price.edit", ctx, NOW), false)
 })
 
-test("roleKeys labels the actor with the roles that apply in the shop", () => {
+test("roleNames labels the actor with the roles that apply in the shop", () => {
     const list = [business("OWNER", "b1"), shop("MANAGER", "s1"), business("OWNER", "b2")]
-    assert.deepEqual(roleKeys(list, { providerId: "s1", businessId: "b1" }, NOW), ["MANAGER", "OWNER"])
+    assert.deepEqual(roleNames(list, { providerId: "s1", businessId: "b1" }, NOW), ["Business owner", "Manager"])
 })
 
 test("reachableShopIds: own shops plus every shop of each business owned", () => {

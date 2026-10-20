@@ -59,6 +59,7 @@ export const BUSINESS_PERMISSIONS = {
     "business.profile": ["view", "edit", "edit_legal"],
     "business.shop": ["create"],
     "business.team": ["view", "invite", "update_role", "suspend", "remove", "transfer_ownership"],
+    "business.role": ["view", "manage"],
 } as const
 
 export const PLATFORM_PERMISSIONS = {
@@ -134,9 +135,27 @@ export const ALL_BUSINESS_KEYS: string[] = [...ALL_BUSINESS_ONLY_KEYS, ...ALL_SH
 export const ALL_PLATFORM_KEYS = flatten(PLATFORM_PERMISSIONS) as PlatformPermission[]
 export const ALL_CLIENT_KEYS = flatten(CLIENT_PERMISSIONS) as ClientPermission[]
 
-/** Keys a role of this scope may hold. "*" is allowed only on SUPER_ADMIN (checked in roles.ts). */
+/**
+ * The key that makes someone an owner of a level. There is no special "Owner" role: the rule "there
+ * is always an owner" means "someone always holds this key" (a role with "*" holds it too).
+ * See owners.ts.
+ */
+export const OWNERSHIP_KEY = {
+    BUSINESS: "business.team.transfer_ownership",
+    SHOP: "team.member.transfer_ownership",
+} as const
+
+/** Does this list of keys hold `key`? ("*" holds everything.) */
+export function holdsKey(permissions: readonly string[], key: string): boolean {
+    return permissions.includes("*") || permissions.includes(key)
+}
+
+/**
+ * Keys a role of this scope may hold. "*" ("everything, now and later") is an ordinary choice for any
+ * role: it is bounded by the rule that nobody hands out what they do not hold themselves.
+ */
 export function isKnownKey(scope: "PLATFORM" | "BUSINESS" | "SHOP", key: string): boolean {
-    if (key === "*") return scope === "PLATFORM"
+    if (key === "*") return true
     const keys: readonly string[] = scope === "PLATFORM" ? ALL_PLATFORM_KEYS : scope === "BUSINESS" ? ALL_BUSINESS_KEYS : ALL_SHOP_KEYS
     return keys.includes(key)
 }

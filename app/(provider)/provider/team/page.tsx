@@ -63,7 +63,7 @@ async function TeamContent() {
     const [members, invites, roles, throughBusiness] = await Promise.all([
         loadMembers({ scope: "SHOP", providerId: shop.id }),
         can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", providerId: shop.id }) : [],
-        loadRoleOptions("SHOP"),
+        loadRoleOptions({ scope: "SHOP", providerId: shop.id, businessId: business?.id ?? null }),
         business ? loadMembers({ scope: "BUSINESS", businessId: business.id }) : [],
     ])
 
@@ -83,7 +83,7 @@ async function TeamContent() {
                 subtitle="People who work in this shop only. Pick the shop in the menu at the top left to see another one."
                 members={members.map((m) => toMemberView(m, can, access.userId))}
                 invites={invites.map((i) => toInviteView(i, roles, can))}
-                roles={toRoleChoices(roles, can)}
+                roles={toRoleChoices(roles, can, "SHOP")}
                 can={{
                     invite: can(teamPermission("SHOP", "invite")),
                     setRole: can(teamPermission("SHOP", "set_role")),

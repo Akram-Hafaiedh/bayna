@@ -6,28 +6,29 @@ import {
     ALL_CLIENT_KEYS,
     ALL_PLATFORM_KEYS,
     ALL_SHOP_KEYS,
+    OWNERSHIP_KEY,
+    holdsKey,
     isKnownKey,
 } from "./catalogue"
 import { expandPatterns, matchesPattern } from "./match"
-import { SYSTEM_ROLES, validateSystemRoles } from "./roles"
+import { ROLE_TEMPLATES, validateTemplates } from "./role-templates"
 import { AssignmentInput, can, effective, has, listAllowed, ungrantable } from "./evaluate"
 
-const role = (key: string) => {
-    const r = SYSTEM_ROLES.find((x) => x.key === key)
-    if (!r) throw new Error(`role ${key} is not defined`)
+// Test roles come from the default templates; ids are the template ids ("OWNER" is the shop owner here)
+const role = (id: string) => {
+    const r = ROLE_TEMPLATES.find((x) => x.id === id && (x.scope !== "BUSINESS" || id !== "OWNER"))
+    if (!r) throw new Error(`role ${id} is not defined`)
     return r
 }
 
-const assign = (roleKey: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => {
-    const r = role(roleKey)
+const assign = (roleId: string, extra: Partial<AssignmentInput> = {}): AssignmentInput => {
+    const r = role(roleId)
     return {
         scope: r.scope,
         providerId: r.scope === "SHOP" ? "shopA" : null,
         status: "ACTIVE",
         expiresAt: null,
-        grants: [],
-        denies: [],
-        role: { key: r.key, permissions: r.permissions },
+        role: { name: r.name, permissions: r.permissions },
         ...extra,
     }
 }
@@ -52,9 +53,10 @@ test("the catalogue is wide: every module from the design is present", () => {
     }
 })
 
-test("isKnownKey accepts * only for platform roles", () => {
+test("isKnownKey accepts * for any role: it is an ordinary choice, bounded by what the giver holds", () => {
     assert.equal(isKnownKey("PLATFORM", "*"), true)
-    assert.equal(isKnownKey("SHOP", "*"), false)
+    assert.equal(isKnownKey("SHOP", "*"), true)
+    assert.equal(isKnownKey("BUSINESS", "*"), true)
     assert.equal(isKnownKey("SHOP", "product.price.edit"), true)
     assert.equal(isKnownKey("SHOP", "user.account.view"), false)
 })
@@ -78,17 +80,35 @@ test("expandPatterns applies excludes", () => {
     assert.deepEqual(out, ["x.a.view"])
 })
 
-// ---- system roles -----------------------------------------------------------------------------
+// ---- default role templates ---------------------------------------------------------------------
 
-test("system role definitions are valid", () => {
-    assert.deepEqual(validateSystemRoles(), [])
+test("role templates are valid", () => {
+    assert.deepEqual(validateTemplates(), [])
 })
 
-test("only SUPER_ADMIN stores the wildcard; every other role stores explicit keys", () => {
-    for (const r of SYSTEM_ROLES) {
-        if (r.key === "SUPER_ADMIN") assert.deepEqual(r.permissions, ["*"])
-        else assert.ok(!r.permissions.includes("*"), r.key)
+test('"everything" roles store "*" so they keep covering permissions added later; the rest store explicit keys', () => {
+    const everything = ROLE_TEMPLATES.filter((r) => r.permissions.includes("*")).map((r) => `${r.scope}:${r.id}`).sort()
+    assert.deepEqual(everything, ["BUSINESS:OWNER", "PLATFORM:SUPER_ADMIN", "SHOP:OWNER"])
+    for (const r of ROLE_TEMPLATES) {
+        if (!r.permissions.includes("*")) assert.ok(r.permissions.length > 0, r.id)
     }
+})
+
+test("every level has a default role that can own it", () => {
+    for (const [scope, key] of [["BUSINESS", OWNERSHIP_KEY.BUSINESS], ["SHOP", OWNERSHIP_KEY.SHOP]] as const) {
+        const owners = ROLE_TEMPLATES.filter((r) => r.scope === scope && holdsKey(r.permissions, key))
+        assert.ok(owners.length >= 1, scope)
+    }
+})
+
+test("HR roles manage people but cannot transfer ownership; shop HR has no product access", () => {
+    const shopHr = ROLE_TEMPLATES.find((r) => r.scope === "SHOP" && r.id === "HR")!.permissions
+    assert.ok(shopHr.includes("team.member.invite"))
+    assert.ok(!shopHr.includes("team.member.transfer_ownership"))
+    assert.ok(!shopHr.some((k) => k.startsWith("product.")))
+    const bizHr = ROLE_TEMPLATES.find((r) => r.scope === "BUSINESS" && r.id === "HR")!.permissions
+    assert.ok(bizHr.includes("business.team.invite"))
+    assert.ok(!bizHr.includes("business.team.transfer_ownership"))
 })
 
 test("ADMIN holds everything except access.*, write impersonation and system jobs", () => {
@@ -101,8 +121,8 @@ test("ADMIN holds everything except access.*, write impersonation and system job
 })
 
 test("shop roles: price editing belongs to owner and manager only", () => {
-    const holders = SYSTEM_ROLES.filter((r) => r.scope === "SHOP" && r.permissions.includes("product.price.edit"))
-    assert.deepEqual(holders.map((r) => r.key).sort(), ["MANAGER", "OWNER"])
+    const holders = ROLE_TEMPLATES.filter((r) => r.scope === "SHOP" && (r.permissions.includes("product.price.edit") || r.permissions.includes("*")))
+    assert.deepEqual(holders.map((r) => r.id).sort(), ["MANAGER", "OWNER"])
 })
 
 test("MANAGER cannot transfer ownership, manage billing, edit legal details or touch integrations", () => {
@@ -150,25 +170,28 @@ test("SUPER_ADMIN can do anything on the platform, but not inside a shop it has 
     assert.equal(can([sa], "product.listing.create", { providerId: "shopA" }), false)
 })
 
-test("grants add keys and denies remove them; deny wins over role and grants", () => {
-    const clerk = assign("INVENTORY_CLERK", { grants: ["product.price.edit"] })
-    assert.equal(can([clerk], "product.price.edit", { providerId: "shopA" }), true)
-    const denied = assign("INVENTORY_CLERK", { grants: ["product.price.edit"], denies: ["product.price.edit", "product.listing.edit"] })
-    assert.equal(can([denied], "product.price.edit", { providerId: "shopA" }), false)
-    assert.equal(can([denied], "product.listing.edit", { providerId: "shopA" }), false)
-    assert.equal(can([denied], "product.listing.create", { providerId: "shopA" }), true)
+test("access is the union of the person's roles: two roles add up, nothing is taken away", () => {
+    const clerk = assign("INVENTORY_CLERK")
+    assert.equal(can([clerk], "product.price.edit", { providerId: "shopA" }), false)
+    const both = [clerk, assign("MANAGER")]
+    assert.equal(can(both, "product.price.edit", { providerId: "shopA" }), true, "the manager role adds price editing")
+    assert.equal(can(both, "product.listing.create", { providerId: "shopA" }), true)
 })
 
-test("a deny beats the SUPER_ADMIN wildcard", () => {
-    const sa = assign("SUPER_ADMIN", { denies: ["user.account.delete"] })
-    assert.equal(can([sa], "user.account.delete"), false)
-    assert.equal(can([sa], "user.account.view"), true)
+test("a wildcard role holds everything at its own level and nothing outside it", () => {
+    const owner = assign("OWNER")
+    assert.equal(can([owner], "anything.at.all", { providerId: "shopA" }), true)
+    assert.equal(can([owner], "anything.at.all", { providerId: "shopB" }), false)
+    assert.equal(can([owner], "anything.at.all"), false)
 })
 
-test("a deny on one assignment applies even when another assignment grants the key", () => {
-    const a = assign("MANAGER", { denies: ["product.price.edit"] })
-    const b = assign("OWNER")
-    assert.equal(can([a, b], "product.price.edit", { providerId: "shopA" }), false)
+test("every role is evaluated the same way: a custom role is just a name and keys", () => {
+    const custom: AssignmentInput = {
+        scope: "SHOP", providerId: "shopA", status: "ACTIVE", expiresAt: null,
+        role: { name: "Night shift", permissions: ["order.request.view_all", "order.request.update_status"] },
+    }
+    assert.equal(can([custom], "order.request.update_status", { providerId: "shopA" }), true)
+    assert.equal(can([custom], "order.request.refund", { providerId: "shopA" }), false)
 })
 
 test("suspended, invited and expired assignments grant nothing", () => {
@@ -187,6 +210,12 @@ test("a person with two shops gets each shop's own permissions", () => {
     assert.equal(can([a, b], "product.listing.create", { providerId: "shopA" }), true)
     assert.equal(can([a, b], "product.listing.create", { providerId: "shopB" }), false)
     assert.equal(can([a, b], "product.listing.view", { providerId: "shopB" }), true)
+})
+
+test("handing out the wildcard needs the wildcard", () => {
+    const manager = effective([assign("MANAGER")], { providerId: "shopA" })
+    assert.deepEqual(ungrantable(manager, ["*"]), ["*"])
+    assert.deepEqual(ungrantable(effective([assign("OWNER")], { providerId: "shopA" }), ["*"]), [])
 })
 
 test("no privilege escalation: ungrantable lists the keys the actor does not hold", () => {
