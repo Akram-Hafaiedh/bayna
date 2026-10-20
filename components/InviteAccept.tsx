@@ -5,7 +5,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { useToast } from "@/components/ui/Toast"
 
 export default function InviteAccept({
@@ -28,10 +28,10 @@ export default function InviteAccept({
     if (!signedInEmail) {
         return (
             <div className="flex flex-wrap gap-3 pt-2">
-                <Link href={`/login?next=${encodeURIComponent(back)}`} className={`${btn} bg-zinc-900 text-white hover:bg-zinc-800`}>
+                <Link href={`/login?next=${encodeURIComponent(back)}&email=${encodeURIComponent(inviteEmail)}`} className={`${btn} bg-zinc-900 text-white hover:bg-zinc-800`}>
                     Sign in
                 </Link>
-                <Link href={`/register?next=${encodeURIComponent(back)}`} className={`${btn} border border-zinc-300 text-zinc-800 hover:bg-zinc-50`}>
+                <Link href={`/register?next=${encodeURIComponent(back)}&email=${encodeURIComponent(inviteEmail)}`} className={`${btn} border border-zinc-300 text-zinc-800 hover:bg-zinc-50`}>
                     Create an account
                 </Link>
                 <p className="w-full text-xs text-zinc-500">Use the address {inviteEmail}: the invitation only works for it.</p>
@@ -41,8 +41,16 @@ export default function InviteAccept({
 
     if (signedInEmail !== inviteEmail) {
         return (
-            <div className="rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
-                You are signed in as {signedInEmail}, but this invitation was sent to {inviteEmail}. Sign out and sign in with that address.
+            <div className="space-y-3">
+                <div className="rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+                    You are signed in as {signedInEmail}, but this invitation was sent to {inviteEmail}.
+                </div>
+                <button
+                    onClick={() => void signOut({ callbackUrl: `/login?next=${encodeURIComponent(back)}&email=${encodeURIComponent(inviteEmail)}` })}
+                    className={`${btn} bg-zinc-900 text-white hover:bg-zinc-800`}
+                >
+                    Sign out and use {inviteEmail}
+                </button>
             </div>
         )
     }

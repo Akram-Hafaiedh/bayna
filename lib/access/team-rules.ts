@@ -6,7 +6,7 @@
 // A manager cannot make an owner, and cannot touch one. The "last owner" rule is separate
 // (owners.ts) and is applied by the routes after these checks.
 import { fail, ok, type Parsed } from "@/lib/parse"
-import { parseEmail } from "@/lib/email-input"
+import { normalizeEmail, parseEmail } from "@/lib/email-input"
 import type { BusinessPermission, ShopPermission } from "./catalogue"
 
 export type TeamScope = "SHOP" | "BUSINESS"
@@ -123,4 +123,32 @@ export function describeAction(action: MemberAction["type"]): string {
         case "reinstate": return "reinstated"
         case "remove": return "removed"
     }
+}
+
+/**
+ * Who an invitation may go to. Run on the server before a link is made.
+ * `member`: the invited person's assignment at the level being invited to, if any.
+ * `viaBusiness`: for a shop invitation, whether they already reach this shop through a live business-level role.
+ */
+export type InviteeCheck = { ok: true } | { ok: false; error: string }
+export function checkInvitee(input: {
+    inviteeEmail: string
+    actorEmail: string | null
+    scope: TeamScope
+    member: "ACTIVE" | "SUSPENDED" | null
+    viaBusiness: boolean
+}): InviteeCheck {
+    if (input.actorEmail && normalizeEmail(input.actorEmail) === normalizeEmail(input.inviteeEmail)) {
+        return { ok: false, error: "That is your own email address. You are already on this team." }
+    }
+    if (input.member === "SUSPENDED") {
+        return { ok: false, error: "That person is already on the team but suspended. Reinstate them instead." }
+    }
+    if (input.member === "ACTIVE") {
+        return { ok: false, error: "That person is already on the team. Change their role from the team list." }
+    }
+    if (input.scope === "SHOP" && input.viaBusiness) {
+        return { ok: false, error: "That person already works here through the business. Change their access from the Business team." }
+    }
+    return { ok: true }
 }

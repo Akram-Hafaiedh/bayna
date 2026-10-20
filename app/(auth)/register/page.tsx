@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { safeNextPath } from "@/lib/parse"
+import { signIn } from "next-auth/react"
+import { readAuthReturn } from "@/lib/auth-return"
 
 export default function RegisterPage() {
     const router = useRouter()
@@ -14,6 +15,12 @@ export default function RegisterPage() {
     })
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
+
+    // An invitation link brings the address it was sent to
+    useEffect(() => {
+        const { email } = readAuthReturn(window.location.search)
+        if (email) setForm((f) => (f.email ? f : { ...f, email }))
+    }, [])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -34,10 +41,20 @@ export default function RegisterPage() {
                 return
             }
 
-            // After successful registration → go to login
-            // Keep going to where they were headed (for example an invitation link)
-            const next = safeNextPath(new URLSearchParams(window.location.search).get("next"))
-            router.push(next ? `/login?next=${encodeURIComponent(next)}` : "/login")
+            // Coming from somewhere (for example an invitation link): sign them in straight away and send
+            // them back there. Otherwise, to the login page as before.
+            const { next } = readAuthReturn(window.location.search)
+            if (next) {
+                const result = await signIn("credentials", { email: form.email, password: form.password, redirect: false })
+                if (!result?.error) {
+                    router.push(next)
+                    router.refresh()
+                    return
+                }
+                router.push(`/login?next=${encodeURIComponent(next)}`)
+                return
+            }
+            router.push("/login")
         } catch {
             setError("Something went wrong")
         } finally {

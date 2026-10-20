@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { guardTeam, targetLabel, TeamError } from "@/lib/access/team-actions"
 import { hashInviteToken, inviteExpiry, newInviteToken } from "@/lib/access/invite-token"
-import { missingKeys, parseInviteInput } from "@/lib/access/team-rules"
+import { checkInvitee, missingKeys, parseInviteInput } from "@/lib/access/team-rules"
 
 export async function POST(req: Request) {
     try {
@@ -40,20 +40,36 @@ export async function POST(req: Request) {
         const target = scope === "SHOP" ? { scope, providerId: guard.providerId! } : { scope, businessId: guard.businessId! }
         const targetWhere = scope === "SHOP" ? { providerId: guard.providerId! } : { businessId: guard.businessId! }
 
-        // Already working here? (emails are matched without regard to case, old accounts may be mixed-case)
-        const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } })
+        // Who is this for? Emails are matched without regard to case (old accounts may be mixed-case).
+        // Not your own address, not someone already on this team, and for a shop not someone who already
+        // reaches it through the business.
+        const [actorUser, existing] = await Promise.all([
+            prisma.user.findUnique({ where: { id: guard.userId }, select: { email: true } }),
+            prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } }),
+        ])
+        let member: "ACTIVE" | "SUSPENDED" | null = null
+        let viaBusiness = false
         if (existing) {
-            const member = await prisma.accessAssignment.findFirst({
+            const row = await prisma.accessAssignment.findFirst({
                 where: { userId: existing.id, scope, ...targetWhere },
                 select: { status: true },
             })
-            if (member) {
-                const msg = member.status === "SUSPENDED"
-                    ? "That person is already on the team but suspended. Reinstate them instead."
-                    : "That person is already on the team. Change their role from the team list."
-                return NextResponse.json({ error: msg }, { status: 400 })
+            if (row) member = row.status === "SUSPENDED" ? "SUSPENDED" : "ACTIVE"
+            if (!row && scope === "SHOP" && guard.businessId) {
+                viaBusiness =
+                    (await prisma.accessAssignment.count({
+                        where: {
+                            userId: existing.id,
+                            scope: "BUSINESS",
+                            businessId: guard.businessId,
+                            status: "ACTIVE",
+                            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+                        },
+                    })) > 0
             }
         }
+        const who = checkInvitee({ inviteeEmail: email, actorEmail: actorUser?.email ?? null, scope, member, viaBusiness })
+        if (!who.ok) return NextResponse.json({ error: who.error }, { status: 400 })
 
         const token = newInviteToken()
         const now = new Date()

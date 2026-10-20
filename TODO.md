@@ -525,6 +525,13 @@ One theme: who belongs to a shop and what a shop may do. All of it rests on `Acc
 - [x] The "Create shop" form asks which business the shop belongs to ("Add to X" or "A separate business"); a first application has no choice to make
 - [x] Team page (business or shop level): built in R2c below
 
+**Decision 10 (19 Oct 2026): split Provider and Shop.** Today the word Provider means the shop (table `Provider`, route `/provider`) and the company above it is `Business`. Target: **Provider = the company**, **Shop = the outlet**, each with its own table.
+- **Provider** (the company; today's `Business`, renamed) holds: name, legal name, legal form, tax number, tax settings, registry number, billing email / phone / address, logo, website, industry, currency (ISO), language, order number sequence, invoice number sequence, invoice language, payment terms (days), delivery terms, and later its plan (R2d)
+- **Shop** (today's `Provider`, renamed) holds what is specific to an outlet: name, address and map pin, phone, opening hours, products, its team
+- User role `PROVIDER` (which dashboard opens) and the people-level access model do not change
+- Routes: shop pages move `/provider/*` → `/shop/*`; the company area moves `/business/*` → `/provider/*`
+- **R2e plan (own release, nothing built yet):** (1) migration by hand, in one transaction: rename tables (`Provider` → `Shop`, `Business` → `Provider`), rename the columns that point at them (`providerId` → `shopId`, `businessId` → `providerId`) on every table that has them (Product, AccessAssignment, AccessInvite, ActivityLog and the rest), keep every id, then add the new company columns; (2) mechanical rename of about 70 + 54 files by script, then `tsc`; (3) permission keys `business.*` → `provider.*` and `npm run access:sync`; (4) company profile form with the new fields; (5) redirects from the old URLs. Risk: the two names swap, so it must be reviewed as SQL before it runs, on a copy of the database first
+
 **R2c, team and invitations (built 18 Oct 2026, verified in use)**
 - [x] Schema: `AccessInvite` (shop or business scope, role, email, hashed token, expiry, status PENDING / ACCEPTED / REVOKED) + enum `InviteStatus`; audit line `SELECT audit_attach('AccessInvite', '', 'tokenHash');` goes in the migration by hand
 - [x] **Copy-link invites** (decision: email later, R2b): the link is shown once, only its hash is stored; "New link" replaces the old one for the same person; valid 7 days; bound to one email address (whoever opens it must be signed in with that address); opens `/invite/[token]`, which sends people to sign in or register and back (`?next=`, only paths inside the site). The accept checks are a pure, tested function (`lib/access/invite-accept.ts`); single use is an atomic claim in the route
@@ -539,14 +546,17 @@ One theme: who belongs to a shop and what a shop may do. All of it rests on `Acc
 
 **R2c-2, Business area (built 18 Oct 2026, being verified)**
 Decision 9 (18 Oct 2026): the Business is part of the **account**, not of the shop. It does not go in the shop sub-nav or the shop switcher (the switcher stays about shops only). Plan and billing (R2d) will live in the same place. Security (2FA, sessions, password) stays **personal**: it belongs to the person, not the business. Later a business may require 2FA for its team (R6).
-- [x] **Business area** at `/business` with its own sub-nav: Profile (name, legal, billing), Shops, Team; "Back to my shop" link; the header names the business. Plan and billing joins in R2d. No schema change
+- [x] **Business area** at `/business` with its own tabs: Profile, Subscription, Team, Shops, Activity, Roles (the active tab is highlighted); the header names the business. No schema change
 - [x] **Business picker** for people who belong to several businesses: cookie `bayna_business`, never trusted (checked against live business-level roles on every request, `lib/access/active-business.ts`), `POST /api/me/active-business`. The guard (`requireBusiness`) and the pages use the same choice; without one it is the business of the shop you are working in
 - [x] **Entry in the account menu**: "Business" shows only for people who hold a business-level role (`GET /api/me/businesses`); a shop-only manager never sees it. The "Business" link is gone from the provider sub-nav and `/provider/business` redirects to `/business/profile`; `proxy.ts` gates `/business` like `/provider`
 - [x] **Business → Shops:** the business's shops with status, "Open shop" (switches the active shop) and "Create shop" (needs `business.shop.create`)
 - [x] **Business → Team:** "Everyone" overview (each person once, with their business role and role in each shop), the business team, and a collapsible team per live shop; owners manage shop-level people from here too. Invites name their target (shop or business), so they work from this page
 - [x] **"Where I work"** on the account page (businesses, shops, role in each)
 - [x] Tests: invite token (hash, expiry, state), accept rules (wrong email, expired, cancelled, used, deleted target), role limits (nobody grants above their own), last-owner cases, active business pick, people overview
-- [ ] Open: Business → Activity (business-level events carry no shop id, so they need their own query); a business accountant sees only the profile for now; Plan and billing (R2d)
+- [x] **Business → Subscription:** placeholder until plans exist (R2d). **Business → Activity:** business profile and team changes, plus team changes in its shops (found by what they are about, no schema change). **Business → Roles:** read-only list of the system roles (business and shop level) with what each can do; custom roles are planned
+- [x] **Shop modules as icons next to the logo** (for people who work in a shop): Projects, Statistics, Team, Activity, Taxes, Banks, Shop profile. The name shows as a tooltip under the icon, and the icon turns green inside that module. Projects (kanban boards), Statistics, Taxes and Banks are **Soon** placeholders so the layout is final. The shop sub-nav keeps Overview and Products
+- [x] **Invite fix:** you cannot invite your own address, someone already on that team, or (for a shop) someone who already reaches the shop through the business (`checkInvitee`, tested)
+- [ ] Open: custom roles; Plan and billing (R2d)
 - [ ] **Gate:** invite someone to one shop and to the whole business by link, accept both, switch businesses with the picker, open a shop from Business → Shops, try to remove the last owner (must fail), sign in as a shop-only manager and confirm there is no Business entry and `/business` sends you back to the dashboard
 
 **R2a, shops per person (built 18 Oct 2026, being verified)**

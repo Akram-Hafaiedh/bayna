@@ -74,16 +74,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 }
             }
 
-            // ALWAYS refresh role from DB (this is the fix)
+            // ALWAYS refresh role and name from the DB (a role change or a profile edit shows without signing in again)
             if (token.id) {
                 try {
                     const dbUser = await prisma.user.findUnique({
                         where: { id: token.id as string },
-                        select: { role: true },
+                        select: { role: true, name: true },
                     })
                     if (dbUser?.role) {
                         token.role = dbUser.role
                     }
+                    // The name shown in the menu follows the profile page (the token keeps the one from sign-in otherwise)
+                    if (dbUser) token.name = dbUser.name
                 } catch {
                     // ignore
                 }

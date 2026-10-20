@@ -1,6 +1,6 @@
 // components/DashboardShell.tsx
-import Link from "next/link"
 import Navbar from "@/components/Navbar"
+import SubNavLink from "@/components/SubNavLink"
 
 
 export function ContentSkeleton() {
@@ -40,13 +40,7 @@ export function SubNav({
                 {leading && <div className="mr-2 shrink-0 border-r border-zinc-200 pr-3">{leading}</div>}
                 <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
                     {items.map((item) => (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className="px-3 py-1.5 text-sm text-zinc-600 hover:text-zinc-900 rounded-md hover:bg-zinc-50 whitespace-nowrap"
-                        >
-                            {item.label}
-                        </Link>
+                        <SubNavLink key={item.href} href={item.href} label={item.label} />
                     ))}
                 </div>
             </div>

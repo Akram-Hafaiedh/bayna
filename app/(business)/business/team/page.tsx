@@ -8,6 +8,7 @@ import { teamPermission } from "@/lib/access/team-rules"
 import { toInviteView, toMemberView, toRoleChoices } from "@/lib/access/team-view"
 import { groupPeople, type PersonRow } from "@/lib/access/people"
 import TeamSection from "@/components/provider/TeamSection"
+import BusinessInviteForm, { type InviteTarget } from "@/components/business/BusinessInviteForm"
 
 export const metadata: Metadata = { title: "Business team" }
 
@@ -83,6 +84,20 @@ async function TeamContent() {
     ]
     const people = groupPeople(rows)
 
+    // Where this person may invite, with the roles they may hand out in each place
+    const bizRoleChoices = toRoleChoices(bizRoles, canBiz)
+    const inviteTargets: InviteTarget[] = [
+        ...(canBiz(teamPermission("BUSINESS", "invite")) && bizRoleChoices.length > 0
+            ? [{ id: business.id, scope: "BUSINESS" as const, label: "The whole business", roles: bizRoleChoices }]
+            : []),
+        ...perShop.flatMap((s) => {
+            const roles = toRoleChoices(shopRoles, s.can)
+            return s.visible && s.can(teamPermission("SHOP", "invite")) && roles.length > 0
+                ? [{ id: s.shop.id, scope: "SHOP" as const, label: s.shop.businessName, roles }]
+                : []
+        }),
+    ]
+
     return (
         <>
             <div>
@@ -122,9 +137,12 @@ async function TeamContent() {
                 </ul>
             </section>
 
+            <BusinessInviteForm targets={inviteTargets} />
+
             <TeamSection
                 scope="BUSINESS"
                 targetId={business.id}
+                hideInviteForm
                 title="Business team"
                 subtitle="People who work in every shop of this business, such as owners and accountants."
                 members={bizMembers.map((m) => toMemberView(m, canBiz, userId))}
@@ -158,6 +176,7 @@ async function TeamContent() {
                         <TeamSection
                             scope="SHOP"
                             targetId={s.shop.id}
+                            hideInviteForm
                             title={`Team of ${s.shop.businessName}`}
                             subtitle="People who work in this shop only."
                             members={s.members.map((m) => toMemberView(m, s.can, userId))}

@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { safeNextPath } from "@/lib/parse"
+import { readAuthReturn } from "@/lib/auth-return"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -12,6 +12,12 @@ export default function LoginPage() {
     const [password, setPassword] = useState("")
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
+
+    // An invitation link brings the address it was sent to
+    useEffect(() => {
+        const { email } = readAuthReturn(window.location.search)
+        if (email) setEmail((e) => e || email)
+    }, [])
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -32,7 +38,7 @@ export default function LoginPage() {
         }
 
         // Come back to where they were going (for example an invitation link), else home
-        router.push(safeNextPath(new URLSearchParams(window.location.search).get("next")) ?? "/")
+        router.push(readAuthReturn(window.location.search).next ?? "/")
         router.refresh()
     }
 

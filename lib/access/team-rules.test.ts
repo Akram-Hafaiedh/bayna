@@ -5,7 +5,7 @@ import { test } from "vitest"
 import assert from "node:assert/strict"
 import { SYSTEM_ROLES } from "./roles"
 import { effective, has, type AssignmentInput } from "./evaluate"
-import { assignableRoles, checkMemberAction, missingKeys, nextStatus, parseInviteInput, parseMemberAction, teamPermission } from "./team-rules"
+import { assignableRoles, checkInvitee, checkMemberAction, missingKeys, nextStatus, parseInviteInput, parseMemberAction, teamPermission } from "./team-rules"
 
 const role = (scope: "BUSINESS" | "SHOP", key: string) => {
     const r = SYSTEM_ROLES.find((x) => x.scope === scope && x.key === key)
@@ -168,4 +168,22 @@ test("member action input", () => {
     assert.equal(parseMemberAction({ action: "set_role" }).ok, false)
     assert.equal(parseMemberAction({ action: "delete" }).ok, false)
     assert.equal(parseMemberAction(undefined).ok, false)
+})
+
+test("invitation: not your own address, not someone already on the team", () => {
+    const base = { inviteeEmail: "sami@mail.com", actorEmail: "owner@mail.com", scope: "SHOP" as const, member: null, viaBusiness: false }
+    assert.equal(checkInvitee(base).ok, true)
+    // own address, whatever the case or spacing
+    assert.equal(checkInvitee({ ...base, inviteeEmail: " Owner@Mail.com " }).ok, false)
+    assert.equal(checkInvitee({ ...base, member: "ACTIVE" }).ok, false)
+    const suspended = checkInvitee({ ...base, member: "SUSPENDED" })
+    assert.equal(suspended.ok, false)
+    if (!suspended.ok) assert.match(suspended.error, /Reinstate/)
+})
+
+test("invitation: someone who reaches the shop through the business is not invited to the shop", () => {
+    const base = { inviteeEmail: "sami@mail.com", actorEmail: "owner@mail.com", member: null, viaBusiness: true }
+    assert.equal(checkInvitee({ ...base, scope: "SHOP" }).ok, false)
+    // ...but a business invitation is a different question
+    assert.equal(checkInvitee({ ...base, scope: "BUSINESS" }).ok, true)
 })

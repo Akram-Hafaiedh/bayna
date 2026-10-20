@@ -55,6 +55,7 @@ export default function TeamSection({
     roles,
     can,
     targetId,
+    hideInviteForm,
 }: {
     scope: "SHOP" | "BUSINESS"
     title: string
@@ -66,6 +67,8 @@ export default function TeamSection({
     can: TeamCan
     /** the shop or business this list is about; leave out for "the one I am working in" */
     targetId?: string
+    /** hide this list's own invite form (the Business team page has one form for every place) */
+    hideInviteForm?: boolean
 }) {
     const router = useRouter()
     const confirm = useConfirm()
@@ -201,7 +204,7 @@ export default function TeamSection({
             <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
             <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
 
-            {can.invite && roles.length > 0 && (
+            {can.invite && roles.length > 0 && !hideInviteForm && (
                 <form
                     className="mt-5 flex flex-wrap items-end gap-3"
                     onSubmit={(e) => {
@@ -238,7 +241,7 @@ export default function TeamSection({
                     </button>
                 </form>
             )}
-            {roles.find((r) => r.key === roleKey)?.description && can.invite && (
+            {roles.find((r) => r.key === roleKey)?.description && can.invite && !hideInviteForm && (
                 <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.key === roleKey)?.description}</p>
             )}
             {error && (

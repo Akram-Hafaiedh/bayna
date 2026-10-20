@@ -17,9 +17,11 @@ export default function BusinessLayout({ children }: { children: React.ReactNode
                 }
                 items={[
                     { href: "/business/profile", label: "Profile" },
-                    { href: "/business/shops", label: "Shops" },
+                    { href: "/business/subscription", label: "Subscription" },
                     { href: "/business/team", label: "Team" },
-                    { href: "/provider/dashboard", label: "Back to my shop" },
+                    { href: "/business/shops", label: "Shops" },
+                    { href: "/business/activity", label: "Activity" },
+                    { href: "/business/roles", label: "Roles" },
                 ]}
             />
             <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>

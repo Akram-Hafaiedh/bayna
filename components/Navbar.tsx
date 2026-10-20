@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
 import { useState, useRef, useEffect } from "react"
 import NotificationBell from "@/components/NotificationBell"
+import ModuleNav from "@/components/provider/ModuleNav"
 
 type Role = "CLIENT" | "PROVIDER" | "ADMIN"
 
@@ -68,15 +69,18 @@ export default function Navbar() {
     return (
         <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-md">
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
-                {/* Logo only on the left */}
+                {/* Logo, then (for people who work in a shop) the shop's modules as icons */}
+                <div className="flex min-w-0 items-center gap-3 sm:gap-5">
                 <Link href="/" className="flex items-center gap-2">
                     <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
                         B
                     </div>
-                    <span className="text-[15px] font-semibold tracking-tight text-zinc-900">
+                    <span className="hidden text-[15px] font-semibold tracking-tight text-zinc-900 sm:inline">
                         Bayna
                     </span>
                 </Link>
+                {role === "PROVIDER" && <ModuleNav />}
+                </div>
 
                 {/* Right side only */}
                 <div className="flex items-center gap-3">
