@@ -17,7 +17,7 @@ type Suggestion = {
     status: "PENDING" | "APPROVED" | "REJECTED"
     reviewNote: string | null
     createdAt: string
-    provider: { businessName: string; city: string }
+    provider: { name: string; city: string }
     category: { id: string; name: string }
     catalogItem: { id: string; name: string } | null
     similar: Similar[]
@@ -144,7 +144,7 @@ export default function CatalogueRequestsPage() {
                                     </p>
                                 </div>
                                 <p className="text-xs text-zinc-400 text-right">
-                                    {s.provider.businessName}, {s.provider.city}
+                                    {s.provider.name}, {s.provider.city}
                                     <br />
                                     {new Date(s.createdAt).toLocaleDateString()}
                                 </p>
@@ -213,7 +213,7 @@ export default function CatalogueRequestsPage() {
                                             <input
                                                 value={reviewNote}
                                                 onChange={(e) => setReviewNote(e.target.value)}
-                                                placeholder="Reason (shown to the provider, optional)"
+                                                placeholder="Reason (shown to the shop, optional)"
                                                 aria-label="Reason for rejecting"
                                                 maxLength={500}
                                                 className="w-full h-10 px-3.5 rounded-lg border border-zinc-200 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"

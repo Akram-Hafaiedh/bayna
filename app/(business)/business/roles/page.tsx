@@ -2,7 +2,10 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import { requireBusinessArea } from "@/lib/business-auth"
 import { prisma } from "@/lib/prisma"
-import { groupPermissions, humanise } from "@/lib/access/role-view"
+import { ALL_BUSINESS_KEYS, ALL_SHOP_KEYS } from "@/lib/access/catalogue"
+import { effective, has } from "@/lib/access/evaluate"
+import { loadRoleRows } from "@/lib/access/roles-data"
+import RolesManager from "@/components/access/RolesManager"
 
 export const metadata: Metadata = { title: "Roles" }
 
@@ -17,71 +20,85 @@ export default function BusinessRolesPage() {
 }
 
 async function RolesContent() {
-    const { business } = await requireBusinessArea()
-    // The business's own roles, and the roles of each of its shops
-    const roles = await prisma.accessRole.findMany({
-        where: { OR: [{ businessId: business.id }, { provider: { businessId: business.id } }] },
-        orderBy: [{ scope: "asc" }, { name: "asc" }],
-        select: { id: true, name: true, description: true, scope: true, permissions: true, provider: { select: { id: true, businessName: true } } },
+    const { business, access } = await requireBusinessArea()
+
+    // What this person may do at the business, and in each shop (a business-level role reaches every shop)
+    const bizEff = effective(access.assignments, { businessId: business.id })
+    const canViewBusiness = has(bizEff, "business.role.view")
+    const canManageBusiness = has(bizEff, "business.role.manage")
+
+    const shops = await prisma.shop.findMany({
+        where: { businessId: business.id, deletedAt: null, isVerified: true },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        select: { id: true, name: true, city: true },
     })
-    const shops = [...new Map(roles.flatMap((r) => (r.scope === "SHOP" && r.provider ? [[r.provider.id, r.provider.businessName] as const] : []))).entries()]
-        .sort((a, b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]))
-    const sections = [
-        { title: "Business roles", note: "Owned by the business. Given for the whole business (their shop permissions then work in every shop) or for one of its shops.", rows: roles.filter((r) => r.scope === "BUSINESS") },
-        ...shops.map(([id, name]) => ({
-            title: `Roles of ${name}`,
-            note: "Owned by this shop. Can only be given in this shop.",
-            rows: roles.filter((r) => r.scope === "SHOP" && r.provider?.id === id),
-        })),
-    ]
+
+    const businessKeys = [...ALL_BUSINESS_KEYS]
+    const shopKeys = [...ALL_SHOP_KEYS]
+    const sections = await Promise.all([
+        canViewBusiness
+            ? (async () => ({
+                kind: "business" as const,
+                rows: await loadRoleRows({ scope: "BUSINESS", businessId: business.id }, (k) => has(bizEff, k), canManageBusiness),
+            }))()
+            : Promise.resolve(null),
+        ...shops.map(async (shop) => {
+            const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
+            if (!has(eff, "team.role.view")) return null
+            const manage = has(eff, "team.role.manage")
+            return {
+                kind: "shop" as const,
+                shop,
+                eff,
+                manage,
+                rows: await loadRoleRows({ scope: "SHOP", providerId: shop.id }, (k) => has(eff, k), manage),
+            }
+        }),
+    ])
+    const biz = sections[0]
+    const shopSections = sections.slice(1).flatMap((s) => (s && s.kind === "shop" ? [s] : []))
+
     return (
         <>
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Roles</h1>
-                <p className="mt-1 text-sm text-zinc-500">What each role can do. Roles are given from the Team page. Creating and editing roles is coming next.</p>
+                <p className="mt-1 text-sm text-zinc-500">
+                    What each role can do. Roles are given from the Team page. A business role can be given for the whole business or for one of its shops; a shop role only works in its own shop.
+                </p>
             </div>
-            {sections.map((s) => (
-                <section key={s.title} className="space-y-2">
-                    <div>
-                        <h2 className="text-sm font-semibold text-zinc-900">{s.title}</h2>
-                        <p className="text-xs text-zinc-500">{s.note}</p>
-                    </div>
-                    {s.rows.length === 0 ? (
-                        <p className="rounded-xl border border-zinc-200 bg-white px-5 py-6 text-center text-sm text-zinc-500">No roles yet.</p>
-                    ) : (
-                        <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
-                            {s.rows.map((r) => (
-                                <li key={r.id}>
-                                    <details className="group px-5 py-3.5">
-                                        <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium text-zinc-900">{r.name}</p>
-                                                {r.description && <p className="mt-0.5 text-xs text-zinc-500">{r.description}</p>}
-                                            </div>
-                                            <span className="shrink-0 text-xs text-zinc-400 group-open:hidden">{r.permissions.length} permissions</span>
-                                            <span className="hidden shrink-0 text-xs text-zinc-400 group-open:inline">Hide</span>
-                                        </summary>
-                                        <div className="mt-3 space-y-2.5 border-t border-zinc-100 pt-3">
-                                            {groupPermissions(r.permissions).map((g) => (
-                                                <div key={g.module}>
-                                                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{humanise(g.module)}</p>
-                                                    <ul className="mt-1 space-y-0.5 text-xs text-zinc-600">
-                                                        {g.items.map((i) => (
-                                                            <li key={i.resource}>
-                                                                <span className="text-zinc-900">{humanise(i.resource)}</span>: {i.actions.map(humanise).join(", ")}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </details>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </section>
+
+            {biz && (
+                <RolesManager
+                    scope="BUSINESS"
+                    targetId={business.id}
+                    title={`Business roles of ${business.name}`}
+                    note="Owned by the business. Their shop permissions work in every shop when the role is given for the whole business."
+                    roles={biz.rows}
+                    keys={businessKeys}
+                    grantable={businessKeys.filter((k) => has(bizEff, k))}
+                    canEverything={bizEff.all}
+                    canManage={canManageBusiness}
+                />
+            )}
+
+            {shopSections.map((s) => (
+                <RolesManager
+                    key={s.shop.id}
+                    scope="SHOP"
+                    targetId={s.shop.id}
+                    title={`Roles of ${s.shop.name}`}
+                    note="Owned by this shop. Can only be given in this shop."
+                    roles={s.rows}
+                    keys={shopKeys}
+                    grantable={shopKeys.filter((k) => has(s.eff, k))}
+                    canEverything={s.eff.all}
+                    canManage={s.manage}
+                />
             ))}
+
+            {!biz && shopSections.length === 0 && (
+                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">You do not have access to the roles. Ask the business owner.</p>
+            )}
         </>
     )
 }

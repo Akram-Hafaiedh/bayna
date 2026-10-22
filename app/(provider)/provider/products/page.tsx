@@ -54,7 +54,7 @@ async function ProductsContent({ searchParams }: { searchParams: SearchParams })
     const filters = parseProductFilters(await searchParams)
 
     if (!provider) {
-        return <Notice>Provider profile not found.</Notice>
+        return <Notice>Shop not found.</Notice>
     }
     if (!provider.isVerified) {
         return (

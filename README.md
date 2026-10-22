@@ -82,7 +82,7 @@ lib/
 proxy.ts                 # Route protection (auth + role gates)
 prisma/
   ├── schema.prisma
-  ├── seed.ts            # Categories + ~200 catalog items
+  ├── seed/              # Main seeder (index.ts) + one seeder per kind of data (one file per seeder in seeders/, each with its own data)
   └── migrations/
 types/
 ```
@@ -101,8 +101,11 @@ cp env.example .env
 
 # DB
 npx prisma migrate dev
-npx tsx prisma/seed.ts          # shared catalogue
-npx tsx prisma/seed-demo.ts     # optional demo providers + products
+npm run seed                    # everything: platform roles, categories, catalogue, demo companies,
+                                # shops, roles, products and test accounts (dev only)
+npm run seed -- --list          # the seeders, in running order
+npm run seed products           # one seeder, plus the ones it needs (add -- --exact for only that one)
+npm run seed categories catalogue   # just the shared catalogue
 
 # Dev
 npm run dev

@@ -106,20 +106,25 @@ model User {
   sessions      Session[]
   loginSessions LoginSession[]
   // The shops this person applied for (and, once approved, owns). One person can have several.
-  providers     Provider[]
+  providers     Shop[]
 
   // Permissions come from these, never from User.role (which only decides which dashboard opens).
   accessAssignments AccessAssignment[]
   notifications     Notification[]
 }
 
-model Provider {
-  id     String @id @default(cuid())
+// One outlet: what customers see, find and buy from. It always belongs to one Business (the company).
+// The table keeps its old name "Provider" (@@map), so no data moves.
+model Shop {
+  id       String @id @default(cuid())
+  // Opaque id for URLs (for example /provider/shops/[publicId]); never guessable, unlike a counter.
+  publicId String @unique @default(cuid())
   // The applicant. Who works in the shop, and as what, is AccessAssignment (the applicant becomes OWNER on approval).
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  businessName   String
+  // The name of the shop itself, not of the company (that is Business.name). Column keeps its old name.
+  name           String          @map("businessName")
   description    String?
   phone          String?
   whatsapp       String?
@@ -142,10 +147,9 @@ model Provider {
   deletedAt   DateTime?
   deletedById String?
 
-  // The business this shop belongs to. Nullable only until `npm run db:backfill-businesses` has run;
-  // a later migration makes it required.
-  businessId String?
-  business   Business? @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  // The business (company) this shop belongs to. Every shop has one.
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
 
   products          Product[]
   suggestions       CatalogSuggestion[]
@@ -155,6 +159,7 @@ model Provider {
 
   @@index([userId])
   @@index([businessId])
+  @@map("Provider")
 }
 
 // The trader or company behind one or more shops (one legal entity). A shop is one outlet of it.
@@ -163,6 +168,8 @@ model Provider {
 // orders belong to the shop.
 model Business {
   id             String  @id @default(cuid())
+  // Opaque id for URLs, like Shop.publicId
+  publicId       String  @unique @default(cuid())
   name           String // trade name, shown to staff
   legalName      String? // official company name
   taxId          String? // matricule fiscal
@@ -178,7 +185,7 @@ model Business {
   deletedAt   DateTime?
   deletedById String?
 
-  shops             Provider[]
+  shops             Shop[]
   accessAssignments AccessAssignment[]
   accessRoles       AccessRole[]
   invites           AccessInvite[]
@@ -238,9 +245,9 @@ model CatalogItem {
 // Created alongside a custom product; on approval the product is linked to the
 // resulting CatalogItem so it joins price comparisons.
 model CatalogSuggestion {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // The provider's custom product that triggered the suggestion (relinked on approval)
   productId String?  @unique
@@ -272,9 +279,9 @@ model CatalogSuggestion {
 }
 
 model Product {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   providerId String
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // Optional link to the shared catalogue — enables price comparison
   catalogItemId String?
@@ -462,7 +469,7 @@ model AccessRole {
   businessId  String?
   business    Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   providerId  String?
-  provider    Provider?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider    Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   permissions String[]
 
   createdAt   DateTime @default(now())
@@ -490,7 +497,7 @@ model AccessAssignment {
   role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
   scope      AccessScope
   providerId String? // the shop, for SHOP scope; null otherwise
-  provider   Provider?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?            @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope; null otherwise
   business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
@@ -518,7 +525,7 @@ model AccessInvite {
   id         String      @id @default(cuid())
   scope      AccessScope // SHOP or BUSINESS (never PLATFORM)
   providerId String? // the shop, for SHOP scope
-  provider   Provider?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope
   business   Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   roleId     String

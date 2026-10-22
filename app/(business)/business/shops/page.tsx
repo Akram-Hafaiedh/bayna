@@ -21,10 +21,10 @@ export default function BusinessShopsPage() {
 async function ShopsContent() {
     const { business, access } = await requireBusinessArea()
     const [shops, perms] = await Promise.all([
-        prisma.provider.findMany({
+        prisma.shop.findMany({
             where: { businessId: business.id, deletedAt: null },
-            orderBy: [{ businessName: "asc" }, { id: "asc" }],
-            select: { id: true, businessName: true, city: true, governorate: true, isVerified: true },
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+            select: { id: true, name: true, city: true, governorate: true, isVerified: true },
         }),
         businessCan(business.id, ["business.shop.create"] as const),
     ])
@@ -53,7 +53,7 @@ async function ShopsContent() {
                         {shops.map((s) => (
                             <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
                                 <div className="min-w-0">
-                                    <p className="truncate font-medium text-zinc-900">{s.businessName}</p>
+                                    <p className="truncate font-medium text-zinc-900">{s.name}</p>
                                     <p className="text-xs text-zinc-500">{[s.city, s.governorate].filter(Boolean).join(", ")}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ async function ShopsContent() {
                                     ) : (
                                         <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600">Waiting for approval</span>
                                     )}
-                                    {s.isVerified && openable.has(s.id) && <OpenShopButton shopId={s.id} shopName={s.businessName} />}
+                                    {s.isVerified && openable.has(s.id) && <OpenShopButton shopId={s.id} shopName={s.name} />}
                                 </div>
                             </li>
                         ))}

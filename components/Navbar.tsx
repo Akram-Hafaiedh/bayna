@@ -71,15 +71,15 @@ export default function Navbar() {
             <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
                 {/* Logo, then (for people who work in a shop) the shop's modules as icons */}
                 <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-                <Link href="/" className="flex items-center gap-2">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
-                        B
-                    </div>
-                    <span className="hidden text-[15px] font-semibold tracking-tight text-zinc-900 sm:inline">
-                        Bayna
-                    </span>
-                </Link>
-                {role === "PROVIDER" && <ModuleNav />}
+                    <Link href="/" className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-zinc-900 text-xs font-bold text-white">
+                            B
+                        </div>
+                        <span className="hidden text-[15px] font-semibold tracking-tight text-zinc-900 sm:inline">
+                            Bayna
+                        </span>
+                    </Link>
+                    {role === "PROVIDER" && <ModuleNav />}
                 </div>
 
                 {/* Right side only */}
@@ -136,7 +136,7 @@ export default function Navbar() {
                                                 onClick={() => setMenuOpen(false)}
                                                 className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                             >
-                                                Become a Provider
+                                                Open a shop
                                             </Link>
                                         )}
 
@@ -168,7 +168,7 @@ export default function Navbar() {
                                                     onClick={() => setMenuOpen(false)}
                                                     className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                                 >
-                                                    Providers
+                                                    Shops
                                                 </Link>
                                                 <Link
                                                     href="/admin/users"

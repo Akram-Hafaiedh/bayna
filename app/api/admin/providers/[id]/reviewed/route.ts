@@ -15,14 +15,14 @@ export async function POST(
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const { id } = await params
-        const provider = await prisma.provider.findUnique({ where: { id }, select: { id: true, userId: true, needsReview: true } })
+        const provider = await prisma.shop.findUnique({ where: { id }, select: { id: true, userId: true, needsReview: true } })
         if (!provider) return NextResponse.json({ error: "Provider not found" }, { status: 404 })
 
         // Nothing to review (already cleared, for example by another admin): do not notify twice
         if (!provider.needsReview) return NextResponse.json({ message: "Already reviewed" })
 
         await withAudit(guard.actor, async (tx) => {
-            await tx.provider.update({ where: { id }, data: { needsReview: false } })
+            await tx.shop.update({ where: { id }, data: { needsReview: false } })
             await notify(tx, provider.userId, notifications.profileReviewed())
         })
         return NextResponse.json({ message: "Marked as reviewed" })

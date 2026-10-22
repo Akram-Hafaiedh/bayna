@@ -35,9 +35,9 @@ async function AdminStats() {
     await requireRole([Role.ADMIN])
 
     const [pendingProviders, totalUsers, verifiedProviders] = await Promise.all([
-        prisma.provider.count({ where: { isVerified: false } }),
+        prisma.shop.count({ where: { isVerified: false } }),
         prisma.user.count(),
-        prisma.provider.count({ where: { isVerified: true } }),
+        prisma.shop.count({ where: { isVerified: true } }),
     ])
 
     return (
@@ -46,7 +46,7 @@ async function AdminStats() {
                 href="/admin/providers"
                 className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 transition"
             >
-                <h3 className="font-medium text-zinc-900">Pending providers</h3>
+                <h3 className="font-medium text-zinc-900">Pending shops</h3>
                 <p className="mt-2 text-3xl font-semibold text-amber-600">
                     {pendingProviders}
                 </p>
@@ -68,7 +68,7 @@ async function AdminStats() {
                 href="/admin/providers"
                 className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 transition"
             >
-                <h3 className="font-medium text-zinc-900">Verified providers</h3>
+                <h3 className="font-medium text-zinc-900">Verified shops</h3>
                 <p className="mt-2 text-3xl font-semibold text-emerald-600">
                     {verifiedProviders}
                 </p>

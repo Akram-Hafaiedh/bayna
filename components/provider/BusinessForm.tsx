@@ -92,7 +92,7 @@ export default function BusinessForm({
         <form onSubmit={save} className="space-y-6">
             <section className="rounded-xl border border-zinc-200 bg-white p-6 space-y-4">
                 <h2 className="text-base font-semibold text-zinc-900">The business</h2>
-                <Field label="Business name" hint="How the business is called inside Bayna.">
+                <Field label="Business name" hint="The company behind your shops. Each shop has its own name in its shop profile.">
                     <input className={inputClass} value={v.name} onChange={set("name")} disabled={!canEdit || saving} required maxLength={100} />
                 </Field>
                 <Field label="Legal name" hint="The official company name, as on your registration.">

@@ -53,8 +53,8 @@ export async function POST(
             if (clash) {
                 return bad(
                     clash.deletedAt
-                        ? "This provider removed that catalogue item earlier. Ask them to list it again instead of merging."
-                        : "This provider already lists that catalogue item",
+                        ? "This shop removed that catalogue item earlier. Ask them to list it again instead of merging."
+                        : "This shop already lists that catalogue item",
                     409
                 )
             }

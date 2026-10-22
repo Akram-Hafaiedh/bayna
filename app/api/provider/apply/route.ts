@@ -12,6 +12,7 @@ import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 import { parsePhone, parseProfileFields } from "@/lib/provider-input"
+import { parseText } from "@/lib/parse"
 import { businessesForNewShop } from "@/lib/access/business-options"
 import { resolveBusinessChoice } from "@/lib/business-choice"
 import { seedBusinessRoles, seedShopRoles } from "@/lib/access/role-seed"
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
         if (user.role === Role.ADMIN) {
             return NextResponse.json({ error: "Admin accounts cannot become providers" }, { status: 400 })
         }
-        const waiting = await prisma.provider.findFirst({
+        const waiting = await prisma.shop.findFirst({
             where: { userId, isVerified: false, deletedAt: null },
             select: { id: true },
         })
@@ -56,20 +57,31 @@ export async function POST(req: Request) {
         const choice = resolveBusinessChoice(options.map((b) => b.id), (body as { businessId?: unknown } | null)?.businessId)
         if (!choice.ok) return NextResponse.json({ error: choice.error }, { status: 400 })
 
+        // A new business is named after the shop unless the form gave it a name of its own
+        let newBusinessName = data.name!
+        if (choice.kind === "new") {
+            const given = parseText((body as { newBusinessName?: unknown } | null)?.newBusinessName, "Business name", 100)
+            if (!given.ok) return NextResponse.json({ error: given.error }, { status: 400 })
+            if (given.value) {
+                if (given.value.length < 2) return NextResponse.json({ error: "Business name is too short" }, { status: 400 })
+                newBusinessName = given.value
+            }
+        }
+
         const provider = await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
             let businessId: string
             if (choice.kind === "existing") {
                 businessId = choice.businessId
             } else {
-                businessId = (await tx.business.create({ data: { name: data.businessName! }, select: { id: true } })).id
+                businessId = (await tx.business.create({ data: { name: newBusinessName }, select: { id: true } })).id
                 // A new business starts with its own copy of the default business roles
                 await seedBusinessRoles(tx, businessId)
             }
-            const shop = await tx.provider.create({
+            const shop = await tx.shop.create({
                 data: {
                     userId,
                     businessId,
-                    businessName: data.businessName!,
+                    name: data.name!,
                     city: data.city!,
                     governorate: data.governorate!,
                     description: data.description ?? null,
@@ -103,7 +115,7 @@ export async function GET() {
         const session = await auth()
         if (!session?.user?.id) return unauthorized()
 
-        const provider = await prisma.provider.findFirst({
+        const provider = await prisma.shop.findFirst({
             where: { userId: session.user.id, isVerified: false, deletedAt: null },
             orderBy: { createdAt: "desc" },
         })
@@ -122,7 +134,7 @@ export async function GET() {
 async function pendingApplication() {
     const session = await auth()
     if (!session?.user?.id) return { error: unauthorized() } as const
-    const provider = await prisma.provider.findFirst({
+    const provider = await prisma.shop.findFirst({
         where: { userId: session.user.id, isVerified: false, deletedAt: null },
         orderBy: { createdAt: "desc" },
     })
@@ -145,7 +157,7 @@ export async function PATCH(req: Request) {
         }
 
         const updated = await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
-            tx.provider.update({ where: { id: provider.id }, data: parsed.value.data })
+            tx.shop.update({ where: { id: provider.id }, data: parsed.value.data })
         )
         return NextResponse.json({ message: "Application updated", status: "pending", provider: updated })
     } catch (error) {
@@ -162,7 +174,7 @@ export async function DELETE(req: Request) {
         const { session, provider } = found
 
         await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
-            await tx.provider.delete({ where: { id: provider.id } })
+            await tx.shop.delete({ where: { id: provider.id } })
             // A business created only for this application goes with it
             if (provider.businessId) {
                 await tx.business.deleteMany({

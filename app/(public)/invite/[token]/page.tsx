@@ -38,7 +38,7 @@ async function InviteContent({ params }: { params: Promise<{ token: string }> })
             select: {
                 scope: true, email: true, status: true, expiresAt: true, invitedById: true,
                 role: { select: { name: true, description: true } },
-                provider: { select: { businessName: true, deletedAt: true } },
+                provider: { select: { name: true, deletedAt: true } },
                 business: { select: { name: true, deletedAt: true } },
             },
         })
@@ -50,7 +50,7 @@ async function InviteContent({ params }: { params: Promise<{ token: string }> })
 
     const state = inviteState(invite)
     const target = invite.scope === "SHOP" ? invite.provider : invite.business
-    const name = invite.scope === "SHOP" ? invite.provider?.businessName : invite.business?.name
+    const name = invite.scope === "SHOP" ? invite.provider?.name : invite.business?.name
     if (!target || target.deletedAt || !name) {
         return <Card title="This invitation is no longer available"><p>The {invite.scope === "SHOP" ? "shop" : "business"} no longer exists.</p></Card>
     }

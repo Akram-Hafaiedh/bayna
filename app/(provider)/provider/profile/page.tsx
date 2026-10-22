@@ -11,7 +11,7 @@ function toValues(p: Record<string, unknown>): Loaded {
     const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "")
     const n = (k: string) => (typeof p[k] === "number" ? (p[k] as number) : null)
     return {
-        businessName: s("businessName"),
+        name: s("name"),
         description: s("description"),
         phone: s("phone"),
         whatsapp: s("whatsapp"),
@@ -93,7 +93,7 @@ export default function ProviderProfilePage() {
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Shop profile</h1>
                 <p className="mt-1 text-sm text-zinc-500">
-                    {data?.businessName ? <>How customers see and find <span className="font-medium text-zinc-700">{data.businessName}</span>.</> : "How customers see and find your shop."}
+                    {data?.name ? <>How customers see and find <span className="font-medium text-zinc-700">{data.name}</span>.</> : "How customers see and find your shop."}
                 </p>
             </div>
 
@@ -116,7 +116,7 @@ export default function ProviderProfilePage() {
                     onSubmit={save}
                     notice={
                         data.canEdit
-                            ? "Changing the business name, address, city, governorate or map pin is saved right away and shown to an admin for review. Phone, WhatsApp and description need no review."
+                            ? "Changing the shop name, address, city, governorate or map pin is saved right away and shown to an admin for review. Phone, WhatsApp and description need no review."
                             : "You can view the profile but not change it."
                     }
                 />

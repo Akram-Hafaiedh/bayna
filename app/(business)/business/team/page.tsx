@@ -40,10 +40,10 @@ async function TeamContent() {
     }
 
     // Shop-level teams can only be managed for shops that are live
-    const shops = await prisma.provider.findMany({
+    const shops = await prisma.shop.findMany({
         where: { businessId: business.id, deletedAt: null, isVerified: true },
-        orderBy: [{ businessName: "asc" }, { id: "asc" }],
-        select: { id: true, businessName: true, city: true },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        select: { id: true, name: true, city: true },
     })
 
     const [bizRoles, bizMembers, bizInvites] = await Promise.all([
@@ -79,7 +79,7 @@ async function TeamContent() {
         ...perShop.flatMap((s) =>
             s.members.map((m) => ({
                 userId: m.userId, name: m.name, email: m.email, roleName: m.roleName,
-                shop: { id: s.shop.id, name: s.shop.businessName }, suspended: m.status === "SUSPENDED", accountClosed: m.accountClosed,
+                shop: { id: s.shop.id, name: s.shop.name }, suspended: m.status === "SUSPENDED", accountClosed: m.accountClosed,
             }))
         ),
     ]
@@ -94,7 +94,7 @@ async function TeamContent() {
         ...perShop.flatMap((s) => {
             const roles = toRoleChoices(s.roles, s.can, "SHOP")
             return s.visible && s.can(teamPermission("SHOP", "invite")) && roles.length > 0
-                ? [{ id: s.shop.id, scope: "SHOP" as const, label: s.shop.businessName, roles }]
+                ? [{ id: s.shop.id, scope: "SHOP" as const, label: s.shop.name, roles }]
                 : []
         }),
     ]
@@ -165,7 +165,7 @@ async function TeamContent() {
                 <details key={s.shop.id} open={perShop.length === 1} className="group rounded-xl border border-zinc-200 bg-white">
                     <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm">
                         <span className="min-w-0">
-                            <span className="font-medium text-zinc-900">{s.shop.businessName}</span>
+                            <span className="font-medium text-zinc-900">{s.shop.name}</span>
                             <span className="ml-2 text-zinc-400">{s.shop.city}</span>
                         </span>
                         <span className="shrink-0 text-xs text-zinc-500">
@@ -178,7 +178,7 @@ async function TeamContent() {
                             scope="SHOP"
                             targetId={s.shop.id}
                             hideInviteForm
-                            title={`Team of ${s.shop.businessName}`}
+                            title={`Team of ${s.shop.name}`}
                             subtitle="People who work in this shop only."
                             members={s.members.map((m) => toMemberView(m, s.can, userId))}
                             invites={s.invites.map((i) => toInviteView(i, s.roles, s.can))}

@@ -24,16 +24,16 @@ export async function requireProvider() {
     const shops = (await loadMyShops(user.id)).filter((s) => s.status === "ACTIVE")
     const chosen = pickActiveShop(shops.map((s) => s.id), await readActiveShopHint())
     if (chosen) {
-        const shop = await prisma.provider.findUnique({
+        const shop = await prisma.shop.findUnique({
             where: { id: chosen },
-            select: { id: true, isVerified: true, businessName: true },
+            select: { id: true, isVerified: true, name: true },
         })
         if (shop) return shop
     }
 
-    return prisma.provider.findFirst({
+    return prisma.shop.findFirst({
         where: { userId: user.id, deletedAt: null },
         orderBy: { createdAt: "desc" },
-        select: { id: true, isVerified: true, businessName: true },
+        select: { id: true, isVerified: true, name: true },
     })
 }

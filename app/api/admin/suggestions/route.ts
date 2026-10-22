@@ -24,7 +24,7 @@ export async function GET(req: Request) {
             orderBy: { createdAt: "asc" },
             take: 100,
             include: {
-                provider: { select: { businessName: true, city: true } },
+                provider: { select: { name: true, city: true } },
                 category: { select: { id: true, name: true } },
                 catalogItem: { select: { id: true, name: true } },
             },
@@ -61,3 +61,4 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
     }
 }
+

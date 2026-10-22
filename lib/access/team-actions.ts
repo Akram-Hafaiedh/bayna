@@ -82,8 +82,8 @@ export async function assertTeamKeepsOwner(
 /** The name shown in messages: the shop's name, or the business's. */
 export async function targetLabel(tx: Tx | typeof prisma, scope: TeamScope, id: string): Promise<string> {
     if (scope === "SHOP") {
-        const shop = await tx.provider.findUnique({ where: { id }, select: { businessName: true } })
-        return shop?.businessName ?? "the shop"
+        const shop = await tx.shop.findUnique({ where: { id }, select: { name: true } })
+        return shop?.name ?? "the shop"
     }
     const business = await tx.business.findUnique({ where: { id }, select: { name: true } })
     return business?.name ?? "the business"
@@ -100,7 +100,7 @@ export async function demoteIfNoLongerWorking(tx: Tx, userId: string, now: Date 
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
         }),
-        tx.provider.count({ where: { userId, deletedAt: null } }),
+        tx.shop.count({ where: { userId, deletedAt: null } }),
         tx.user.findUnique({ where: { id: userId }, select: { role: true } }),
     ])
     // Only a PROVIDER goes back to CLIENT. An admin is never touched.

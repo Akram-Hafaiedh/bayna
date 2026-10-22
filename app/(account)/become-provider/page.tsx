@@ -11,7 +11,7 @@ function toValues(p: Record<string, unknown>): ProfileValues {
     const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "")
     const n = (k: string) => (typeof p[k] === "number" ? (p[k] as number) : null)
     return {
-        businessName: s("businessName"),
+        name: s("name"),
         description: s("description"),
         phone: s("phone"),
         whatsapp: s("whatsapp"),
@@ -36,6 +36,8 @@ export default function BecomeProviderPage() {
     // Businesses a new shop could be added to, and which one is chosen ("new" = a separate business)
     const [businesses, setBusinesses] = useState<{ id: string; name: string }[]>([])
     const [businessChoice, setBusinessChoice] = useState("")
+    // Name of the company, asked when this application starts a new business
+    const [newBusinessName, setNewBusinessName] = useState("")
     const confirm = useConfirm()
     const toast = useToast()
 
@@ -86,7 +88,12 @@ export default function BecomeProviderPage() {
         setMessage("")
         const pending = appStatus === "pending"
         // Only a new application picks a business (a waiting one keeps the one it has)
-        const payload = !pending && businesses.length > 0 ? { ...body, businessId: businessChoice || businesses[0].id } : body
+        const startsBusiness = !pending && (businesses.length === 0 || businessChoice === "new")
+        const payload = {
+            ...body,
+            ...(!pending && businesses.length > 0 ? { businessId: businessChoice || businesses[0].id } : {}),
+            ...(startsBusiness && newBusinessName.trim() ? { newBusinessName: newBusinessName.trim() } : {}),
+        }
         const res = await fetch("/api/provider/apply", {
             method: pending ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
@@ -148,7 +155,7 @@ export default function BecomeProviderPage() {
                         Your application is waiting for admin approval. You can still correct your details below, or withdraw it.
                         {another
                             ? " You will see the shop in your shop switcher once it is approved. Your other shops keep working."
-                            : " You will get provider access once it is approved."}
+                            : " You will get access to your shop dashboard once it is approved."}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-3">
                         <button
@@ -170,7 +177,7 @@ export default function BecomeProviderPage() {
             ) : (
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-                        {another ? "Create a new shop" : "Become a provider"}
+                        {another ? "Create a new shop" : "Open your shop"}
                     </h1>
                     <p className="mt-1 text-sm text-zinc-500">
                         {another
@@ -221,6 +228,23 @@ export default function BecomeProviderPage() {
                             A separate business (new company)
                         </label>
                     </div>
+                </fieldset>
+            )}
+
+            {!pending && (businesses.length === 0 || businessChoice === "new") && (
+                <fieldset className="rounded-xl border border-zinc-200 bg-white p-6">
+                    <legend className="px-1 text-base font-semibold text-zinc-900">Your business</legend>
+                    <p className="mt-1 text-sm text-zinc-500">
+                        The company behind the shop. It owns your shops, holds your legal and billing details and your plan. Leave it empty to use the shop name; you can rename it later in the Business area.
+                    </p>
+                    <input
+                        type="text"
+                        maxLength={100}
+                        value={newBusinessName}
+                        onChange={(e) => setNewBusinessName(e.target.value)}
+                        placeholder="Business name, e.g. Ben Salah Trading SARL"
+                        className="mt-3 h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                    />
                 </fieldset>
             )}
 

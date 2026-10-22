@@ -32,7 +32,7 @@ export default function ProviderTrashPage() {
 async function TrashContent() {
     const provider = await requireProvider()
     if (!provider) {
-        return <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">Provider profile not found.</p>
+        return <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">Shop not found.</p>
     }
 
     const [{ items, total }, perms] = await Promise.all([

@@ -193,7 +193,7 @@ export default function RegisterPage() {
             <p className="mt-4 text-center text-xs text-zinc-400">
                 Want to sell on Bayna?{" "}
                 <span className="text-zinc-500">
-                    Create an account first, then apply to become a Provider.
+                    Create an account first, then open your shop.
                 </span>
             </p>
         </div>

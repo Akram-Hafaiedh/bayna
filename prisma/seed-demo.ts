@@ -38,7 +38,10 @@ type ProviderSeed = {
     key: string
     email: string
     userName: string
-    businessName: string
+    /** the company behind the shop (several shops of one owner share it) */
+    company: string
+    /** the shop itself */
+    shopName: string
     description: string
     phone: string
     address: string
@@ -58,7 +61,8 @@ const PROVIDERS: ProviderSeed[] = [
         key: "carthage",
         email: "carthage@demo.bayna.test",
         userName: "Demo Carthage",
-        businessName: "Demo - Carthage Materials",
+        company: "Demo - Carthage Group SARL",
+        shopName: "Demo - Carthage Materials",
         description: "Demo supplier. Fictional business, fictional prices.",
         phone: "+216 00 000 001",
         address: "Demo address, Tunis",
@@ -70,10 +74,28 @@ const PROVIDERS: ProviderSeed[] = [
         priceFactor: 1.05,
     },
     {
+        // A second shop of the same owner and company, so the demo shows one business with two shops
+        key: "carthage-marsa",
+        email: "carthage@demo.bayna.test",
+        userName: "Demo Carthage",
+        company: "Demo - Carthage Group SARL",
+        shopName: "Demo - Carthage Materials La Marsa",
+        description: "Demo supplier. Fictional business, fictional prices.",
+        phone: "+216 00 000 006",
+        address: "Demo address, La Marsa",
+        city: "La Marsa",
+        governorate: "Tunis",
+        latitude: 36.8782,
+        longitude: 10.3247,
+        coverage: { [CONSTRUCTION]: 0.55 },
+        priceFactor: 1.12,
+    },
+    {
         key: "sfax-btp",
         email: "sfax-btp@demo.bayna.test",
         userName: "Demo Sfax BTP",
-        businessName: "Demo - Sfax BTP Centre",
+        company: "Demo - Sfax BTP SUARL",
+        shopName: "Demo - Sfax BTP Centre",
         description: "Demo supplier. Fictional business, fictional prices.",
         phone: "+216 00 000 002",
         address: "Demo address, Sfax",
@@ -88,7 +110,8 @@ const PROVIDERS: ProviderSeed[] = [
         key: "sahel",
         email: "sahel@demo.bayna.test",
         userName: "Demo Sahel",
-        businessName: "Demo - Sahel Hardware & Parts",
+        company: "Demo - Sahel Trading SARL",
+        shopName: "Demo - Sahel Hardware & Parts",
         description: "Demo supplier selling both construction materials and auto parts.",
         phone: "+216 00 000 003",
         address: "Demo address, Sousse",
@@ -103,7 +126,8 @@ const PROVIDERS: ProviderSeed[] = [
         key: "auto-tunis",
         email: "auto-tunis@demo.bayna.test",
         userName: "Demo Auto Tunis",
-        businessName: "Demo - Tunis Auto Parts",
+        company: "Demo - Tunis Auto Group",
+        shopName: "Demo - Tunis Auto Parts",
         description: "Demo supplier. Fictional business, fictional prices.",
         phone: "+216 00 000 004",
         address: "Demo address, Tunis",
@@ -118,7 +142,8 @@ const PROVIDERS: ProviderSeed[] = [
         key: "auto-gabes",
         email: "auto-gabes@demo.bayna.test",
         userName: "Demo Auto Gabes",
-        businessName: "Demo - Gabes Auto Parts",
+        company: "Demo - Gabes Auto SARL",
+        shopName: "Demo - Gabes Auto Parts",
         description: "Demo supplier. Fictional business, fictional prices.",
         phone: "+216 00 000 005",
         address: "Demo address, Gabes",
@@ -243,8 +268,14 @@ async function main() {
             },
         })
 
+        // The company: shops of one owner that name the same company share one business
+        const companyRow =
+            (await prisma.business.findFirst({ where: { name: p.company, deletedAt: null }, select: { id: true } })) ??
+            (await prisma.business.create({ data: { name: p.company }, select: { id: true } }))
+
         const providerData = {
-            businessName: p.businessName,
+            businessId: companyRow.id,
+            name: p.shopName,
             description: p.description,
             phone: p.phone,
             address: p.address,
@@ -255,13 +286,13 @@ async function main() {
             isVerified: true,
         }
         // A person can run several shops, so a shop is found by owner + name (stays idempotent)
-        const existingShop = await prisma.provider.findFirst({
-            where: { userId: user.id, businessName: providerData.businessName },
+        const existingShop = await prisma.shop.findFirst({
+            where: { userId: user.id, name: providerData.name },
             select: { id: true },
         })
         const provider = existingShop
-            ? await prisma.provider.update({ where: { id: existingShop.id }, data: providerData })
-            : await prisma.provider.create({ data: { userId: user.id, ...providerData } })
+            ? await prisma.shop.update({ where: { id: existingShop.id }, data: providerData })
+            : await prisma.shop.create({ data: { userId: user.id, ...providerData } })
 
         // Which catalogue items does this provider stock?
         const offers = items.flatMap((item) => {
@@ -337,7 +368,7 @@ async function main() {
             await prisma.product.create({ data: { providerId: provider.id, ...custom } })
         }
 
-        console.log(`  ${p.businessName} (${p.city}): ${offers.length} catalogue offers + 1 free-form`)
+        console.log(`  ${p.shopName} in ${p.company} (${p.city}): ${offers.length} catalogue offers + 1 free-form`)
     }
 
     const compared = [...offersPerItem.values()].filter((n) => n >= 2).length

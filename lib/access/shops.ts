@@ -8,8 +8,9 @@ export type MyShop = {
     id: string
     name: string
     city: string
-    /** the business this shop belongs to (null only before the businesses backfill has run) */
-    businessName: string | null
+    /** the business (company) this shop belongs to */
+    businessId: string
+    businessName: string
     /** role names that give access, e.g. ["Business owner"] or ["Manager"] */
     roles: string[]
     /** PENDING = an application an admin has not approved yet: shown, but cannot be opened */
@@ -30,7 +31,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
             },
             select: {
                 role: { select: { name: true } },
-                provider: { select: { id: true, businessName: true, city: true, business: { select: { name: true } } } },
+                provider: { select: { id: true, name: true, city: true, business: { select: { id: true, name: true } } } },
             },
         }),
         prisma.accessAssignment.findMany({
@@ -45,23 +46,24 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
                 role: { select: { name: true } },
                 business: {
                     select: {
+                        id: true,
                         name: true,
                         shops: {
                             where: { deletedAt: null, isVerified: true },
-                            select: { id: true, businessName: true, city: true },
+                            select: { id: true, name: true, city: true },
                         },
                     },
                 },
             },
         }),
-        prisma.provider.findMany({
+        prisma.shop.findMany({
             where: { userId, isVerified: false, deletedAt: null },
-            select: { id: true, businessName: true, city: true, business: { select: { name: true } } },
+            select: { id: true, name: true, city: true, business: { select: { id: true, name: true } } },
         }),
     ])
 
     const byShop = new Map<string, MyShop>()
-    const add = (shop: { id: string; businessName: string; city: string }, businessName: string | null, roleName: string) => {
+    const add = (shop: { id: string; name: string; city: string }, business: { id: string; name: string }, roleName: string) => {
         const existing = byShop.get(shop.id)
         if (existing) {
             if (!existing.roles.includes(roleName)) existing.roles.push(roleName)
@@ -69,19 +71,20 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         }
         byShop.set(shop.id, {
             id: shop.id,
-            name: shop.businessName,
+            name: shop.name,
             city: shop.city,
-            businessName,
+            businessId: business.id,
+            businessName: business.name,
             roles: [roleName],
             status: "ACTIVE",
         })
     }
     for (const a of shopLevel) {
-        if (a.provider) add(a.provider, a.provider.business?.name ?? null, a.role.name)
+        if (a.provider) add(a.provider, a.provider.business, a.role.name)
     }
     for (const a of businessLevel) {
         if (!a.business) continue
-        for (const shop of a.business.shops) add(shop, a.business.name, a.role.name)
+        for (const shop of a.business.shops) add(shop, { id: a.business.id, name: a.business.name }, a.role.name)
     }
 
     const byName = (x: MyShop, y: MyShop) => x.name.localeCompare(y.name) || x.id.localeCompare(y.id)
@@ -90,9 +93,10 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         .filter((p) => !byShop.has(p.id))
         .map((p) => ({
             id: p.id,
-            name: p.businessName,
+            name: p.name,
             city: p.city,
-            businessName: p.business?.name ?? null,
+            businessId: p.business.id,
+            businessName: p.business.name,
             roles: [],
             status: "PENDING" as const,
         }))

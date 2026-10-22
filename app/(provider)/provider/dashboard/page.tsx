@@ -95,9 +95,9 @@ async function ProviderStats() {
                 </div>
             </div>
 
-            {provider?.businessName && (
+            {provider?.name && (
                 <p className="mt-4 text-sm text-zinc-500">
-                    Shop: {provider.businessName}
+                    Shop: {provider.name}
                 </p>
             )}
         </>

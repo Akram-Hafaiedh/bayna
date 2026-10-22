@@ -1,0 +1,13 @@
+// prisma/seed/seeders/index.ts
+// Every seeder, in the order they must run. To add one: create the file, add it here in the right place.
+import type { Seeder } from "../core"
+import { platform } from "./platform"
+import { categories } from "./categories"
+import { catalogue } from "./catalogue"
+import { businesses } from "./businesses"
+import { shops } from "./shops"
+import { access } from "./access"
+import { products } from "./products"
+import { users } from "./users"
+
+export const SEEDERS: Seeder[] = [platform, categories, catalogue, businesses, shops, access, products, users]

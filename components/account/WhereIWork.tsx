@@ -10,7 +10,8 @@ type Shop = {
     id: string
     name: string
     city: string
-    businessName: string | null
+    businessId: string
+    businessName: string
     roles: string[]
     status: "ACTIVE" | "PENDING"
 }
@@ -30,16 +31,20 @@ export default function WhereIWork() {
     if (!shops || shops.length === 0) return null
 
     // Group by business so "Business owner" is shown once, not under every shop
-    const groups = new Map<string, Shop[]>()
-    for (const s of shops) groups.set(s.businessName ?? "Shops", [...(groups.get(s.businessName ?? "Shops") ?? []), s])
+    const groups = new Map<string, { name: string; shops: Shop[] }>()
+    for (const s of shops) {
+        const g = groups.get(s.businessId)
+        if (g) g.shops.push(s)
+        else groups.set(s.businessId, { name: s.businessName, shops: [s] })
+    }
 
     return (
         <section className="rounded-xl border border-zinc-200 bg-white p-6">
             <h2 className="mb-1 text-sm font-semibold text-zinc-900">Where I work</h2>
             <p className="mb-4 text-sm text-zinc-500">The shops you can open, and the role that gives you access.</p>
             <div className="space-y-4">
-                {[...groups.entries()].map(([business, list]) => (
-                    <div key={business}>
+                {[...groups.entries()].map(([businessId, { name: business, shops: list }]) => (
+                    <div key={businessId}>
                         <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{business}</p>
                         <ul className="mt-1 divide-y divide-zinc-100 text-sm">
                             {list.map((s) => (

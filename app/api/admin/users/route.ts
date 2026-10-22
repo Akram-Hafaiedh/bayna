@@ -22,7 +22,7 @@ export async function GET(req: Request) {
                     where: { deletedAt: null },
                     select: {
                         id: true,
-                        businessName: true,
+                        name: true,
                         isVerified: true,
                     },
                     orderBy: { createdAt: "asc" },

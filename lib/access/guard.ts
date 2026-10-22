@@ -121,22 +121,22 @@ export async function requireShop(
         if (!shopIds.includes(providerId)) return fail("Forbidden", 403)
     } else if (shopIds.length === 0) {
         // An applicant still waiting for approval has no assignment yet; keep the clearer message.
-        const pending = await prisma.provider.findFirst({
+        const pending = await prisma.shop.findFirst({
             where: { userId: a.access.userId, isVerified: false, deletedAt: null },
             select: { id: true },
         })
-        if (pending) return fail("Provider not verified yet", 403)
+        if (pending) return fail("Your shop is not approved yet", 403)
         return fail("Forbidden", 403)
     } else {
         providerId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
     }
 
-    const provider = await prisma.provider.findUnique({
+    const provider = await prisma.shop.findUnique({
         where: { id: providerId },
         select: { id: true, isVerified: true, deletedAt: true, businessId: true },
     })
-    if (!provider || provider.deletedAt) return fail("Provider profile not found", 404)
-    if (!provider.isVerified) return fail("Provider not verified yet", 403)
+    if (!provider || provider.deletedAt) return fail("Shop not found", 404)
+    if (!provider.isVerified) return fail("Your shop is not approved yet", 403)
 
     // businessId lets a business-level role (owner, accountant) count inside this shop
     const ctx = { providerId: provider.id, businessId: provider.businessId }
@@ -184,7 +184,7 @@ export async function requireBusiness(
             const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
             const activeShop = pickActiveShop(shopIds, await readActiveShopHint())
             if (activeShop) {
-                const shop = await prisma.provider.findUnique({ where: { id: activeShop }, select: { businessId: true } })
+                const shop = await prisma.shop.findUnique({ where: { id: activeShop }, select: { businessId: true } })
                 ofActiveShop = shop?.businessId ?? null
             }
         }

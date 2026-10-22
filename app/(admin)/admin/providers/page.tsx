@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast"
 
 type ProviderRow = {
     id: string
-    businessName: string
+    name: string
     city: string
     governorate: string | null
     phone: string | null
@@ -31,7 +31,7 @@ export default function AdminProvidersPage() {
     const [error, setError] = useState("")
     const confirm = useConfirm()
     const toast = useToast()
-    const nameOf = (id: string) => providers.find((p) => p.id === id)?.businessName ?? "The shop"
+    const nameOf = (id: string) => providers.find((p) => p.id === id)?.name ?? "The shop"
 
     async function load(f = filter) {
         setLoading(true)
@@ -129,7 +129,7 @@ export default function AdminProvidersPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-                        Providers
+                        Shops
                     </h1>
                     <p className="mt-1 text-sm text-zinc-500">
                         Review applications and manage verified shops
@@ -187,7 +187,7 @@ export default function AdminProvidersPage() {
                                 <tr key={p.id} className="hover:bg-zinc-50/50">
                                     <td className="px-4 py-3">
                                         <p className="font-medium text-zinc-900">
-                                            {p.businessName}
+                                            {p.name}
                                         </p>
                                         {p.phone && (
                                             <p className="text-xs text-zinc-400">

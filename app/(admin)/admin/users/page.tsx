@@ -11,7 +11,7 @@ type UserRow = {
     createdAt: string
     providers: {
         id: string
-        businessName: string
+        name: string
         isVerified: boolean
     }[]
 }
@@ -109,7 +109,7 @@ export default function AdminUsersPage() {
                                             <ul className="space-y-0.5">
                                                 {u.providers.map((p) => (
                                                     <li key={p.id}>
-                                                        {p.businessName}
+                                                        {p.name}
                                                         {!p.isVerified && (
                                                             <span className="ml-1 text-xs text-amber-600">
                                                                 (pending)

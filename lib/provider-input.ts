@@ -4,7 +4,7 @@
 // both ask for the same things in the same way.
 //
 // Rules
-//   - businessName 2..120 and city 2..80 are required when creating; when updating they are only
+//   - name 2..120 and city 2..80 are required when creating; when updating they are only
 //     checked if sent
 //   - governorate must be one of the 24 (lib/governorates.ts) and is stored with its canonical spelling
 //   - phone and WhatsApp are Tunisian numbers, stored as +216XXXXXXXX
@@ -24,7 +24,7 @@ export const CLIENT_LOCATION_SOURCES = ["LOOKUP", "PIN", "GEOCODED"] as const
 export type ClientLocationSource = (typeof CLIENT_LOCATION_SOURCES)[number]
 
 export type ProfileSnapshot = {
-    businessName: string
+    name: string
     description: string | null
     phone: string | null
     whatsapp: string | null
@@ -38,7 +38,7 @@ export type ProfileSnapshot = {
 
 /** What to write. Only the keys that were sent (or derived) are present. */
 export type ProfileData = {
-    businessName?: string
+    name?: string
     description?: string | null
     phone?: string | null
     whatsapp?: string | null
@@ -50,7 +50,7 @@ export type ProfileData = {
     locationSource?: ClientLocationSource
 }
 
-export type ProfileChange = "businessName" | "description" | "phone" | "whatsapp" | "address" | "city" | "governorate" | "location"
+export type ProfileChange = "name" | "description" | "phone" | "whatsapp" | "address" | "city" | "governorate" | "location"
 
 export type ProfileResult = {
     data: ProfileData
@@ -60,7 +60,7 @@ export type ProfileResult = {
     sensitive: boolean
 }
 
-const SENSITIVE: ProfileChange[] = ["businessName", "address", "city", "governorate", "location"]
+const SENSITIVE: ProfileChange[] = ["name", "address", "city", "governorate", "location"]
 
 /** Tunisian number to +216XXXXXXXX. Empty means "none" (null). */
 export function parsePhone(v: unknown, label: string): Parsed<string | null> {
@@ -97,10 +97,10 @@ export function parseProfileFields(body: unknown, current: ProfileSnapshot | nul
     const creating = current === null
     const data: ProfileData = {}
 
-    if (creating || b.businessName !== undefined) {
-        const r = parseRequiredText(b.businessName, "Business name", 2, 120)
+    if (creating || b.name !== undefined) {
+        const r = parseRequiredText(b.name, "Shop name", 2, 120)
         if (!r.ok) return r
-        data.businessName = r.value
+        data.name = r.value
     }
     if (creating || b.city !== undefined) {
         const r = parseRequiredText(b.city, "City", 2, 80)
@@ -176,7 +176,7 @@ export function parseProfileFields(body: unknown, current: ProfileSnapshot | nul
 
     // ---- what really changed ------------------------------------------------------------------
     const changed: ProfileChange[] = []
-    const text = ["businessName", "description", "phone", "whatsapp", "address", "city", "governorate"] as const
+    const text = ["name", "description", "phone", "whatsapp", "address", "city", "governorate"] as const
     for (const key of text) {
         if (data[key] !== undefined && data[key] !== (current?.[key] ?? null)) changed.push(key)
     }

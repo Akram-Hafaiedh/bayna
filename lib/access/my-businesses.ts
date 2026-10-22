@@ -9,7 +9,7 @@ import { pickActiveShop } from "./active-shop"
 import { readActiveShopHint } from "./active-cookie"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
 
-export type MyBusiness = { id: string; name: string }
+export type MyBusiness = { id: string; name: string; /** shops it has, so two businesses are never just two identical names */ shopCount: number }
 
 export type MyBusinesses = {
     access: Access
@@ -27,9 +27,11 @@ export async function loadMyBusinesses(userId: string, now: Date = new Date()): 
 
     const rows = await prisma.business.findMany({
         where: { id: { in: reachable }, deletedAt: null },
-        select: { id: true, name: true },
+        select: { id: true, name: true, _count: { select: { shops: { where: { deletedAt: null } } } } },
     })
-    const businesses = rows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+    const businesses: MyBusiness[] = rows
+        .map((r) => ({ id: r.id, name: r.name, shopCount: r._count.shops }))
+        .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
     if (businesses.length === 0) return null
 
     // The business of the shop they are working in is the fallback when nothing was chosen
@@ -39,7 +41,7 @@ export async function loadMyBusinesses(userId: string, now: Date = new Date()): 
         const shopIds = reachableShopIds(access.assignments, access.businessShops, now)
         const activeShop = pickActiveShop(shopIds, await readActiveShopHint())
         if (activeShop) {
-            const shop = await prisma.provider.findUnique({ where: { id: activeShop }, select: { businessId: true } })
+            const shop = await prisma.shop.findUnique({ where: { id: activeShop }, select: { businessId: true } })
             ofActiveShop = shop?.businessId ?? null
         }
     }

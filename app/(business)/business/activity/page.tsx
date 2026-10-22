@@ -43,7 +43,7 @@ async function ActivityContent({ searchParams }: { searchParams: Promise<{ page?
 
     // Business-level rows carry no shop id, so they are found by what they are about
     const [shops, invites, assignments] = await Promise.all([
-        prisma.provider.findMany({ where: { businessId: business.id }, select: { id: true } }),
+        prisma.shop.findMany({ where: { businessId: business.id }, select: { id: true } }),
         prisma.accessInvite.findMany({ where: { businessId: business.id }, select: { id: true } }),
         prisma.accessAssignment.findMany({ where: { businessId: business.id }, select: { id: true } }),
     ])

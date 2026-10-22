@@ -34,7 +34,7 @@ export async function loadShopMembersWith(
     const out = new Map<string, string[]>()
     if (providerIds.length === 0) return out
 
-    const shops = await tx.provider.findMany({ where: { id: { in: providerIds } }, select: { id: true, businessId: true } })
+    const shops = await tx.shop.findMany({ where: { id: { in: providerIds } }, select: { id: true, businessId: true } })
     const businessOf = new Map(shops.map((s) => [s.id, s.businessId]))
     const businessIds = [...new Set(shops.flatMap((s) => (s.businessId ? [s.businessId] : [])))]
 

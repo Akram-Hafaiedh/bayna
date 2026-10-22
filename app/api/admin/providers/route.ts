@@ -22,7 +22,7 @@ export async function GET(req: Request) {
                         ? { needsReview: true }
                         : {}
 
-        const providers = await prisma.provider.findMany({
+        const providers = await prisma.shop.findMany({
             where,
             include: {
                 user: {

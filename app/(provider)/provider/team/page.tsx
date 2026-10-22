@@ -37,9 +37,9 @@ async function TeamContent() {
         )
     }
 
-    const found = await prisma.provider.findUnique({
+    const found = await prisma.shop.findUnique({
         where: { id: shop.id },
-        select: { businessName: true, businessId: true, business: { select: { id: true, name: true, deletedAt: true } } },
+        select: { name: true, businessId: true, business: { select: { id: true, name: true, deletedAt: true } } },
     })
     const business = found?.business && !found.business.deletedAt ? found.business : null
 
@@ -72,14 +72,20 @@ async function TeamContent() {
             <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Team</h1>
                 <p className="mt-1 text-sm text-zinc-500">
-                    Who works in {found?.businessName ?? "this shop"} and what they can do. Invitations are links you send yourself.
+                    Who works in {found?.name ?? "this shop"} and what they can do. Invitations are links you send yourself.
+                    {can("team.role.view") && (
+                        <>
+                            {" "}What each role can do is on the{" "}
+                            <Link href="/provider/roles" className="underline underline-offset-2 hover:text-zinc-900">Roles page</Link>.
+                        </>
+                    )}
                 </p>
             </div>
 
             <TeamSection
                 scope="SHOP"
                 targetId={shop.id}
-                title={`Team of ${found?.businessName ?? "this shop"}`}
+                title={`Team of ${found?.name ?? "this shop"}`}
                 subtitle="People who work in this shop only. Pick the shop in the menu at the top left to see another one."
                 members={members.map((m) => toMemberView(m, can, access.userId))}
                 invites={invites.map((i) => toInviteView(i, roles, can))}

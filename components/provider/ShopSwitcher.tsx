@@ -17,8 +17,15 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
     const box = useRef<HTMLDivElement>(null)
 
     const active = shops.find((s) => s.id === activeId)
-    // Name the business only when the person works in more than one
-    const severalBusinesses = new Set(shops.map((s) => s.businessName).filter(Boolean)).size > 1
+    // Shops are grouped under their business only when the person works in more than one business;
+    // with a single business the heading would just repeat what the Business area already says.
+    const groups: { id: string; name: string; shops: MyShop[] }[] = []
+    for (const shop of shops) {
+        const group = groups.find((g) => g.id === shop.businessId)
+        if (group) group.shops.push(shop)
+        else groups.push({ id: shop.businessId, name: shop.businessName, shops: [shop] })
+    }
+    const severalBusinesses = groups.length > 1
 
     useEffect(() => {
         if (!open) return
@@ -106,7 +113,13 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                 <div className="absolute left-0 top-full z-40 mt-2 w-72 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg">
                     <p className="px-3.5 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-zinc-400">Your shops</p>
                     <ul role="listbox" aria-label="Your shops" className="max-h-72 overflow-y-auto py-1">
-                        {shops.map((shop) => {
+                        {groups.map((group) => (
+                        <li key={group.id} role="presentation">
+                        {severalBusinesses && (
+                            <p className="px-3.5 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-400">{group.name}</p>
+                        )}
+                        <ul role="presentation">
+                        {group.shops.map((shop) => {
                             const isActive = shop.id === activeId
                             const pending = shop.status === "PENDING"
                             return (
@@ -125,7 +138,7 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                                             <span className="block truncate text-xs text-zinc-400">
                                                 {pending
                                                     ? "Waiting for approval"
-                                                    : [severalBusinesses ? shop.businessName : null, shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
+                                                    : [shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
                                             </span>
                                         </span>
                                         {isActive && (
@@ -138,6 +151,9 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                                 </li>
                             )
                         })}
+                        </ul>
+                        </li>
+                        ))}
                     </ul>
                     <div className="border-t border-zinc-100 p-1">
                         <Link

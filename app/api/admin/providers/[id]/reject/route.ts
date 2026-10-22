@@ -18,7 +18,7 @@ export async function POST(
 
         const { id } = await params
 
-        const provider = await prisma.provider.findUnique({
+        const provider = await prisma.shop.findUnique({
             where: { id },
         })
 
@@ -37,7 +37,7 @@ export async function POST(
         // Remove the application. The person goes back to CLIENT only when this was their only way
         // in: someone who already runs another shop stays a provider.
         await withAudit(guard.actor, async (tx) => {
-            await tx.provider.delete({ where: { id } })
+            await tx.shop.delete({ where: { id } })
             // A business created only for this application goes with it
             if (provider.businessId) {
                 await tx.business.deleteMany({

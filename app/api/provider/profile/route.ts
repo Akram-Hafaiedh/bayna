@@ -11,7 +11,7 @@ import { parseProfileFields } from "@/lib/provider-input"
 
 const SELECT = {
     id: true,
-    businessName: true,
+    name: true,
     description: true,
     phone: true,
     whatsapp: true,
@@ -28,7 +28,7 @@ const SELECT = {
 type Row = NonNullable<Awaited<ReturnType<typeof load>>>
 
 function load(id: string) {
-    return prisma.provider.findUnique({ where: { id }, select: SELECT })
+    return prisma.shop.findUnique({ where: { id }, select: SELECT })
 }
 
 /** Shop rows saved before the map existed have coordinates but no source: they were imported. */
@@ -43,7 +43,7 @@ export async function GET(req: Request) {
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const provider = await load(guard.provider.id)
-        if (!provider) return NextResponse.json({ error: "Provider profile not found" }, { status: 404 })
+        if (!provider) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
 
         return NextResponse.json({ provider: present(provider, guard.can("shop.profile.edit")) })
     } catch (error) {
@@ -59,7 +59,7 @@ export async function PATCH(req: Request) {
 
         const body = await req.json().catch(() => null)
         const current = await load(guard.provider.id)
-        if (!current) return NextResponse.json({ error: "Provider profile not found" }, { status: 404 })
+        if (!current) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
 
         const parsed = parseProfileFields(body, current)
         if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
@@ -74,7 +74,7 @@ export async function PATCH(req: Request) {
 
         const flag = current.isVerified && sensitive
         const updated = await withAudit(guard.actor, (tx) =>
-            tx.provider.update({
+            tx.shop.update({
                 where: { id: current.id },
                 data: { ...data, ...(flag ? { needsReview: true } : {}) },
                 select: SELECT,

@@ -87,7 +87,7 @@ export const notifications = {
     profileReviewed: (): NotificationInput => ({
         type: NOTIFICATION_TYPES.profileReviewed,
         title: "Your profile changes were reviewed",
-        body: "An admin checked your business name and location. Nothing more to do.",
+        body: "An admin checked your shop name and location. Nothing more to do.",
         href: "/provider/profile",
     }),
 }

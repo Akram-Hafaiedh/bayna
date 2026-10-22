@@ -8,7 +8,7 @@ import { findGovernorate } from "./governorates"
 const sfax = findGovernorate("Sfax")!
 
 const saved: ProfileSnapshot = {
-    businessName: "Sfax Hardware",
+    name: "Sfax Hardware",
     description: "Tools and paint",
     phone: "+21620123456",
     whatsapp: null,
@@ -56,17 +56,17 @@ test("formatPhone groups digits and leaves other values alone", () => {
 
 // ---- creating (the application form) ----------------------------------------------------------
 
-test("creating needs a business name, a city and a governorate", () => {
-    assert.match(errorOf(parseProfileFields({ city: "Sfax", governorate: "Sfax" }, null)), /Business name is required/)
-    assert.match(errorOf(parseProfileFields({ businessName: "A", city: "Sfax", governorate: "Sfax" }, null)), /too short/)
-    assert.match(errorOf(parseProfileFields({ businessName: "Shop", governorate: "Sfax" }, null)), /City is required/)
-    assert.match(errorOf(parseProfileFields({ businessName: "Shop", city: "Sfax" }, null)), /governorate/i)
-    assert.match(errorOf(parseProfileFields({ businessName: "Shop", city: "Sfax", governorate: "Paris" }, null)), /governorates/)
+test("creating needs a shop name, a city and a governorate", () => {
+    assert.match(errorOf(parseProfileFields({ city: "Sfax", governorate: "Sfax" }, null)), /Shop name is required/)
+    assert.match(errorOf(parseProfileFields({ name: "A", city: "Sfax", governorate: "Sfax" }, null)), /too short/)
+    assert.match(errorOf(parseProfileFields({ name: "Shop", governorate: "Sfax" }, null)), /City is required/)
+    assert.match(errorOf(parseProfileFields({ name: "Shop", city: "Sfax" }, null)), /governorate/i)
+    assert.match(errorOf(parseProfileFields({ name: "Shop", city: "Sfax", governorate: "Paris" }, null)), /governorates/)
 })
 
 test("creating without a pin starts from the governorate centre", () => {
-    const r = okResult(parseProfileFields({ businessName: "  Shop  ", city: "Sfax", governorate: "sfax" }, null))
-    assert.equal(r.data.businessName, "Shop")
+    const r = okResult(parseProfileFields({ name: "  Shop  ", city: "Sfax", governorate: "sfax" }, null))
+    assert.equal(r.data.name, "Shop")
     assert.equal(r.data.governorate, "Sfax")
     assert.equal(r.data.latitude, sfax.latitude)
     assert.equal(r.data.longitude, sfax.longitude)
@@ -75,12 +75,12 @@ test("creating without a pin starts from the governorate centre", () => {
 
 test("creating with a pin keeps the pin and records how it was set", () => {
     const r = okResult(
-        parseProfileFields({ businessName: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.75, longitude: 10.72, locationSource: "GEOCODED" }, null)
+        parseProfileFields({ name: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.75, longitude: 10.72, locationSource: "GEOCODED" }, null)
     )
     assert.equal(r.data.latitude, 34.75)
     assert.equal(r.data.locationSource, "GEOCODED")
     const defaulted = okResult(
-        parseProfileFields({ businessName: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.75, longitude: 10.72 }, null)
+        parseProfileFields({ name: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.75, longitude: 10.72 }, null)
     )
     assert.equal(defaulted.data.locationSource, "PIN")
 })
@@ -92,7 +92,7 @@ test("a body that is not an object is refused", () => {
 // ---- the pin ----------------------------------------------------------------------------------
 
 test("the pin needs both numbers and must be inside Tunisia", () => {
-    const base = { businessName: "Shop", city: "Sfax", governorate: "Sfax" }
+    const base = { name: "Shop", city: "Sfax", governorate: "Sfax" }
     assert.match(errorOf(parseProfileFields({ ...base, latitude: 34.7 }, null)), /both be numbers/)
     assert.match(errorOf(parseProfileFields({ ...base, latitude: "34.7", longitude: "10.7" }, null)), /both be numbers/)
     assert.match(errorOf(parseProfileFields({ ...base, latitude: 48.85, longitude: 2.35 }, null)), /inside Tunisia/)
@@ -100,7 +100,7 @@ test("the pin needs both numbers and must be inside Tunisia", () => {
 })
 
 test("a pin far from the chosen governorate is refused, one near it is accepted", () => {
-    const base = { businessName: "Shop", city: "Sfax", governorate: "Sfax" }
+    const base = { name: "Shop", city: "Sfax", governorate: "Sfax" }
     // Tunis is about 235 km from the Sfax centre: allowed (large governorates exist)
     assert.equal(parseProfileFields({ ...base, latitude: 36.8, longitude: 10.17 }, null).ok, true)
     // Tozeur (south west) is about 300 km from Sfax
@@ -108,7 +108,7 @@ test("a pin far from the chosen governorate is refused, one near it is accepted"
 })
 
 test("an unknown location source is refused, IMPORTED cannot be claimed", () => {
-    const base = { businessName: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.7, longitude: 10.7 }
+    const base = { name: "Shop", city: "Sfax", governorate: "Sfax", latitude: 34.7, longitude: 10.7 }
     assert.match(errorOf(parseProfileFields({ ...base, locationSource: "IMPORTED" }, null)), /Invalid location source/)
     assert.match(errorOf(parseProfileFields({ ...base, locationSource: "MAGIC" }, null)), /Invalid location source/)
 })
@@ -123,7 +123,7 @@ test("a partial update changes only what was sent", () => {
 
 test("sending the same values changes nothing", () => {
     const r = okResult(
-        parseProfileFields({ businessName: "Sfax Hardware", phone: "20 123 456", city: "Sfax", latitude: sfax.latitude, longitude: sfax.longitude }, saved)
+        parseProfileFields({ name: "Sfax Hardware", phone: "20 123 456", city: "Sfax", latitude: sfax.latitude, longitude: sfax.longitude }, saved)
     )
     assert.deepEqual(r.changed, [])
     assert.equal(r.sensitive, false)
@@ -136,7 +136,7 @@ test("phone, WhatsApp and description changes are not sensitive", () => {
 })
 
 test("name, address, city, governorate and location changes are sensitive", () => {
-    assert.equal(okResult(parseProfileFields({ businessName: "Other Name" }, saved)).sensitive, true)
+    assert.equal(okResult(parseProfileFields({ name: "Other Name" }, saved)).sensitive, true)
     assert.equal(okResult(parseProfileFields({ address: "Another street" }, saved)).sensitive, true)
     assert.equal(okResult(parseProfileFields({ city: "Mahres" }, saved)).sensitive, true)
     assert.equal(okResult(parseProfileFields({ latitude: 34.76, longitude: 10.74 }, saved)).sensitive, true)
@@ -178,7 +178,7 @@ test("limits: description 2000, address 200, name 120, city 80", () => {
     assert.equal(parseProfileFields({ description: "x".repeat(2001) }, saved).ok, false)
     assert.equal(parseProfileFields({ description: "x".repeat(2000) }, saved).ok, true)
     assert.equal(parseProfileFields({ address: "x".repeat(201) }, saved).ok, false)
-    assert.equal(parseProfileFields({ businessName: "x".repeat(121) }, saved).ok, false)
+    assert.equal(parseProfileFields({ name: "x".repeat(121) }, saved).ok, false)
     assert.equal(parseProfileFields({ city: "x".repeat(81) }, saved).ok, false)
-    assert.equal(parseProfileFields({ businessName: "" }, saved).ok, false, "cannot blank the name")
+    assert.equal(parseProfileFields({ name: "" }, saved).ok, false, "cannot blank the name")
 })

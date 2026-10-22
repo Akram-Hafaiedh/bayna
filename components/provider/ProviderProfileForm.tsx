@@ -9,7 +9,7 @@ import type { LatLng } from "@/lib/geo"
 import LocationPicker, { type PinSource } from "@/components/map/LocationPicker"
 
 export type ProfileValues = {
-    businessName: string
+    name: string
     description: string
     phone: string
     whatsapp: string
@@ -23,7 +23,7 @@ export type ProfileValues = {
 }
 
 export const EMPTY_PROFILE: ProfileValues = {
-    businessName: "",
+    name: "",
     description: "",
     phone: "",
     whatsapp: "",
@@ -109,7 +109,7 @@ export default function ProviderProfileForm({ initial, submitLabel, onSubmit, no
         setError("")
         setSaving(true)
         const body: Record<string, unknown> = {
-            businessName: v.businessName,
+            name: v.name,
             description: v.description,
             phone: v.phone,
             whatsapp: v.whatsapp,
@@ -138,8 +138,8 @@ export default function ProviderProfileForm({ initial, submitLabel, onSubmit, no
         <form onSubmit={submit} className="space-y-6">
             <section className={card}>
                 <h2 className="text-base font-semibold text-zinc-900">Your shop</h2>
-                <Field title="Business name" required>
-                    <input required disabled={disabled} type="text" maxLength={120} placeholder="e.g. Auto Parts Sousse" value={v.businessName} onChange={(e) => set("businessName", e.target.value)} className={input} />
+                <Field title="Shop name" required>
+                    <input required disabled={disabled} type="text" maxLength={120} placeholder="e.g. Auto Parts Sousse" value={v.name} onChange={(e) => set("name", e.target.value)} className={input} />
                 </Field>
                 <Field title="Description" hint="What you sell and what makes your shop different. Customers see this.">
                     <textarea rows={4} disabled={disabled} maxLength={2000} placeholder="What do you sell?" value={v.description} onChange={(e) => set("description", e.target.value)} className={`${input} h-auto py-2.5 resize-none`} />

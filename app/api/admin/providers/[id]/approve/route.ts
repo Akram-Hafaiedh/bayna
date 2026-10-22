@@ -19,7 +19,7 @@ export async function POST(
 
         const { id } = await params
 
-        const provider = await prisma.provider.findUnique({
+        const provider = await prisma.shop.findUnique({
             where: { id },
         })
 
@@ -57,7 +57,7 @@ export async function POST(
 
         const ownerRoleId = ownerRole.id
         await withAudit(guard.actor, async (tx) => {
-            await tx.provider.update({
+            await tx.shop.update({
                 where: { id },
                 data: { isVerified: true },
             })
