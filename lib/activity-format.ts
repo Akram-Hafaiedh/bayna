@@ -45,7 +45,7 @@ export function kindFilter(kind: ActivityKind): Record<string, unknown> {
         default:
             return {
                 NOT: {
-                    entityType: { in: ["AccessInvite", "AccessAssignment"] },
+                    entityType: { in: ["AccessInvite", "AccessAssignment", "AccessRole"] },
                     action: { in: ["CREATE", "UPDATE", "DELETE"] },
                 },
             }
@@ -58,6 +58,7 @@ const ENTITY: Record<string, string> = {
     Business: "the business details",
     AccessAssignment: "a team member",
     AccessInvite: "an invitation",
+    AccessRole: "a role",
     CatalogSuggestion: "a catalogue suggestion",
 }
 
@@ -110,6 +111,8 @@ export function describeActivity(row: ActivityRow): ActivityLine {
         href = "/provider/profile"
     } else if (row.entityType === "Business") {
         href = "/business/profile"
+    } else if (row.action.startsWith("TEAM_ROLE_")) {
+        href = "/provider/roles"
     } else if (row.action.startsWith("TEAM_")) {
         href = "/provider/team"
     }

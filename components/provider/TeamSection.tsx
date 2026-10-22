@@ -3,10 +3,11 @@
 // One team list: the people, the pending invitations, and the invite form, for one level (a shop or
 // its business). The server page decides what this person may do and passes it in; the routes check
 // everything again. Black and white like the rest of the site; ask with useConfirm, report with useToast.
-import { useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
+import { NO_MEMBER_FILTERS, filterMembers, initials, type MemberFilters } from "@/lib/access/team-filter"
 
 export type TeamMemberView = {
     id: string
@@ -46,6 +47,79 @@ function day(iso: string) {
     return iso.slice(0, 10)
 }
 
+// With a handful of people a search box is noise; it appears from this many on
+const FILTER_FROM = 5
+
+function Avatar({ name, email, muted }: { name: string | null; email: string; muted?: boolean }) {
+    return (
+        <span
+            aria-hidden
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${muted ? "bg-zinc-100 text-zinc-400" : "bg-zinc-900 text-white"}`}
+        >
+            {initials(name, email)}
+        </span>
+    )
+}
+
+/** The "..." menu of a row: the less common actions (suspend, remove), out of the way. */
+function RowMenu({ label, items, disabled }: { label: string; items: { label: string; onClick: () => void; danger?: boolean }[]; disabled?: boolean }) {
+    const [open, setOpen] = useState(false)
+    const box = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        if (!open) return
+        const down = (e: MouseEvent) => {
+            if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+        }
+        const key = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setOpen(false)
+        }
+        document.addEventListener("mousedown", down)
+        document.addEventListener("keydown", key)
+        return () => {
+            document.removeEventListener("mousedown", down)
+            document.removeEventListener("keydown", key)
+        }
+    }, [open])
+    if (items.length === 0) return null
+    return (
+        <div ref={box} className="relative">
+            <button
+                type="button"
+                aria-label={label}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                disabled={disabled}
+                onClick={() => setOpen((o) => !o)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-50"
+            >
+                <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
+                    <circle cx="4.5" cy="10" r="1.5" />
+                    <circle cx="10" cy="10" r="1.5" />
+                    <circle cx="15.5" cy="10" r="1.5" />
+                </svg>
+            </button>
+            {open && (
+                <div role="menu" className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+                    {items.map((item) => (
+                        <button
+                            key={item.label}
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                                setOpen(false)
+                                item.onClick()
+                            }}
+                            className={`block w-full px-3.5 py-2 text-left text-sm hover:bg-zinc-50 ${item.danger ? "text-red-600" : "text-zinc-800"}`}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function TeamSection({
     scope,
     title,
@@ -78,6 +152,18 @@ export default function TeamSection({
     const [busy, setBusy] = useState<string | null>(null)
     const [error, setError] = useState("")
     const [link, setLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null)
+    const [inviteOpen, setInviteOpen] = useState(false)
+    const [tab, setTab] = useState<"people" | "invites">("people")
+    const [filters, setFilters] = useState<MemberFilters>(NO_MEMBER_FILTERS)
+    const shownMembers = useMemo(() => filterMembers(members, filters), [members, filters])
+    // Only the roles somebody really holds are worth filtering by
+    const heldRoles = useMemo(() => {
+        const seen = new Map<string, string>()
+        for (const m of members) if (!seen.has(m.roleId)) seen.set(m.roleId, m.roleName)
+        return [...seen]
+    }, [members])
+    const canInvite = can.invite && roles.length > 0 && !hideInviteForm
+    const filterActive = filters.q.trim() !== "" || filters.roleId !== "all" || filters.status !== "all"
 
     async function sendInvite(toEmail: string, toRole: string) {
         setError("")
@@ -200,58 +286,77 @@ export default function TeamSection({
     }
 
     return (
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
-            <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+        <section className="rounded-xl border border-zinc-200 bg-white">
+            <div className="flex flex-wrap items-start justify-between gap-3 p-6 pb-4">
+                <div className="min-w-0">
+                    <h2 className="text-base font-semibold text-zinc-900">
+                        {title}
+                        <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 align-middle text-xs font-medium text-zinc-600">{members.length}</span>
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+                </div>
+                {canInvite && (
+                    <button
+                        type="button"
+                        aria-expanded={inviteOpen}
+                        onClick={() => setInviteOpen((o) => !o)}
+                        className="h-9 shrink-0 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
+                    >
+                        {inviteOpen ? "Close" : "Invite someone"}
+                    </button>
+                )}
+            </div>
 
-            {can.invite && roles.length > 0 && !hideInviteForm && (
+            {canInvite && inviteOpen && (
                 <form
-                    className="mt-5 flex flex-wrap items-end gap-3"
+                    className="mx-6 mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4"
                     onSubmit={(e) => {
                         e.preventDefault()
                         void sendInvite(email, roleId)
                     }}
                 >
-                    <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-zinc-700">Email of the person</span>
-                        <input
-                            type="email"
-                            required
-                            className={`${inputClass} w-64`}
-                            placeholder="name@example.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            disabled={busy === "invite"}
-                        />
-                    </label>
-                    <label className="block">
-                        <span className="mb-1.5 block text-xs font-medium text-zinc-700">Role</span>
-                        <select className={inputClass} value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy === "invite"}>
-                            {roles.map((r) => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                        </select>
-                    </label>
-                    <button
-                        type="submit"
-                        disabled={busy === "invite" || !email.trim()}
-                        className="h-10 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-                    >
-                        {busy === "invite" ? "Creating..." : "Create invitation link"}
-                    </button>
+                    <div className="flex flex-wrap items-end gap-3">
+                        <label className="block min-w-56 flex-1">
+                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Email of the person</span>
+                            <input
+                                type="email"
+                                required
+                                className={`${inputClass} w-full`}
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={busy === "invite"}
+                            />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Role</span>
+                            <select className={inputClass} value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy === "invite"}>
+                                {roles.map((r) => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={busy === "invite" || !email.trim()}
+                            className="h-10 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                        >
+                            {busy === "invite" ? "Creating..." : "Create invitation link"}
+                        </button>
+                    </div>
+                    {roles.find((r) => r.id === roleId)?.description && (
+                        <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.id === roleId)?.description}</p>
+                    )}
                 </form>
             )}
-            {roles.find((r) => r.id === roleId)?.description && can.invite && !hideInviteForm && (
-                <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.id === roleId)?.description}</p>
-            )}
             {error && (
-                <div role="alert" className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
+                <div role="alert" className="mx-6 mb-4 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
                     {error}
                 </div>
             )}
 
             {link && (
-                <div className="mt-4 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
+                <div className="mx-6 mb-4 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
                     <p className="text-sm font-medium text-zinc-900">Link for {link.email}</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                         Send it to them yourself. It works once, only for that email address, until {day(link.expiresAt)}.
@@ -269,61 +374,127 @@ export default function TeamSection({
                 </div>
             )}
 
-            <ul className="mt-6 divide-y divide-zinc-100 text-sm">
-                {members.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
-                {members.map((m) => {
-                    const canChange = m.manageable && !m.isYou
-                    return (
-                        <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                            <div className="min-w-0">
-                                <p className="truncate font-medium text-zinc-900">
-                                    {m.name || m.email}
-                                    {m.isYou && <span className="ml-2 text-xs font-normal text-zinc-400">you</span>}
-                                </p>
-                                {m.name && <p className="truncate text-xs text-zinc-500">{m.email}</p>}
-                                <p className="mt-0.5 text-xs text-zinc-400">On the team since {day(m.since)}</p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                {m.status === "SUSPENDED" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Suspended</span>}
-                                {m.accountClosed && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Account closed</span>}
-                                {can.setRole && canChange ? (
-                                    <select
-                                        aria-label={`Role of ${m.name || m.email}`}
-                                        className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-800"
-                                        value={roles.some((r) => r.id === m.roleId) ? m.roleId : ""}
-                                        disabled={busy === m.id}
-                                        onChange={(e) => void changeRole(m, e.target.value)}
-                                    >
-                                        {!roles.some((r) => r.id === m.roleId) && <option value="" disabled>{m.roleName}</option>}
-                                        {roles.map((r) => (
-                                            <option key={r.id} value={r.id}>{r.name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
-                                )}
-                                {can.suspend && canChange && (
-                                    <button className={ghostBtn} disabled={busy === m.id} onClick={() => void suspendOrReinstate(m)}>
-                                        {m.status === "SUSPENDED" ? "Reinstate" : "Suspend"}
-                                    </button>
-                                )}
-                                {can.remove && m.manageable && (
-                                    <button className={ghostBtn} disabled={busy === m.id} onClick={() => void remove(m)}>
-                                        {m.isYou ? "Leave" : "Remove"}
-                                    </button>
-                                )}
-                            </div>
-                        </li>
-                    )
-                })}
-            </ul>
-
             {invites.length > 0 && (
-                <div className="mt-6">
-                    <h3 className="text-sm font-semibold text-zinc-900">Waiting to join</h3>
-                    <ul className="mt-2 divide-y divide-zinc-100 text-sm">
-                        {invites.map((i) => (
-                            <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                <div role="tablist" className="flex gap-1 border-b border-zinc-100 px-6">
+                    {([
+                        ["people", `People (${members.length})`],
+                        ["invites", `Waiting to join (${invites.length})`],
+                    ] as const).map(([key, label]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            role="tab"
+                            aria-selected={tab === key}
+                            onClick={() => setTab(key)}
+                            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === key ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-500 hover:text-zinc-800"}`}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {(tab === "people" || invites.length === 0) && (
+                <div className="px-6 pb-6 pt-4">
+                    {members.length >= FILTER_FROM && (
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                            <input
+                                type="search"
+                                value={filters.q}
+                                onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                                placeholder="Search people"
+                                aria-label="Search people"
+                                className="h-9 min-w-40 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                            />
+                            {heldRoles.length > 1 && (
+                                <select
+                                    aria-label="Filter by role"
+                                    className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
+                                    value={filters.roleId}
+                                    onChange={(e) => setFilters((f) => ({ ...f, roleId: e.target.value }))}
+                                >
+                                    <option value="all">All roles</option>
+                                    {heldRoles.map(([id, name]) => (
+                                        <option key={id} value={id}>{name}</option>
+                                    ))}
+                                </select>
+                            )}
+                            <select
+                                aria-label="Filter by status"
+                                className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
+                                value={filters.status}
+                                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as MemberFilters["status"] }))}
+                            >
+                                <option value="all">Any status</option>
+                                <option value="active">Active</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
+                            {filterActive && (
+                                <button type="button" className="text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900" onClick={() => setFilters(NO_MEMBER_FILTERS)}>
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    <ul className="divide-y divide-zinc-100 text-sm">
+                        {members.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
+                        {members.length > 0 && shownMembers.length === 0 && <li className="py-3 text-zinc-500">Nobody matches these filters.</li>}
+                        {shownMembers.map((m) => {
+                            const canChange = m.manageable && !m.isYou
+                            const inactive = m.status === "SUSPENDED" || m.accountClosed
+                            const menu = [
+                                ...(can.suspend && canChange ? [{ label: m.status === "SUSPENDED" ? "Reinstate" : "Suspend", onClick: () => void suspendOrReinstate(m) }] : []),
+                                ...(can.remove && m.manageable ? [{ label: m.isYou ? "Leave the team" : "Remove from the team", danger: true, onClick: () => void remove(m) }] : []),
+                            ]
+                            return (
+                                <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <Avatar name={m.name} email={m.email} muted={inactive} />
+                                        <div className="min-w-0">
+                                            <p className={`truncate font-medium ${inactive ? "text-zinc-500" : "text-zinc-900"}`}>
+                                                {m.name || m.email}
+                                                {m.isYou && <span className="ml-2 rounded-full bg-zinc-100 px-1.5 py-0.5 text-[11px] font-normal text-zinc-500">you</span>}
+                                            </p>
+                                            <p className="truncate text-xs text-zinc-500">
+                                                {m.name ? `${m.email} · ` : ""}since {day(m.since)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                        {m.status === "SUSPENDED" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Suspended</span>}
+                                        {m.accountClosed && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Account closed</span>}
+                                        {can.setRole && canChange ? (
+                                            <select
+                                                aria-label={`Role of ${m.name || m.email}`}
+                                                className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-800"
+                                                value={roles.some((r) => r.id === m.roleId) ? m.roleId : ""}
+                                                disabled={busy === m.id}
+                                                onChange={(e) => void changeRole(m, e.target.value)}
+                                            >
+                                                {!roles.some((r) => r.id === m.roleId) && <option value="" disabled>{m.roleName}</option>}
+                                                {roles.map((r) => (
+                                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
+                                        )}
+                                        <RowMenu label={`More actions for ${m.name || m.email}`} items={menu} disabled={busy === m.id} />
+                                    </div>
+                                </li>
+                            )
+                        })}
+                    </ul>
+                </div>
+            )}
+
+            {invites.length > 0 && tab === "invites" && (
+                <ul className="divide-y divide-zinc-100 px-6 pb-6 pt-2 text-sm">
+                    {invites.map((i) => (
+                        <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                                <Avatar name={null} email={i.email} muted />
                                 <div className="min-w-0">
                                     <p className="truncate font-medium text-zinc-900">{i.email}</p>
                                     <p className="text-xs text-zinc-500">
@@ -332,20 +503,23 @@ export default function TeamSection({
                                         {i.state === "expired" ? `, expired ${day(i.expiresAt)}` : `, valid until ${day(i.expiresAt)}`}
                                     </p>
                                 </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {i.state === "expired" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Expired</span>}
                                 {can.invite && i.manageable && (
-                                    <div className="flex gap-2">
+                                    <>
                                         <button className={ghostBtn} disabled={busy === "invite"} onClick={() => void sendInvite(i.email, i.roleId)}>
                                             New link
                                         </button>
                                         <button className={ghostBtn} disabled={busy === i.id} onClick={() => void cancelInvite(i)}>
                                             Cancel
                                         </button>
-                                    </div>
+                                    </>
                                 )}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
             )}
         </section>
     )

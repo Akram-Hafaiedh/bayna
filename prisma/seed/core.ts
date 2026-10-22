@@ -1,11 +1,9 @@
 // prisma/seed/core.ts
-// What every seeder shares: the database connection, the Seeder shape and a few helpers.
-// A seeder = one file in seeders/ that owns ONE kind of data and reads its values from
-// data/. Seeders are idempotent (safe to run again) and say what they need first (`needs`).
-import "dotenv/config"
-import { PrismaClient } from "../../app/generated/prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import { Pool } from "pg"
+// What every seeder shares: the Seeder shape and a few helpers (no database connection here, so the
+// seeder files can be imported by unit tests; the connection is opened in index.ts).
+// A seeder = one file in seeders/ that owns ONE kind of data and holds its values at the top of the file.
+// Seeders are idempotent (safe to run again) and say what they need first (`needs`).
+import type { PrismaClient } from "../../app/generated/prisma/client"
 
 /**
  * reference  real data every environment needs (platform roles, categories, catalogue)
@@ -42,18 +40,6 @@ export function slugify(text: string): string {
         .replace(/[̀-ͯ]/g, "")
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "")
-}
-
-export function openDatabase() {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL })
-    const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })
-    return {
-        prisma,
-        close: async () => {
-            await prisma.$disconnect()
-            await pool.end()
-        },
-    }
 }
 
 /** The password every seeded demo and test account uses (override with SEED_DEMO_PASSWORD). */

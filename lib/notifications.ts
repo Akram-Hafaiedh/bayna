@@ -3,7 +3,7 @@
 // notification is saved with the event it reports and never exists for a change that was rolled back.
 //
 //   await withAudit(guard.actor, async (tx) => {
-//       await tx.provider.update({ where: { id }, data: { needsReview: false } })
+//       await tx.shop.update({ where: { id }, data: { needsReview: false } })
 //       await notify(tx, provider.userId, notifications.profileReviewed())
 //   })
 import type { Tx } from "@/lib/audit/run"
