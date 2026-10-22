@@ -87,7 +87,7 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
     const row = (t: InviteTarget) => {
         const k = keyOf(t)
         return (
-            <li key={k} className="flex flex-wrap items-center justify-between gap-3 py-2.5">
+            <li key={k} className="space-y-2 py-2.5">
                 <label className="flex min-w-0 cursor-pointer items-center gap-2.5 text-sm text-zinc-900">
                     <input
                         type="checkbox"
@@ -100,7 +100,7 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
                 </label>
                 <select
                     aria-label={`Role in ${t.label}`}
-                    className={`${inputClass} h-9 w-48`}
+                    className={`${inputClass} h-9 w-full`}
                     value={roles[k]}
                     onChange={(e) => setRoles({ ...roles, [k]: e.target.value })}
                     disabled={busy || !ticked[k]}
@@ -114,12 +114,12 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
     }
 
     return (
-        <section className="rounded-xl border border-zinc-200 bg-white p-6">
-            <h2 className="text-base font-semibold text-zinc-900">Invite someone</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-                Tick where they will work: the business (every shop), one shop, or several places at once. Each place has its own role.
+        <section className="rounded-xl border border-zinc-200 bg-white p-5">
+            <h2 className="text-sm font-semibold text-zinc-900">Invite someone</h2>
+            <p className="mt-0.5 text-xs text-zinc-500">
+                Tick where they will work: the business (every shop), one shop, or several. Each place has its own role.
             </p>
-            <form className="mt-5 space-y-4" onSubmit={(e) => void send(e)}>
+            <form className="mt-4 space-y-4" onSubmit={(e) => void send(e)}>
                 <label className="block">
                     <span className="mb-1.5 block text-xs font-medium text-zinc-700">Email of the person</span>
                     <input type="email" required className={`${inputClass} w-full max-w-sm`} placeholder="name@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={busy} />
@@ -136,7 +136,7 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
                     </ul>
                 </div>
 
-                <button type="submit" disabled={busy || !email.trim() || chosen.length === 0} className="h-10 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
+                <button type="submit" disabled={busy || !email.trim() || chosen.length === 0} className="h-10 w-full rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
                     {busy ? "Creating..." : chosen.length > 1 ? `Create ${chosen.length} invitation links` : "Create invitation link"}
                 </button>
             </form>

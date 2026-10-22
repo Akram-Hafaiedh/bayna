@@ -3,10 +3,11 @@
 // One team list: the people, the pending invitations, and the invite form, for one level (a shop or
 // its business). The server page decides what this person may do and passes it in; the routes check
 // everything again. Black and white like the rest of the site; ask with useConfirm, report with useToast.
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
+import { ShowMore, useShowMore } from "@/components/access/ShowMore"
 import { NO_MEMBER_FILTERS, filterMembers, initials, type MemberFilters } from "@/lib/access/team-filter"
 
 export type TeamMemberView = {
@@ -130,6 +131,7 @@ export default function TeamSection({
     can,
     targetId,
     hideInviteForm,
+    footer,
 }: {
     scope: "SHOP" | "BUSINESS"
     title: string
@@ -143,6 +145,8 @@ export default function TeamSection({
     targetId?: string
     /** hide this list's own invite form (the Business team page has one form for every place) */
     hideInviteForm?: boolean
+    /** shown under the list, in the same column (the shop page puts "Through the business" here) */
+    footer?: ReactNode
 }) {
     const router = useRouter()
     const confirm = useConfirm()
@@ -152,10 +156,12 @@ export default function TeamSection({
     const [busy, setBusy] = useState<string | null>(null)
     const [error, setError] = useState("")
     const [link, setLink] = useState<{ email: string; url: string; expiresAt: string } | null>(null)
-    const [inviteOpen, setInviteOpen] = useState(false)
     const [tab, setTab] = useState<"people" | "invites">("people")
     const [filters, setFilters] = useState<MemberFilters>(NO_MEMBER_FILTERS)
     const shownMembers = useMemo(() => filterMembers(members, filters), [members, filters])
+    // Ten rows at a time; the filters still look at everyone, and changing them starts again at ten
+    const peoplePage = useShowMore(shownMembers, JSON.stringify(filters))
+    const invitesPage = useShowMore(invites, "invites")
     // Only the roles somebody really holds are worth filtering by
     const heldRoles = useMemo(() => {
         const seen = new Map<string, string>()
@@ -285,78 +291,17 @@ export default function TeamSection({
         }
     }
 
-    return (
-        <section className="rounded-xl border border-zinc-200 bg-white">
-            <div className="flex flex-wrap items-start justify-between gap-3 p-6 pb-4">
-                <div className="min-w-0">
-                    <h2 className="text-base font-semibold text-zinc-900">
-                        {title}
-                        <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 align-middle text-xs font-medium text-zinc-600">{members.length}</span>
-                    </h2>
-                    <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
-                </div>
-                {canInvite && (
-                    <button
-                        type="button"
-                        aria-expanded={inviteOpen}
-                        onClick={() => setInviteOpen((o) => !o)}
-                        className="h-9 shrink-0 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800"
-                    >
-                        {inviteOpen ? "Close" : "Invite someone"}
-                    </button>
-                )}
-            </div>
-
-            {canInvite && inviteOpen && (
-                <form
-                    className="mx-6 mb-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4"
-                    onSubmit={(e) => {
-                        e.preventDefault()
-                        void sendInvite(email, roleId)
-                    }}
-                >
-                    <div className="flex flex-wrap items-end gap-3">
-                        <label className="block min-w-56 flex-1">
-                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Email of the person</span>
-                            <input
-                                type="email"
-                                required
-                                className={`${inputClass} w-full`}
-                                placeholder="name@example.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={busy === "invite"}
-                            />
-                        </label>
-                        <label className="block">
-                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Role</span>
-                            <select className={inputClass} value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy === "invite"}>
-                                {roles.map((r) => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
-                            </select>
-                        </label>
-                        <button
-                            type="submit"
-                            disabled={busy === "invite" || !email.trim()}
-                            className="h-10 rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
-                        >
-                            {busy === "invite" ? "Creating..." : "Create invitation link"}
-                        </button>
-                    </div>
-                    {roles.find((r) => r.id === roleId)?.description && (
-                        <p className="mt-2 text-xs text-zinc-500">{roles.find((r) => r.id === roleId)?.description}</p>
-                    )}
-                </form>
-            )}
+    // The link that was just made, or the error: next to the invite form when this list has one, otherwise
+    // (the Business page has one form for every place) at the top of the list
+    const feedback = (
+        <>
             {error && (
-                <div role="alert" className="mx-6 mb-4 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
+                <div role="alert" className="rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600">
                     {error}
                 </div>
             )}
-
             {link && (
-                <div className="mx-6 mb-4 rounded-lg border border-zinc-300 bg-zinc-50 p-4">
+                <div className="rounded-lg border border-zinc-300 bg-zinc-50 p-4">
                     <p className="text-sm font-medium text-zinc-900">Link for {link.email}</p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                         Send it to them yourself. It works once, only for that email address, until {day(link.expiresAt)}.
@@ -373,154 +318,225 @@ export default function TeamSection({
                     </button>
                 </div>
             )}
+        </>
+    )
 
-            {invites.length > 0 && (
-                <div role="tablist" className="flex gap-1 border-b border-zinc-100 px-6">
-                    {([
-                        ["people", `People (${members.length})`],
-                        ["invites", `Waiting to join (${invites.length})`],
-                    ] as const).map(([key, label]) => (
-                        <button
-                            key={key}
-                            type="button"
-                            role="tab"
-                            aria-selected={tab === key}
-                            onClick={() => setTab(key)}
-                            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === key ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-500 hover:text-zinc-800"}`}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-            )}
+    return (
+        <div className={canInvite ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start" : undefined}>
+            <div className="min-w-0 space-y-6">
+                <section className="rounded-xl border border-zinc-200 bg-white">
+                    <div className="p-6 pb-4">
+                        <h2 className="text-base font-semibold text-zinc-900">
+                            {title}
+                            <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 align-middle text-xs font-medium text-zinc-600">{members.length}</span>
+                        </h2>
+                        <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
+                    </div>
 
-            {(tab === "people" || invites.length === 0) && (
-                <div className="px-6 pb-6 pt-4">
-                    {members.length >= FILTER_FROM && (
-                        <div className="mb-3 flex flex-wrap items-center gap-2">
-                            <input
-                                type="search"
-                                value={filters.q}
-                                onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-                                placeholder="Search people"
-                                aria-label="Search people"
-                                className="h-9 min-w-40 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
-                            />
-                            {heldRoles.length > 1 && (
-                                <select
-                                    aria-label="Filter by role"
-                                    className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
-                                    value={filters.roleId}
-                                    onChange={(e) => setFilters((f) => ({ ...f, roleId: e.target.value }))}
+                    {!canInvite && (error || link) && <div className="mx-6 mb-4 space-y-3">{feedback}</div>}
+
+                    {invites.length > 0 && (
+                        <div role="tablist" className="flex gap-1 border-b border-zinc-100 px-6">
+                            {([
+                                ["people", `People (${members.length})`],
+                                ["invites", `Waiting to join (${invites.length})`],
+                            ] as const).map(([key, label]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={tab === key}
+                                    onClick={() => setTab(key)}
+                                    className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${tab === key ? "border-zinc-900 text-zinc-900" : "border-transparent text-zinc-500 hover:text-zinc-800"}`}
                                 >
-                                    <option value="all">All roles</option>
-                                    {heldRoles.map(([id, name]) => (
-                                        <option key={id} value={id}>{name}</option>
-                                    ))}
-                                </select>
-                            )}
-                            <select
-                                aria-label="Filter by status"
-                                className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
-                                value={filters.status}
-                                onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as MemberFilters["status"] }))}
-                            >
-                                <option value="all">Any status</option>
-                                <option value="active">Active</option>
-                                <option value="suspended">Suspended</option>
-                            </select>
-                            {filterActive && (
-                                <button type="button" className="text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900" onClick={() => setFilters(NO_MEMBER_FILTERS)}>
-                                    Clear
+                                    {label}
                                 </button>
-                            )}
+                            ))}
                         </div>
                     )}
 
-                    <ul className="divide-y divide-zinc-100 text-sm">
-                        {members.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
-                        {members.length > 0 && shownMembers.length === 0 && <li className="py-3 text-zinc-500">Nobody matches these filters.</li>}
-                        {shownMembers.map((m) => {
-                            const canChange = m.manageable && !m.isYou
-                            const inactive = m.status === "SUSPENDED" || m.accountClosed
-                            const menu = [
-                                ...(can.suspend && canChange ? [{ label: m.status === "SUSPENDED" ? "Reinstate" : "Suspend", onClick: () => void suspendOrReinstate(m) }] : []),
-                                ...(can.remove && m.manageable ? [{ label: m.isYou ? "Leave the team" : "Remove from the team", danger: true, onClick: () => void remove(m) }] : []),
-                            ]
-                            return (
-                                <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                                    <div className="flex min-w-0 items-center gap-3">
-                                        <Avatar name={m.name} email={m.email} muted={inactive} />
-                                        <div className="min-w-0">
-                                            <p className={`truncate font-medium ${inactive ? "text-zinc-500" : "text-zinc-900"}`}>
-                                                {m.name || m.email}
-                                                {m.isYou && <span className="ml-2 rounded-full bg-zinc-100 px-1.5 py-0.5 text-[11px] font-normal text-zinc-500">you</span>}
-                                            </p>
-                                            <p className="truncate text-xs text-zinc-500">
-                                                {m.name ? `${m.email} · ` : ""}since {day(m.since)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-end gap-2">
-                                        {m.status === "SUSPENDED" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Suspended</span>}
-                                        {m.accountClosed && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Account closed</span>}
-                                        {can.setRole && canChange ? (
-                                            <select
-                                                aria-label={`Role of ${m.name || m.email}`}
-                                                className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-800"
-                                                value={roles.some((r) => r.id === m.roleId) ? m.roleId : ""}
-                                                disabled={busy === m.id}
-                                                onChange={(e) => void changeRole(m, e.target.value)}
-                                            >
-                                                {!roles.some((r) => r.id === m.roleId) && <option value="" disabled>{m.roleName}</option>}
-                                                {roles.map((r) => (
-                                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
-                                        )}
-                                        <RowMenu label={`More actions for ${m.name || m.email}`} items={menu} disabled={busy === m.id} />
-                                    </div>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                </div>
-            )}
-
-            {invites.length > 0 && tab === "invites" && (
-                <ul className="divide-y divide-zinc-100 px-6 pb-6 pt-2 text-sm">
-                    {invites.map((i) => (
-                        <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                            <div className="flex min-w-0 items-center gap-3">
-                                <Avatar name={null} email={i.email} muted />
-                                <div className="min-w-0">
-                                    <p className="truncate font-medium text-zinc-900">{i.email}</p>
-                                    <p className="text-xs text-zinc-500">
-                                        {i.roleName}
-                                        {i.invitedByName ? `, invited by ${i.invitedByName}` : ""}
-                                        {i.state === "expired" ? `, expired ${day(i.expiresAt)}` : `, valid until ${day(i.expiresAt)}`}
-                                    </p>
+                    {(tab === "people" || invites.length === 0) && (
+                        <div className="px-6 pb-6 pt-4">
+                            {members.length >= FILTER_FROM && (
+                                <div className="mb-3 flex flex-wrap items-center gap-2">
+                                    <input
+                                        type="search"
+                                        value={filters.q}
+                                        onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+                                        placeholder="Search people"
+                                        aria-label="Search people"
+                                        className="h-9 min-w-40 flex-1 rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                                    />
+                                    {heldRoles.length > 1 && (
+                                        <select
+                                            aria-label="Filter by role"
+                                            className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
+                                            value={filters.roleId}
+                                            onChange={(e) => setFilters((f) => ({ ...f, roleId: e.target.value }))}
+                                        >
+                                            <option value="all">All roles</option>
+                                            {heldRoles.map(([id, name]) => (
+                                                <option key={id} value={id}>{name}</option>
+                                            ))}
+                                        </select>
+                                    )}
+                                    <select
+                                        aria-label="Filter by status"
+                                        className="h-9 rounded-lg border border-zinc-300 bg-white px-2.5 text-sm text-zinc-800"
+                                        value={filters.status}
+                                        onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as MemberFilters["status"] }))}
+                                    >
+                                        <option value="all">Any status</option>
+                                        <option value="active">Active</option>
+                                        <option value="suspended">Suspended</option>
+                                    </select>
+                                    {filterActive && (
+                                        <button type="button" className="text-xs text-zinc-500 underline underline-offset-2 hover:text-zinc-900" onClick={() => setFilters(NO_MEMBER_FILTERS)}>
+                                            Clear
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                {i.state === "expired" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Expired</span>}
-                                {can.invite && i.manageable && (
-                                    <>
-                                        <button className={ghostBtn} disabled={busy === "invite"} onClick={() => void sendInvite(i.email, i.roleId)}>
-                                            New link
-                                        </button>
-                                        <button className={ghostBtn} disabled={busy === i.id} onClick={() => void cancelInvite(i)}>
-                                            Cancel
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </li>
-                    ))}
-                </ul>
+                            )}
+
+                            <ul className="divide-y divide-zinc-100 text-sm">
+                                {members.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
+                                {members.length > 0 && shownMembers.length === 0 && <li className="py-3 text-zinc-500">Nobody matches these filters.</li>}
+                                {peoplePage.visible.map((m) => {
+                                    const canChange = m.manageable && !m.isYou
+                                    const inactive = m.status === "SUSPENDED" || m.accountClosed
+                                    const menu = [
+                                        ...(can.suspend && canChange ? [{ label: m.status === "SUSPENDED" ? "Reinstate" : "Suspend", onClick: () => void suspendOrReinstate(m) }] : []),
+                                        ...(can.remove && m.manageable ? [{ label: m.isYou ? "Leave the team" : "Remove from the team", danger: true, onClick: () => void remove(m) }] : []),
+                                    ]
+                                    return (
+                                        <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <Avatar name={m.name} email={m.email} muted={inactive} />
+                                                <div className="min-w-0">
+                                                    <p className={`truncate font-medium ${inactive ? "text-zinc-500" : "text-zinc-900"}`}>
+                                                        {m.name || m.email}
+                                                        {m.isYou && <span className="ml-2 rounded-full bg-zinc-100 px-1.5 py-0.5 text-[11px] font-normal text-zinc-500">you</span>}
+                                                    </p>
+                                                    <p className="truncate text-xs text-zinc-500">
+                                                        {m.name ? `${m.email} · ` : ""}since {day(m.since)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                                {m.status === "SUSPENDED" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Suspended</span>}
+                                                {m.accountClosed && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Account closed</span>}
+                                                {can.setRole && canChange ? (
+                                                    <select
+                                                        aria-label={`Role of ${m.name || m.email}`}
+                                                        className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-800"
+                                                        value={roles.some((r) => r.id === m.roleId) ? m.roleId : ""}
+                                                        disabled={busy === m.id}
+                                                        onChange={(e) => void changeRole(m, e.target.value)}
+                                                    >
+                                                        {!roles.some((r) => r.id === m.roleId) && <option value="" disabled>{m.roleName}</option>}
+                                                        {roles.map((r) => (
+                                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                                        ))}
+                                                    </select>
+                                                ) : (
+                                                    <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
+                                                )}
+                                                <RowMenu label={`More actions for ${m.name || m.email}`} items={menu} disabled={busy === m.id} />
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ul>
+                            <ShowMore next={peoplePage.next} remaining={peoplePage.remaining} onMore={peoplePage.more} className="pt-3" />
+                        </div>
+                    )}
+
+                    {invites.length > 0 && tab === "invites" && (
+                        <div className="px-6 pb-6 pt-2">
+                            <ul className="divide-y divide-zinc-100 text-sm">
+                                {invitesPage.visible.map((i) => (
+                                    <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <Avatar name={null} email={i.email} muted />
+                                            <div className="min-w-0">
+                                                <p className="truncate font-medium text-zinc-900">{i.email}</p>
+                                                <p className="text-xs text-zinc-500">
+                                                    {i.roleName}
+                                                    {i.invitedByName ? `, invited by ${i.invitedByName}` : ""}
+                                                    {i.state === "expired" ? `, expired ${day(i.expiresAt)}` : `, valid until ${day(i.expiresAt)}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {i.state === "expired" && <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs text-zinc-700">Expired</span>}
+                                            {can.invite && i.manageable && (
+                                                <>
+                                                    <button className={ghostBtn} disabled={busy === "invite"} onClick={() => void sendInvite(i.email, i.roleId)}>
+                                                        New link
+                                                    </button>
+                                                    <button className={ghostBtn} disabled={busy === i.id} onClick={() => void cancelInvite(i)}>
+                                                        Cancel
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                            <ShowMore next={invitesPage.next} remaining={invitesPage.remaining} onMore={invitesPage.more} className="pt-3" />
+                        </div>
+                    )}
+                </section>
+                {footer}
+            </div>
+
+            {canInvite && (
+                <aside className="space-y-4 lg:sticky lg:top-20">
+                    <form
+                        className="space-y-4 rounded-xl border border-zinc-200 bg-white p-5"
+                        onSubmit={(e) => {
+                            e.preventDefault()
+                            void sendInvite(email, roleId)
+                        }}
+                    >
+                        <div>
+                            <h2 className="text-sm font-semibold text-zinc-900">Invite someone</h2>
+                            <p className="mt-0.5 text-xs text-zinc-500">You get a link to send them yourself.</p>
+                        </div>
+                        <label className="block">
+                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Email of the person</span>
+                            <input
+                                type="email"
+                                required
+                                className={`${inputClass} w-full`}
+                                placeholder="name@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                disabled={busy === "invite"}
+                            />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1.5 block text-xs font-medium text-zinc-700">Role</span>
+                            <select className={`${inputClass} w-full`} value={roleId} onChange={(e) => setRoleId(e.target.value)} disabled={busy === "invite"}>
+                                {roles.map((r) => (
+                                    <option key={r.id} value={r.id}>{r.name}</option>
+                                ))}
+                            </select>
+                            {roles.find((r) => r.id === roleId)?.description && (
+                                <span className="mt-1.5 block text-xs text-zinc-500">{roles.find((r) => r.id === roleId)?.description}</span>
+                            )}
+                        </label>
+                        <button
+                            type="submit"
+                            disabled={busy === "invite" || !email.trim()}
+                            className="h-10 w-full rounded-lg bg-zinc-900 px-5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+                        >
+                            {busy === "invite" ? "Creating..." : "Create invitation link"}
+                        </button>
+                    </form>
+                    {feedback}
+                </aside>
             )}
-        </section>
+        </div>
     )
 }

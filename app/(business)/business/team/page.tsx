@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Business team" }
 
 export default function BusinessTeamPage() {
     return (
-        <div className="max-w-3xl space-y-6">
+        <div className="space-y-6">
             <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-200" />}>
                 <TeamContent />
             </Suspense>
@@ -108,91 +108,100 @@ async function TeamContent() {
                 </p>
             </div>
 
-            <section className="rounded-xl border border-zinc-200 bg-white p-6">
-                <h2 className="text-base font-semibold text-zinc-900">Everyone</h2>
-                <p className="mt-1 text-sm text-zinc-500">Each person once, with their role in the business and in each shop. Change things in the sections below.</p>
-                <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-                    {people.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
-                    {people.map((p) => (
-                        <li key={p.userId} className="py-3">
-                            <p className="font-medium text-zinc-900">
-                                {p.name || p.email}
-                                {p.userId === userId && <span className="ml-2 text-xs font-normal text-zinc-400">you</span>}
-                                {p.accountClosed && <span className="ml-2 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-700">Account closed</span>}
-                            </p>
-                            {p.name && <p className="text-xs text-zinc-500">{p.email}</p>}
-                            <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
-                                {p.businessRole && (
-                                    <span className="rounded-full bg-zinc-900 px-2.5 py-0.5 text-white">
-                                        Business: {p.businessRole}{p.suspendedInBusiness ? " (suspended)" : ""}
-                                    </span>
-                                )}
-                                {p.shopRoles.map((r) => (
-                                    <span key={r.shopId} className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-zinc-700">
-                                        {r.shopName}: {r.roleName}{r.suspended ? " (suspended)" : ""}
-                                    </span>
-                                ))}
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+                <div className="min-w-0 space-y-6">
+                    <TeamSection
+                        scope="BUSINESS"
+                        targetId={business.id}
+                        hideInviteForm
+                        title="Business team"
+                        subtitle="People who work in every shop of this business, such as owners and accountants."
+                        members={bizMembers.map((m) => toMemberView(m, canBiz, userId))}
+                        invites={bizInvites.map((i) => toInviteView(i, bizRoles, canBiz))}
+                        roles={toRoleChoices(bizRoles, canBiz, "BUSINESS")}
+                        can={{
+                            invite: canBiz(teamPermission("BUSINESS", "invite")),
+                            setRole: canBiz(teamPermission("BUSINESS", "set_role")),
+                            suspend: canBiz(teamPermission("BUSINESS", "suspend")),
+                            remove: canBiz(teamPermission("BUSINESS", "remove")),
+                        }}
+                    />
+
+                    <h2 className="pt-2 text-base font-semibold text-zinc-900">Shop teams</h2>
+                    {perShop.filter((s) => s.visible).length === 0 && (
+                        <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">No live shops to manage yet.</p>
+                    )}
+                    {perShop.filter((s) => s.visible).map((s) => (
+                        <details key={s.shop.id} open={perShop.length === 1} className="group rounded-xl border border-zinc-200 bg-white">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm">
+                                <span className="min-w-0">
+                                    <span className="font-medium text-zinc-900">{s.shop.name}</span>
+                                    <span className="ml-2 text-zinc-400">{s.shop.city}</span>
+                                </span>
+                                <span className="shrink-0 text-xs text-zinc-500">
+                                    {s.members.length} {s.members.length === 1 ? "person" : "people"}
+                                    {s.invites.length > 0 ? `, ${s.invites.length} waiting` : ""}
+                                </span>
+                            </summary>
+                            <div className="border-t border-zinc-100 p-2">
+                                <TeamSection
+                                    scope="SHOP"
+                                    targetId={s.shop.id}
+                                    hideInviteForm
+                                    title={`Team of ${s.shop.name}`}
+                                    subtitle="People who work in this shop only."
+                                    members={s.members.map((m) => toMemberView(m, s.can, userId))}
+                                    invites={s.invites.map((i) => toInviteView(i, s.roles, s.can))}
+                                    roles={toRoleChoices(s.roles, s.can, "SHOP")}
+                                    can={{
+                                        invite: s.can(teamPermission("SHOP", "invite")),
+                                        setRole: s.can(teamPermission("SHOP", "set_role")),
+                                        suspend: s.can(teamPermission("SHOP", "suspend")),
+                                        remove: s.can(teamPermission("SHOP", "remove")),
+                                    }}
+                                />
                             </div>
-                        </li>
+                        </details>
                     ))}
-                </ul>
-            </section>
 
-            <BusinessInviteForm targets={inviteTargets} />
-
-            <TeamSection
-                scope="BUSINESS"
-                targetId={business.id}
-                hideInviteForm
-                title="Business team"
-                subtitle="People who work in every shop of this business, such as owners and accountants."
-                members={bizMembers.map((m) => toMemberView(m, canBiz, userId))}
-                invites={bizInvites.map((i) => toInviteView(i, bizRoles, canBiz))}
-                roles={toRoleChoices(bizRoles, canBiz, "BUSINESS")}
-                can={{
-                    invite: canBiz(teamPermission("BUSINESS", "invite")),
-                    setRole: canBiz(teamPermission("BUSINESS", "set_role")),
-                    suspend: canBiz(teamPermission("BUSINESS", "suspend")),
-                    remove: canBiz(teamPermission("BUSINESS", "remove")),
-                }}
-            />
-
-            <h2 className="pt-2 text-base font-semibold text-zinc-900">Shop teams</h2>
-            {perShop.filter((s) => s.visible).length === 0 && (
-                <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">No live shops to manage yet.</p>
-            )}
-            {perShop.filter((s) => s.visible).map((s) => (
-                <details key={s.shop.id} open={perShop.length === 1} className="group rounded-xl border border-zinc-200 bg-white">
-                    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-4 text-sm">
-                        <span className="min-w-0">
-                            <span className="font-medium text-zinc-900">{s.shop.name}</span>
-                            <span className="ml-2 text-zinc-400">{s.shop.city}</span>
-                        </span>
-                        <span className="shrink-0 text-xs text-zinc-500">
-                            {s.members.length} {s.members.length === 1 ? "person" : "people"}
-                            {s.invites.length > 0 ? `, ${s.invites.length} waiting` : ""}
-                        </span>
-                    </summary>
-                    <div className="border-t border-zinc-100 p-2">
-                        <TeamSection
-                            scope="SHOP"
-                            targetId={s.shop.id}
-                            hideInviteForm
-                            title={`Team of ${s.shop.name}`}
-                            subtitle="People who work in this shop only."
-                            members={s.members.map((m) => toMemberView(m, s.can, userId))}
-                            invites={s.invites.map((i) => toInviteView(i, s.roles, s.can))}
-                            roles={toRoleChoices(s.roles, s.can, "SHOP")}
-                            can={{
-                                invite: s.can(teamPermission("SHOP", "invite")),
-                                setRole: s.can(teamPermission("SHOP", "set_role")),
-                                suspend: s.can(teamPermission("SHOP", "suspend")),
-                                remove: s.can(teamPermission("SHOP", "remove")),
-                            }}
-                        />
-                    </div>
-                </details>
-            ))}
+                    <details className="rounded-xl border border-zinc-200 bg-white">
+                        <summary className="cursor-pointer list-none px-6 py-4 text-sm">
+                            <span className="font-medium text-zinc-900">Everyone at a glance</span>
+                            <span className="ml-2 text-zinc-400">{people.length} {people.length === 1 ? "person" : "people"}, each with every role they hold</span>
+                        </summary>
+                        <div className="border-t border-zinc-100 px-6 pb-4">
+                            <ul className="mt-4 divide-y divide-zinc-100 text-sm">
+                                {people.length === 0 && <li className="py-3 text-zinc-500">Nobody yet.</li>}
+                                {people.map((p) => (
+                                    <li key={p.userId} className="py-3">
+                                        <p className="font-medium text-zinc-900">
+                                            {p.name || p.email}
+                                            {p.userId === userId && <span className="ml-2 text-xs font-normal text-zinc-400">you</span>}
+                                            {p.accountClosed && <span className="ml-2 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-normal text-zinc-700">Account closed</span>}
+                                        </p>
+                                        {p.name && <p className="text-xs text-zinc-500">{p.email}</p>}
+                                        <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+                                            {p.businessRole && (
+                                                <span className="rounded-full bg-zinc-900 px-2.5 py-0.5 text-white">
+                                                    Business: {p.businessRole}{p.suspendedInBusiness ? " (suspended)" : ""}
+                                                </span>
+                                            )}
+                                            {p.shopRoles.map((r) => (
+                                                <span key={r.shopId} className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-zinc-700">
+                                                    {r.shopName}: {r.roleName}{r.suspended ? " (suspended)" : ""}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+                <aside className="lg:sticky lg:top-20">
+                    <BusinessInviteForm targets={inviteTargets} />
+                </aside>
+            </div>
         </>
     )
 }

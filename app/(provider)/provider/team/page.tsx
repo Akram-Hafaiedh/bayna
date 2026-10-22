@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Team" }
 
 export default function ProviderTeamPage() {
     return (
-        <div className="max-w-3xl space-y-6">
+        <div className="space-y-6">
             <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-200" />}>
                 <TeamContent />
             </Suspense>
@@ -96,29 +96,35 @@ async function TeamContent() {
                     suspend: can(teamPermission("SHOP", "suspend")),
                     remove: can(teamPermission("SHOP", "remove")),
                 }}
+                footer={
+                    business && throughBusiness.length > 0 ? (
+                        <details key="through-business" className="rounded-xl border border-zinc-200 bg-white">
+                            <summary className="cursor-pointer list-none px-6 py-4 text-sm">
+                                <span className="font-medium text-zinc-900">Through the business</span>
+                                <span className="ml-2 text-zinc-400">
+                                    {throughBusiness.length} {throughBusiness.length === 1 ? "person" : "people"} who work in every shop of {business.name}
+                                </span>
+                            </summary>
+                            <div className="border-t border-zinc-100 px-6 pb-4">
+                                <p className="mt-4 text-sm text-zinc-500">They are managed by the business owner.</p>
+                                <ul className="mt-2 divide-y divide-zinc-100 text-sm">
+                                    {throughBusiness.map((m) => (
+                                        <li key={m.id} className="flex items-center justify-between gap-3 py-2.5">
+                                            <span className="min-w-0 truncate font-medium text-zinc-900">{m.name || m.email}</span>
+                                            <span className="shrink-0 rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                {canManageBusiness && (
+                                    <Link href="/business/team" className="mt-4 inline-block text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900">
+                                        Manage the whole business team
+                                    </Link>
+                                )}
+                            </div>
+                        </details>
+                    ) : null
+                }
             />
-
-            {business && throughBusiness.length > 0 && (
-                <section className="rounded-xl border border-zinc-200 bg-white p-6">
-                    <h2 className="text-base font-semibold text-zinc-900">Through the business</h2>
-                    <p className="mt-1 text-sm text-zinc-500">
-                        These people work in every shop of {business.name}. They are managed by the business owner.
-                    </p>
-                    <ul className="mt-4 divide-y divide-zinc-100 text-sm">
-                        {throughBusiness.map((m) => (
-                            <li key={m.id} className="flex items-center justify-between gap-3 py-2.5">
-                                <span className="min-w-0 truncate font-medium text-zinc-900">{m.name || m.email}</span>
-                                <span className="shrink-0 rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
-                            </li>
-                        ))}
-                    </ul>
-                    {canManageBusiness && (
-                        <Link href="/business/team" className="mt-4 inline-block text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900">
-                            Manage the whole business team
-                        </Link>
-                    )}
-                </section>
-            )}
         </>
     )
 }
