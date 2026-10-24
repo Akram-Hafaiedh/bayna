@@ -35,7 +35,7 @@ export default function DeleteProductButton({ id, name }: { id: string; name: st
 
         setBusy(true)
         try {
-            const res = await shopFetch(`/api/provider/products/${id}`, { method: "DELETE" })
+            const res = await shopFetch(`/api/shop/products/${id}`, { method: "DELETE" })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 toast.error("Could not remove the product", { description: data.error })

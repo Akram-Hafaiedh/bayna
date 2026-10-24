@@ -1,4 +1,4 @@
-// app/api/provider/profile/route.ts
+// app/api/shop/profile/route.ts
 // The shop's own profile. GET shows it, PATCH edits it.
 // A verified shop's edits to phone, WhatsApp and description save straight away. Edits to name,
 // address, city, governorate or location also save (the shop stays live) but raise `needsReview`

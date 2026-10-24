@@ -1,4 +1,4 @@
-// app/api/provider/team/members/[id]/route.ts
+// app/api/team/members/[id]/route.ts
 // The people in a shop or business. [id] is the assignment id.
 //   PATCH { action: "set_role", roleId } | { action: "suspend" } | { action: "reinstate" }
 //   DELETE   remove the person
@@ -40,12 +40,12 @@ async function run(req: Request, id: string, action: MemberAction) {
     // The new role must belong to this business, or to this shop (or its business, for a shop)
     const newRole =
         roleRow &&
-        roleUsableAt(
-            roleRow,
-            scope === "SHOP"
-                ? { scope, providerId: member.providerId!, businessId: guard.businessId }
-                : { scope, businessId: member.businessId! }
-        )
+            roleUsableAt(
+                roleRow,
+                scope === "SHOP"
+                    ? { scope, providerId: member.providerId!, businessId: guard.businessId }
+                    : { scope, businessId: member.businessId! }
+            )
             ? roleRow
             : null
     if (action.type === "set_role" && !newRole) return NextResponse.json({ error: "Unknown role" }, { status: 400 })

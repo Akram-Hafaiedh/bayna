@@ -1,4 +1,4 @@
-// app/api/provider/roles/route.ts
+// app/api/roles/route.ts
 // POST { scope: "BUSINESS" | "SHOP", targetId, name, description?, permissions[] }: create a role owned by
 // that business or shop. Business roles need business.role.manage, shop roles team.role.manage in that
 // shop. You can only give a role keys you hold yourself. Every role works the same way, whatever its name.

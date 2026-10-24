@@ -1,4 +1,4 @@
-// components/provider/restore-product.ts
+// components/shop/restore-product.ts
 // Client helper: bring a product back from the trash. Returns a result instead of throwing.
 import { shopFetch } from "@/lib/shop-fetch"
 export type RestoreResult =
@@ -7,7 +7,7 @@ export type RestoreResult =
 
 export async function restoreProduct(id: string): Promise<RestoreResult> {
     try {
-        const res = await shopFetch(`/api/provider/products/${id}/restore`, { method: "POST" })
+        const res = await shopFetch(`/api/shop/products/${id}/restore`, { method: "POST" })
         const data = await res.json().catch(() => ({}))
         if (!res.ok) return { ok: false, error: data.error || "Could not restore the product" }
         return { ok: true, id: data.product.id, name: data.product.name, needsPriceReview: !!data.needsPriceReview }

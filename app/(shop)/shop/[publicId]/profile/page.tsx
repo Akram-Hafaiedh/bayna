@@ -1,9 +1,9 @@
 "use client"
 // app/(shop)/shop/[publicId]/profile/page.tsx
-// The shop's own profile: same form as the application, saved through /api/provider/profile.
+// The shop's own profile: same form as the application, saved through /api/shop/profile.
 import { useEffect, useState } from "react"
 import { NOTIFICATIONS_NEW_EVENT } from "@/components/NotificationBell"
-import ProviderProfileForm, { type ProfileValues } from "@/components/shop/ShopProfileForm"
+import ShopProfileForm, { type ProfileValues } from "@/components/shop/ShopProfileForm"
 import { shopFetch } from "@/lib/shop-fetch"
 
 type Loaded = ProfileValues & { canEdit: boolean; isVerified: boolean; needsReview: boolean }
@@ -36,7 +36,7 @@ export default function ProviderProfilePage() {
 
     useEffect(() => {
         let alive = true
-        shopFetch("/api/provider/profile", { cache: "no-store" })
+        shopFetch("/api/shop/profile", { cache: "no-store" })
             .then(async (res) => {
                 const json = await res.json()
                 if (!alive) return
@@ -54,7 +54,7 @@ export default function ProviderProfilePage() {
     useEffect(() => {
         async function refreshStatus() {
             try {
-                const res = await shopFetch("/api/provider/profile", { cache: "no-store" })
+                const res = await shopFetch("/api/shop/profile", { cache: "no-store" })
                 if (!res.ok) return
                 const json = await res.json()
                 setData((prev) =>
@@ -70,7 +70,7 @@ export default function ProviderProfilePage() {
 
     async function save(body: Record<string, unknown>): Promise<string | null> {
         setMessage("")
-        const res = await shopFetch("/api/provider/profile", {
+        const res = await shopFetch("/api/shop/profile", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
@@ -109,7 +109,7 @@ export default function ProviderProfilePage() {
             {message && <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">{message}</div>}
 
             {data && (
-                <ProviderProfileForm
+                <ShopProfileForm
                     key={version}
                     initial={data}
                     submitLabel="Save changes"

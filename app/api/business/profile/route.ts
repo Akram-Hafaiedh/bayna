@@ -1,4 +1,4 @@
-// app/api/provider/business/route.ts
+// app/api/business/profile/route.ts
 // The business behind the shop the person is working in: legal and billing details.
 // GET shows it, PATCH edits it. Needs a business-level role; being a shop manager is not enough.
 // Legal fields (legal name, tax number, registry number) also need business.profile.edit_legal.

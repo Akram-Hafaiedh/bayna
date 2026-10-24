@@ -59,7 +59,7 @@ export default function RolesList({
         if (!ok) return
         setBusy(r.id)
         try {
-            const res = await fetch(`/api/provider/roles/${r.id}`, { method: "DELETE" })
+            const res = await fetch(`/api/roles/${r.id}`, { method: "DELETE" })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 toast.error("Could not delete the role", { description: data.error })

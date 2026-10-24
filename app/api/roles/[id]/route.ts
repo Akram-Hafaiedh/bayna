@@ -1,4 +1,4 @@
-// app/api/provider/roles/[id]/route.ts
+// app/api/roles/[id]/route.ts
 //   PATCH { name, description?, permissions[] }   change a role (applies to everyone who holds it, at once)
 //   DELETE                                         delete a role nobody uses
 // Same rules as creating: you manage roles at that business or shop, you only give keys you hold, and

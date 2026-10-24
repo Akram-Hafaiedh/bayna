@@ -1,4 +1,4 @@
-// app/api/provider/team/invites/[id]/route.ts
+// app/api/team/invites/[id]/route.ts
 // DELETE: cancel a pending invitation (the link stops working). Same permission as inviting, and you
 // cannot cancel an invitation for a role with more access than yours.
 import { NextResponse } from "next/server"

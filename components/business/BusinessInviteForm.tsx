@@ -47,7 +47,7 @@ export default function BusinessInviteForm({ targets }: { targets: InviteTarget[
             const roleId = roles[keyOf(t)]
             const roleName = t.roles.find((r) => r.id === roleId)?.name ?? roleId
             try {
-                const res = await fetch("/api/provider/team/invites", {
+                const res = await fetch("/api/team/invites", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ scope: t.scope, email, roleId, targetId: t.id }),

@@ -1,4 +1,4 @@
-// app/api/provider/products/[id]/restore/route.ts
+// app/api/shop/products/[id]/restore/route.ts
 // POST: bring a product back from the trash.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"

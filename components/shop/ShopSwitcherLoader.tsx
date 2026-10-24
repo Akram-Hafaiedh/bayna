@@ -1,4 +1,4 @@
-// components/provider/ShopSwitcherLoader.tsx
+// components/shop/ShopSwitcherLoader.tsx
 // Server part of the switcher: loads the person's shops. Render it inside <Suspense>.
 import { connection } from "next/server"
 import { auth } from "@/auth"

@@ -1,4 +1,4 @@
-// app/api/provider/products/route.ts
+// app/api/shop/products/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Unit } from "@/app/generated/prisma/enums"
@@ -17,7 +17,7 @@ import {
 const bad = (error: string, status = 400, extra?: Record<string, unknown>) =>
     NextResponse.json({ error, ...extra }, { status })
 
-// GET /api/provider/products?q=&category=&status=&stock=&linked=&unit=&sort=&dir=&page=&pageSize=
+// GET /api/shop/products?q=&category=&status=&stock=&linked=&unit=&sort=&dir=&page=&pageSize=
 export async function GET(req: Request) {
     try {
         const guard = await requireShop("product.listing.view", req)

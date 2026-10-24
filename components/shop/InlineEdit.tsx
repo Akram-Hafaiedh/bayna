@@ -1,5 +1,5 @@
 "use client"
-// components/provider/InlineEdit.tsx
+// components/shop/InlineEdit.tsx
 // Edit one number (price or stock) in place, in the products table. Enter saves, Escape cancels.
 // It sends only that field, so it needs only that field's permission (product.price.edit or
 // product.stock.edit); the server checks it again.
@@ -43,7 +43,7 @@ export default function InlineEdit({ productId, field, value, canEdit, children 
         setSaving(true)
         setError("")
         try {
-            const res = await shopFetch(`/api/provider/products/${productId}`, {
+            const res = await shopFetch(`/api/shop/products/${productId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ [field]: draft }),

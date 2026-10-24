@@ -1,4 +1,4 @@
-// app/api/admin/providers/[id]/reject/route.ts
+// app/api/admin/shops/[id]/reject/route.ts
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"

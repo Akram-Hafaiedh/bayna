@@ -1,4 +1,4 @@
-// app/api/admin/providers/[id]/reviewed/route.ts
+// app/api/admin/shops/[id]/reviewed/route.ts
 // An admin has looked at a shop's changed name, address or location: clear the review flag.
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"

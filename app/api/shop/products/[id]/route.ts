@@ -1,4 +1,4 @@
-// app/api/provider/products/[id]/route.ts
+// app/api/shop/products/[id]/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"

@@ -1,5 +1,5 @@
 "use client"
-// components/provider/ConfirmPriceButton.tsx
+// components/shop/ConfirmPriceButton.tsx
 // "Keep this price": tells the server the shop has checked the price after a catalogue change.
 // Needs product.price.edit; the server checks it.
 import { useState } from "react"
@@ -17,7 +17,7 @@ export default function ConfirmPriceButton({ productId, className = "" }: { prod
         setBusy(true)
         setError("")
         try {
-            const res = await shopFetch(`/api/provider/products/${productId}`, {
+            const res = await shopFetch(`/api/shop/products/${productId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ confirmPrice: true }),

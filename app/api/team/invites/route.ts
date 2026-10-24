@@ -1,4 +1,4 @@
-// app/api/provider/team/invites/route.ts
+// app/api/team/invites/route.ts
 // POST { scope: "SHOP" | "BUSINESS", email, roleId }: invite someone to the shop you are working in, or
 // to its business. Returns the link token ONCE: only its hash is stored, so a lost link is replaced
 // by making a new one (which cancels the older one for the same person).

@@ -1,5 +1,5 @@
 "use client"
-// components/provider/TeamSection.tsx
+// components/access/TeamSection.tsx
 // One team list: the people, the pending invitations, and the invite form, for one level (a shop or
 // its business). The server page decides what this person may do and passes it in; the routes check
 // everything again. Black and white like the rest of the site; ask with useConfirm, report with useToast.
@@ -175,7 +175,7 @@ export default function TeamSection({
         setError("")
         setBusy("invite")
         try {
-            const res = await fetch("/api/provider/team/invites", {
+            const res = await fetch("/api/team/invites", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ scope, email: toEmail, roleId: toRole, targetId }),
@@ -208,7 +208,7 @@ export default function TeamSection({
     async function call(id: string, init: RequestInit, done: string) {
         setBusy(id)
         try {
-            const res = await fetch(`/api/provider/team/members/${id}`, {
+            const res = await fetch(`/api/team/members/${id}`, {
                 ...init,
                 headers: { "Content-Type": "application/json" },
             })
@@ -276,7 +276,7 @@ export default function TeamSection({
         if (!ok) return
         setBusy(i.id)
         try {
-            const res = await fetch(`/api/provider/team/invites/${i.id}`, { method: "DELETE" })
+            const res = await fetch(`/api/team/invites/${i.id}`, { method: "DELETE" })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 toast.error("Could not cancel", { description: data.error })

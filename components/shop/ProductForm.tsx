@@ -143,7 +143,7 @@ export default function ProductForm({
                         : {}),
                 }
             const res = await shopFetch(
-                isEdit ? `/api/provider/products/${product.id}` : "/api/provider/products",
+                isEdit ? `/api/shop/products/${product.id}` : "/api/shop/products",
                 {
                     method: isEdit ? "PATCH" : "POST",
                     headers: { "Content-Type": "application/json" },

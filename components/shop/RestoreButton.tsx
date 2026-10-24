@@ -1,5 +1,5 @@
 "use client"
-// components/provider/RestoreButton.tsx
+// components/shop/RestoreButton.tsx
 // "Restore" for one product in the trash. Needs product.listing.restore; the server checks it.
 import { useState } from "react"
 import { useRouter } from "next/navigation"

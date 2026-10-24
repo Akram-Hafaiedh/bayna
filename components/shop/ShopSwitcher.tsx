@@ -1,5 +1,5 @@
 "use client"
-// components/provider/ShopSwitcher.tsx
+// components/shop/ShopSwitcher.tsx
 // Which shop am I working in? Always shown for providers, even with one shop, so "Create shop" is
 // always one click away. Switching reloads the shop pages (a product of one shop is not a product
 // of another): it opens the same section of the other shop (the list, not a product's edit page).
