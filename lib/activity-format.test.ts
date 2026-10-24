@@ -4,21 +4,23 @@ import { test } from "vitest"
 import assert from "node:assert/strict"
 import { ACTIVITY_KINDS, describeActivity, kindFilter, parseKind } from "./activity-format"
 
+const BASE = "/shop/abc"
 const row = (over: Partial<Parameters<typeof describeActivity>[0]>) => ({
     entityType: "Product", entityId: "p1", action: "UPDATE", changes: [], note: null, ...over,
 })
 
 test("a trigger row reads as a verb and a thing, with the changed fields", () => {
-    const line = describeActivity(row({ changes: [{ field: "price", from: "12", to: "14" }, { field: "updatedAt", from: "a", to: "b" }] }))
+    const line = describeActivity(row({ changes: [{ field: "price", from: "12", to: "14" }, { field: "updatedAt", from: "a", to: "b" }] }), BASE)
     assert.equal(line.title, "Changed a product")
     assert.equal(line.detail, "price: 12 → 14")
-    assert.equal(line.href, "/provider/products/p1/edit")
+    assert.equal(line.href, "/shop/abc/products/p1/edit")
 })
 
 test("a note wins over the generated title (team actions)", () => {
-    const line = describeActivity(row({ entityType: "AccessAssignment", action: "TEAM_REMOVED", note: "removed Sami from Sfax BTP" }))
+    const line = describeActivity(row({ entityType: "AccessAssignment", action: "TEAM_REMOVED", note: "removed Sami from Sfax BTP" }), BASE)
     assert.equal(line.title, "removed Sami from Sfax BTP")
-    assert.equal(line.href, "/provider/team")
+    assert.equal(line.href, "/shop/abc/team")
+    assert.equal(describeActivity(row({ entityType: "AccessAssignment", action: "TEAM_REMOVED" })).href, null)
 })
 
 test("a created row lists no field detail; more than three changes are summarised", () => {
@@ -33,9 +35,9 @@ test("empty values and long values are shortened", () => {
 })
 
 test("trash and restore link where the product can be found", () => {
-    assert.equal(describeActivity(row({ action: "SOFT_DELETE" })).href, "/provider/products/trash")
+    assert.equal(describeActivity(row({ action: "SOFT_DELETE" }), BASE).href, "/shop/abc/products/trash")
     assert.equal(describeActivity(row({ action: "SOFT_DELETE" })).title, "Moved to trash: a product")
-    assert.equal(describeActivity(row({ action: "DELETE" })).href, null)
+    assert.equal(describeActivity(row({ action: "DELETE" }), BASE).href, null)
 })
 
 test("odd data does not break it", () => {

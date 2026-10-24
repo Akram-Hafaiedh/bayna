@@ -20,6 +20,6 @@ export async function requireBusinessArea(): Promise<{
     const user = await requireRole([Role.PROVIDER])
     const mine = await loadMyBusinesses(user.id)
     const business = mine?.businesses.find((b) => b.id === mine.activeId)
-    if (!mine || !business) redirect("/provider/dashboard")
+    if (!mine || !business) redirect("/shop")
     return { userId: user.id, access: mine.access, business, businesses: mine.businesses }
 }

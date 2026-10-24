@@ -24,7 +24,7 @@ export async function requireRole(allowedRoles: Role[]) {
     if (!allowedRoles.includes(user.role as Role)) {
         // Redirect to the correct dashboard based on their actual role
         if (user.role === Role.CLIENT) redirect("/dashboard")
-        if (user.role === Role.PROVIDER) redirect("/provider/dashboard")
+        if (user.role === Role.PROVIDER) redirect("/shop")
         if (user.role === Role.ADMIN) redirect("/admin/dashboard")
         redirect("/")
     }

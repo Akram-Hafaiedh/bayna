@@ -2,7 +2,7 @@
 // Turns the team data into what the team screens show: who the signed-in person may manage, which
 // roles they may hand out. Pure (the permission test is passed in), shared by the shop Team page and
 // the Business Team page.
-import type { RoleChoice, TeamInviteView, TeamMemberView } from "@/components/provider/TeamSection"
+import type { RoleChoice, TeamInviteView, TeamMemberView } from "@/components/access/TeamSection"
 import type { TeamInvite, TeamMember } from "./team"
 import { OWNERSHIP_KEY, holdsKey } from "./catalogue"
 import { assignableRoles, missingKeys } from "./team-rules"

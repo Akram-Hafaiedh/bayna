@@ -8,7 +8,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/Toast"
-import type { RoleChoice } from "@/components/provider/TeamSection"
+import type { RoleChoice } from "@/components/access/TeamSection"
 
 export type InviteTarget = { id: string; scope: "BUSINESS" | "SHOP"; label: string; roles: RoleChoice[] }
 

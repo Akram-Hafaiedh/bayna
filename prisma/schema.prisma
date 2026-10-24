@@ -117,14 +117,14 @@ model User {
 // The table keeps its old name "Provider" (@@map), so no data moves.
 model Shop {
   id       String @id @default(cuid())
-  // Opaque id for URLs (for example /provider/shops/[publicId]); never guessable, unlike a counter.
+  // Opaque id for URLs (for example /shop/[publicId]); never guessable, unlike a counter.
   publicId String @unique @default(cuid())
   // The applicant. Who works in the shop, and as what, is AccessAssignment (the applicant becomes OWNER on approval).
-  userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // The name of the shop itself, not of the company (that is Business.name). Column keeps its old name.
-  name           String          @map("businessName")
+  name           String @map("businessName")
   description    String?
   phone          String?
   whatsapp       String?
@@ -245,9 +245,9 @@ model CatalogItem {
 // Created alongside a custom product; on approval the product is linked to the
 // resulting CatalogItem so it joins price comparisons.
 model CatalogSuggestion {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   providerId String
-  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // The provider's custom product that triggered the suggestion (relinked on approval)
   productId String?  @unique
@@ -279,9 +279,9 @@ model CatalogSuggestion {
 }
 
 model Product {
-  id         String @id @default(cuid())
+  id         String   @id @default(cuid())
   providerId String
-  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // Optional link to the shared catalogue — enables price comparison
   catalogItemId String?
@@ -469,7 +469,7 @@ model AccessRole {
   businessId  String?
   business    Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   providerId  String?
-  provider    Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider    Shop?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
   permissions String[]
 
   createdAt   DateTime @default(now())
@@ -497,7 +497,7 @@ model AccessAssignment {
   role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
   scope      AccessScope
   providerId String? // the shop, for SHOP scope; null otherwise
-  provider   Shop?            @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope; null otherwise
   business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
@@ -525,7 +525,7 @@ model AccessInvite {
   id         String      @id @default(cuid())
   scope      AccessScope // SHOP or BUSINESS (never PLATFORM)
   providerId String? // the shop, for SHOP scope
-  provider   Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope
   business   Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   roleId     String

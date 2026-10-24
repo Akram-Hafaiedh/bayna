@@ -422,8 +422,8 @@ audit columns from the start.
 ### 5.1 Findings from the current code
 
 - The only code that updates a `Provider` is the admin approval route.
-- `POST /api/provider/apply` creates the profile once; there is no edit or withdraw.
-- `/provider/*` is gated on the global `PROVIDER` role, and a pending applicant is still a CLIENT.
+- `POST /api/shop/apply` creates the profile once; there is no edit or withdraw.
+- `/shop/*` is gated on the global `PROVIDER` role, and a pending applicant is still a CLIENT.
   So editing a **pending** application has to live under `/become-provider`, not `/provider`.
 - Latitude and longitude exist in the schema but nothing sets them (only the demo seed). The apply
   form collects city and governorate as free text.
@@ -433,9 +433,9 @@ audit columns from the start.
 
 | Piece | Detail |
 |---|---|
-| Page | `/provider/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
-| API | `GET` / `PATCH /api/provider/profile`, validated in a new `lib/provider-input.ts` in the style of `lib/product-input.ts` |
-| Pending applicants | `PATCH` and `DELETE` on `/api/provider/apply` to edit or withdraw while pending, plus the matching UI in `/become-provider` |
+| Page | `/shop/<publicId>/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
+| API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/provider-input.ts` in the style of `lib/product-input.ts` |
+| Pending applicants | `PATCH` and `DELETE` on `/api/shop/apply` to edit or withdraw while pending, plus the matching UI in `/become-provider` |
 | Fields | businessName, description, phone, address, city, governorate, latitude, longitude, plus new columns `whatsapp`, `locationSource`, `needsReview` |
 | Location | Decided 16 Oct 2026: the provider sets his own location with a map pin (click or drag), starting from the governorate centre or an address search. `locationSource` (LOOKUP, PIN, GEOCODED) records how it was set, so a pin the provider placed is trusted over a guess. The 24 governorates are a TypeScript constant (`lib/governorates.ts`, not a database table) with coordinates from a cited source. A pin must lie inside Tunisia and within 250 km of its governorate centre; shops saved before the map existed (coordinates, no `locationSource`) are shown as IMPORTED. The same map component later shows all shops on the public pages (Phase 4) |
 | Audit | Uses the Phase 7 audit columns and `ActivityLog`; writes a before / after entry in the same transaction |

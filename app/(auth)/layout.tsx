@@ -28,7 +28,7 @@ async function AuthGate({ children }: { children: React.ReactNode }) {
     if (session?.user?.id) {
         const role = session.user.role as Role
         if (role === Role.ADMIN) redirect("/admin/dashboard")
-        if (role === Role.PROVIDER) redirect("/provider/dashboard")
+        if (role === Role.PROVIDER) redirect("/shop")
         redirect("/dashboard")
     }
 

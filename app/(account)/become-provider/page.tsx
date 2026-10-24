@@ -5,7 +5,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
-import ProviderProfileForm, { EMPTY_PROFILE, type ProfileValues } from "@/components/provider/ProviderProfileForm"
+import ShopProfileForm, { EMPTY_PROFILE, type ProfileValues } from "@/components/shop/ShopProfileForm"
 
 function toValues(p: Record<string, unknown>): ProfileValues {
     const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "")
@@ -46,7 +46,7 @@ export default function BecomeProviderPage() {
     useEffect(() => {
         async function loadStatus() {
             try {
-                const res = await fetch("/api/provider/apply")
+                const res = await fetch("/api/shop/apply")
                 const data = await res.json()
                 const options: { id: string; name: string }[] = Array.isArray(data.businesses) ? data.businesses : []
                 setBusinesses(options)
@@ -94,7 +94,7 @@ export default function BecomeProviderPage() {
             ...(!pending && businesses.length > 0 ? { businessId: businessChoice || businesses[0].id } : {}),
             ...(startsBusiness && newBusinessName.trim() ? { newBusinessName: newBusinessName.trim() } : {}),
         }
-        const res = await fetch("/api/provider/apply", {
+        const res = await fetch("/api/shop/apply", {
             method: pending ? "PATCH" : "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
@@ -108,7 +108,7 @@ export default function BecomeProviderPage() {
             setMessage("Application updated.")
         } else {
             // Load what was saved, so the pending view shows the real values
-            const again = await (await fetch("/api/provider/apply")).json()
+            const again = await (await fetch("/api/shop/apply")).json()
             if (again.provider) setApplication(toValues(again.provider))
             setAppStatus("pending")
             setMessage("Application submitted.")
@@ -126,7 +126,7 @@ export default function BecomeProviderPage() {
         if (!yes) return
         setWithdrawing(true)
         try {
-            const res = await fetch("/api/provider/apply", { method: "DELETE" })
+            const res = await fetch("/api/shop/apply", { method: "DELETE" })
             if (res.ok) {
                 setApplication(null)
                 setMessage("")
@@ -167,7 +167,7 @@ export default function BecomeProviderPage() {
                             {withdrawing ? "Withdrawing..." : "Withdraw application"}
                         </button>
                         <Link
-                            href={another ? "/provider/dashboard" : "/profile"}
+                            href={another ? "/shop" : "/profile"}
                             className="inline-flex h-10 items-center rounded-lg border border-amber-200 bg-white px-4 text-sm font-medium text-amber-900 hover:bg-amber-50"
                         >
                             {another ? "Back to my shop" : "Back to profile"}
@@ -185,7 +185,7 @@ export default function BecomeProviderPage() {
                             : "Submit your shop details. An admin will review and approve your application before you can list products."}
                     </p>
                     {another && (
-                        <Link href="/provider/dashboard" className="mt-3 inline-block text-sm text-zinc-500 hover:text-zinc-900">
+                        <Link href="/shop" className="mt-3 inline-block text-sm text-zinc-500 hover:text-zinc-900">
                             ← Back to my shop
                         </Link>
                     )}
@@ -248,7 +248,7 @@ export default function BecomeProviderPage() {
                 </fieldset>
             )}
 
-            <ProviderProfileForm
+            <ShopProfileForm
                 key={version}
                 initial={application ?? EMPTY_PROFILE}
                 submitLabel={pending ? "Save changes" : another ? "Submit shop for review" : "Submit application"}

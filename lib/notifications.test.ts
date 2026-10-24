@@ -30,7 +30,7 @@ test("a notification needs a type and a title", () => {
 
 test("links must be paths inside the app", () => {
     const href = (h: string) => buildNotifications("u1", { type: "t", title: "a", href: h })[0].href
-    assert.equal(href("/provider/profile"), "/provider/profile")
+    assert.equal(href("/shop/abc/profile"), "/shop/abc/profile")
     assert.equal(href("https://evil.example"), null)
     assert.equal(href("//evil.example"), null)
     assert.equal(href("javascript:alert(1)"), null)
@@ -38,12 +38,12 @@ test("links must be paths inside the app", () => {
 })
 
 test("the ready-made messages are valid", () => {
-    const sample = { itemName: "Cement", reason: "Unit changed from Piece to Bag", count: 2 }
+    const sample = { shop: "abc", itemName: "Cement", reason: "Unit changed from Piece to Bag", count: 2 }
     const messages = [
-        notifications.applicationApproved(),
+        notifications.applicationApproved({ shop: "abc" }),
         notifications.applicationRejected(),
         notifications.priceReviewNeeded(sample),
-        notifications.profileReviewed(),
+        notifications.profileReviewed({ shop: "abc" }),
         notifications.teamJoined({ who: "Sami", where: "Sfax BTP", role: "Manager" }),
         notifications.teamRoleChanged({ where: "Sfax BTP", role: "Viewer" }),
         notifications.teamSuspended({ where: "Sfax BTP" }),

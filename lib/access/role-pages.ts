@@ -4,7 +4,8 @@
 // editor. Server only. The routes check everything again; this only decides what to show.
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { requireProvider } from "@/lib/provider-auth"
+import { requireShopPage } from "@/lib/shop-auth"
+import { shopPath } from "@/lib/shop-paths"
 import { requireBusinessArea } from "@/lib/business-auth"
 import { loadAccess, type Access } from "./load"
 import { ALL_BUSINESS_KEYS, ALL_SHOP_KEYS } from "./catalogue"
@@ -137,15 +138,15 @@ export type ShopRolesContext =
     | {
         ready: true
         access: Access
-        shop: { id: string; name: string }
+        shop: { id: string; name: string; /** the shop's address, "/shop/<publicId>" */ base: string }
         /** the shop's own roles first, then (when this person may look at them) the business's */
         owners: OwnerOption[]
         via: ViaShop
     }
 
 /** Everything the shop-area role pages need: the active shop, who this is, and the places that own roles. */
-export async function loadShopRolesContext(): Promise<ShopRolesContext> {
-    const shop = await requireProvider()
+export async function loadShopRolesContext(publicId: string): Promise<ShopRolesContext> {
+    const shop = await requireShopPage(publicId)
     const session = await auth()
     const access = session?.user?.id ? await loadAccess(session.user.id) : null
     if (!shop?.isVerified || !access) return { ready: false, reason: "not-approved" }
@@ -159,7 +160,7 @@ export async function loadShopRolesContext(): Promise<ShopRolesContext> {
     const shopOpt = shopOwner(access, { id: shop.id, name: found?.name ?? shop.name }, business?.id ?? null)
     const owners = [shopOpt, ...(business ? [businessOwner(access, business, via)] : [])]
     if (!owners.some((o) => o.canView)) return { ready: false, reason: "no-access" }
-    return { ready: true, access, shop: { id: shop.id, name: found?.name ?? shop.name }, owners, via }
+    return { ready: true, access, shop: { id: shop.id, name: found?.name ?? shop.name, base: shopPath(shop.publicId, "") }, owners, via }
 }
 
 /** Everything the Business-area role pages need: the business, who this is, and the business plus each of its shops as owners. */

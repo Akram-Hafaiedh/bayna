@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { requireBusinessArea } from "@/lib/business-auth"
 import { businessCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
-import BusinessForm from "@/components/provider/BusinessForm"
+import BusinessForm from "@/components/business/BusinessForm"
 
 export const metadata: Metadata = { title: "Business profile" }
 

@@ -68,8 +68,8 @@ export default function WhereIWork() {
                     </div>
                 ))}
             </div>
-            <Link href="/provider/dashboard" className="mt-4 inline-block text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900">
-                Open the provider area
+            <Link href="/shop" className="mt-4 inline-block text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900">
+                Open my shop
             </Link>
         </section>
     )

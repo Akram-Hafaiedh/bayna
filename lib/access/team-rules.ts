@@ -92,7 +92,7 @@ export function checkMemberAction(input: {
 /** targetId: the shop or business to invite to; null = the one the person is working in. */
 export type InviteInput = { scope: TeamScope; email: string; roleId: string; targetId: string | null }
 
-/** Body of POST /api/provider/team/invites. */
+/** Body of POST /api/team/invites. */
 export function parseInviteInput(body: unknown): Parsed<InviteInput> {
     if (!body || typeof body !== "object") return fail("Send the person's email and a role")
     const b = body as Record<string, unknown>
@@ -108,7 +108,7 @@ export function parseInviteInput(body: unknown): Parsed<InviteInput> {
     return ok({ scope: b.scope, email: email.value, roleId: b.roleId, targetId })
 }
 
-/** Body of PATCH /api/provider/team/members/[id]. (Removing is DELETE and needs no body.) */
+/** Body of PATCH /api/team/members/[id]. (Removing is DELETE and needs no body.) */
 export function parseMemberAction(body: unknown): Parsed<MemberAction> {
     if (!body || typeof body !== "object") return fail("Say what to do")
     const b = body as Record<string, unknown>

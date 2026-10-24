@@ -7,7 +7,7 @@ import { loadInvites, loadMembers, loadRoleOptions } from "@/lib/access/team"
 import { teamPermission } from "@/lib/access/team-rules"
 import { toInviteView, toMemberView, toRoleChoices } from "@/lib/access/team-view"
 import { groupPeople, type PersonRow } from "@/lib/access/people"
-import TeamSection from "@/components/provider/TeamSection"
+import TeamSection from "@/components/access/TeamSection"
 import BusinessInviteForm, { type InviteTarget } from "@/components/business/BusinessInviteForm"
 
 export const metadata: Metadata = { title: "Business team" }

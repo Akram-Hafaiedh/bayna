@@ -77,7 +77,7 @@ export const PEOPLE: Person[] = [
     // ---- People with no access ----------------------------------------------------------------
     { local: "invitee", name: "Test Invitee", note: "Has an account and no access. Open the invite links below while logged in as this user", grants: [] },
     { local: "nobody", name: "Test Nobody", note: "Has an account, no access and no invitation: invite this email yourself from Team, or use it for the wrong-account test", grants: [] },
-    { local: "client", name: "Test Client", note: "A plain client: /provider and /business must send this account away", grants: [] },
+    { local: "client", name: "Test Client", note: "A plain client: /shop and /business must send this account away", grants: [] },
 ]
 
 export type InviteSeed = {

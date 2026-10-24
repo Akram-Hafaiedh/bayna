@@ -19,6 +19,7 @@ import type { BusinessPermission, PlatformPermission, ShopPermission } from "./c
 import { effective, has, roleNames } from "./evaluate"
 import { loadAccess, type Access } from "./load"
 import { pickActiveShop } from "./active-shop"
+import { SHOP_HEADER } from "@/lib/shop-paths"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
 import { readActiveShopHint } from "./active-cookie"
 import { pickActiveBusiness } from "./active-business"
@@ -100,9 +101,10 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
 }
 
 /**
- * Action inside a shop. The shop is chosen from the person's own live assignments: the one they
- * switched to (remembered in a cookie that is checked every time, never trusted), else the first
- * by id. A caller may force a shop with `opts.providerId`; that still has to be one they work in.
+ * Action inside a shop. The shop is the one the page names: the browser sends its public id in the
+ * x-shop header (see lib/shop-fetch.ts), so two tabs on two shops never mix. Without the header the
+ * one they last switched to (a cookie that is checked every time, never trusted), else the first by
+ * id. A caller may force a shop with `opts.providerId`. Whichever way, it has to be a shop they work in.
  */
 export async function requireShop(
     key: ShopPermission,
@@ -128,7 +130,14 @@ export async function requireShop(
         if (pending) return fail("Your shop is not approved yet", 403)
         return fail("Forbidden", 403)
     } else {
-        providerId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
+        const asked = req?.headers.get(SHOP_HEADER)?.trim()
+        if (asked) {
+            const named = await prisma.shop.findUnique({ where: { publicId: asked }, select: { id: true } })
+            if (!named || !shopIds.includes(named.id)) return fail("Forbidden", 403)
+            providerId = named.id
+        } else {
+            providerId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
+        }
     }
 
     const provider = await prisma.shop.findUnique({

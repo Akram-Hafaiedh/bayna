@@ -70,7 +70,7 @@ app/
 ├── (public)/            # Landing, search, product pages
 ├── (account)/           # Profile, Become a Provider
 ├── (client)/            # CLIENT dashboard (/dashboard)
-├── (provider)/          # PROVIDER dashboard (/provider/...)
+├── (shop)/              # shop area (/shop/[publicId]/...)
 ├── (admin)/             # ADMIN dashboard (/admin/...)
 ├── api/                 # API routes
 └── generated/           # Prisma client
@@ -118,7 +118,7 @@ npm run dev
 | Role         | How you get it                                      | Dashboard URL            |
 |--------------|-----------------------------------------------------|--------------------------|
 | **CLIENT**   | Default on registration                             | `/dashboard`             |
-| **PROVIDER** | Apply after being CLIENT (+ optional admin approval)| `/provider/dashboard`    |
+| **PROVIDER** | Apply after being CLIENT (+ optional admin approval)| `/shop` (opens your shop) |
 | **ADMIN**    | Manual / promoted only                              | `/admin/dashboard`       |
 
 **Rules:**
@@ -147,7 +147,7 @@ UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
 Protected routes are enforced in `proxy.ts` (Next.js proxy / middleware style):
 
 - `/admin/*` → ADMIN only
-- `/provider/*` → PROVIDER only
+- `/shop/*` → PROVIDER only (the shop in the address must be one you work in, else 404)
 - `/dashboard` → CLIENT only
 - `/profile`, `/become-provider` → any authenticated user
 

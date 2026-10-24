@@ -2,15 +2,16 @@
 
 import Link from "next/link"
 import { useSession, signOut } from "next-auth/react"
-import { useState, useRef, useEffect } from "react"
+import { Suspense, useState, useRef, useEffect } from "react"
 import NotificationBell from "@/components/NotificationBell"
-import ModuleNav from "@/components/provider/ModuleNav"
+import ModuleNav from "@/components/shop/ModuleNav"
+import { lastShopPath } from "@/lib/shop-paths"
 
 type Role = "CLIENT" | "PROVIDER" | "ADMIN"
 
 function getDashboardHref(role?: string) {
     if (role === "ADMIN") return "/admin/dashboard"
-    if (role === "PROVIDER") return "/provider/dashboard"
+    if (role === "PROVIDER") return "/shop"
     return "/dashboard"
 }
 
@@ -79,7 +80,11 @@ export default function Navbar() {
                             Bayna
                         </span>
                     </Link>
-                    {role === "PROVIDER" && <ModuleNav />}
+                    {role === "PROVIDER" && (
+                        <Suspense fallback={null}>
+                            <ModuleNav />
+                        </Suspense>
+                    )}
                 </div>
 
                 {/* Right side only */}
@@ -143,7 +148,7 @@ export default function Navbar() {
                                         {role === "PROVIDER" && (
                                             <>
                                                 <Link
-                                                    href="/provider/products"
+                                                    href={lastShopPath("products")}
                                                     onClick={() => setMenuOpen(false)}
                                                     className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                                 >

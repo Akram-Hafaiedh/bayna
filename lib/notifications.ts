@@ -4,9 +4,10 @@
 //
 //   await withAudit(guard.actor, async (tx) => {
 //       await tx.shop.update({ where: { id }, data: { needsReview: false } })
-//       await notify(tx, provider.userId, notifications.profileReviewed())
+//       await notify(tx, provider.userId, notifications.profileReviewed({ shop: provider.publicId }))
 //   })
 import type { Tx } from "@/lib/audit/run"
+import { shopPath } from "@/lib/shop-paths"
 
 export const NOTIFICATION_TYPES = {
     applicationApproved: "provider.application.approved",
@@ -24,20 +25,30 @@ export type NotificationInput = {
     type: string
     title: string
     body?: string | null
-    /** A path inside the app, for example "/provider/profile" */
+    /** A path inside the app, for example "/shop/<publicId>/profile" */
     href?: string | null
 }
 
 export const TITLE_MAX = 120
 export const BODY_MAX = 400
 
+/** Public ids (the ones in shop URLs) of some shops, by shop id: the messages below link to a shop's pages with them. */
+export async function shopPublicIds(tx: Tx, shopIds: string[]): Promise<Map<string, string>> {
+    if (shopIds.length === 0) return new Map()
+    const rows = await tx.shop.findMany({ where: { id: { in: shopIds } }, select: { id: true, publicId: true } })
+    return new Map(rows.map((r) => [r.id, r.publicId]))
+}
+
+// `shop` below is the shop's public id. Where a message can also be about a business (a business-level
+// team change) it is left out and the link goes to a page that does not need a shop.
+
 /** Ready-made messages, so wording lives in one place. */
 export const notifications = {
-    applicationApproved: (): NotificationInput => ({
+    applicationApproved: (a: { shop: string }): NotificationInput => ({
         type: NOTIFICATION_TYPES.applicationApproved,
         title: "Your shop was approved",
         body: "You can now add products and manage your shop.",
-        href: "/provider/dashboard",
+        href: shopPath(a.shop, "dashboard"),
     }),
     applicationRejected: (): NotificationInput => ({
         type: NOTIFICATION_TYPES.applicationRejected,
@@ -46,25 +57,25 @@ export const notifications = {
         href: "/become-provider",
     }),
     /** One per shop: `itemName` changed unit, `count` of the shop's products need a price check. */
-    priceReviewNeeded: (a: { itemName: string; reason: string; count: number }): NotificationInput => ({
+    priceReviewNeeded: (a: { shop: string; itemName: string; reason: string; count: number }): NotificationInput => ({
         type: NOTIFICATION_TYPES.priceReviewNeeded,
         title: `Price check needed: ${a.itemName}`,
         body: `${a.reason}. Confirm the price of ${a.count} product${a.count === 1 ? "" : "s"}; until then ${a.count === 1 ? "it is" : "they are"} left out of comparison.`,
-        href: "/provider/products?review=yes",
+        href: `${shopPath(a.shop, "products")}?review=yes`,
     }),
     /** To the person who sent the invite: `who` accepted it and now works in `where` (a shop or business name). */
-    teamJoined: (a: { who: string; where: string; role: string }): NotificationInput => ({
+    teamJoined: (a: { who: string; where: string; role: string; shop?: string | null }): NotificationInput => ({
         type: NOTIFICATION_TYPES.teamJoined,
         title: `${a.who} joined ${a.where}`,
         body: `They now work there as ${a.role}.`,
-        href: "/provider/team",
+        href: a.shop ? shopPath(a.shop, "team") : "/business/team",
     }),
     /** To the member: their role in `where` changed to `role`. */
-    teamRoleChanged: (a: { where: string; role: string }): NotificationInput => ({
+    teamRoleChanged: (a: { where: string; role: string; shop?: string | null }): NotificationInput => ({
         type: NOTIFICATION_TYPES.teamRoleChanged,
         title: `Your role in ${a.where} changed`,
         body: `You are now: ${a.role}.`,
-        href: "/provider/dashboard",
+        href: a.shop ? shopPath(a.shop, "dashboard") : "/shop",
     }),
     teamSuspended: (a: { where: string }): NotificationInput => ({
         type: NOTIFICATION_TYPES.teamSuspended,
@@ -72,11 +83,11 @@ export const notifications = {
         body: "You cannot work in it until an owner or manager reinstates you.",
         href: "/profile",
     }),
-    teamReinstated: (a: { where: string }): NotificationInput => ({
+    teamReinstated: (a: { where: string; shop?: string | null }): NotificationInput => ({
         type: NOTIFICATION_TYPES.teamReinstated,
         title: `Your access to ${a.where} is back`,
         body: null,
-        href: "/provider/dashboard",
+        href: a.shop ? shopPath(a.shop, "dashboard") : "/shop",
     }),
     teamRemoved: (a: { where: string }): NotificationInput => ({
         type: NOTIFICATION_TYPES.teamRemoved,
@@ -84,11 +95,11 @@ export const notifications = {
         body: null,
         href: "/profile",
     }),
-    profileReviewed: (): NotificationInput => ({
+    profileReviewed: (a: { shop: string }): NotificationInput => ({
         type: NOTIFICATION_TYPES.profileReviewed,
         title: "Your profile changes were reviewed",
         body: "An admin checked your shop name and location. Nothing more to do.",
-        href: "/provider/profile",
+        href: shopPath(a.shop, "profile"),
     }),
 }
 

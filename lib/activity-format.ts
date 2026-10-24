@@ -88,7 +88,12 @@ function readChanges(raw: unknown): Change[] {
     )
 }
 
-export function describeActivity(row: ActivityRow): ActivityLine {
+/**
+ * One readable line for an activity row. `shopBase` is the shop's address ("/shop/<publicId>") when the line is
+ * shown inside that shop; the links to its pages need it. Without it (the Business page lists several
+ * shops) those links are left out.
+ */
+export function describeActivity(row: ActivityRow, shopBase: string | null = null): ActivityLine {
     const changes = readChanges(row.changes).filter((c) => !NOISE.has(c.field))
     const what = ENTITY[row.entityType] ?? row.entityType
     const title = row.note?.trim() || `${VERB[row.action] ?? row.action} ${what}`
@@ -104,17 +109,18 @@ export function describeActivity(row: ActivityRow): ActivityLine {
                     .map((c) => `${c.field}: ${short(c.from)} → ${short(c.to)}`)
                     .join(", ") + (changes.length > 3 ? `, and ${changes.length - 3} more` : "")
 
+    const inShop = (section: string) => (shopBase ? `${shopBase}/${section}` : null)
     let href: string | null = null
     if (row.entityType === "Product" && row.entityId) {
-        href = row.action === "SOFT_DELETE" ? "/provider/products/trash" : row.action === "DELETE" ? null : `/provider/products/${row.entityId}/edit`
+        href = row.action === "SOFT_DELETE" ? inShop("products/trash") : row.action === "DELETE" ? null : inShop(`products/${row.entityId}/edit`)
     } else if (row.entityType === "Provider") {
-        href = "/provider/profile"
+        href = inShop("profile")
     } else if (row.entityType === "Business") {
         href = "/business/profile"
     } else if (row.action.startsWith("TEAM_ROLE_")) {
-        href = "/provider/roles"
+        href = inShop("roles")
     } else if (row.action.startsWith("TEAM_")) {
-        href = "/provider/team"
+        href = inShop("team")
     }
     return { title, detail, href }
 }

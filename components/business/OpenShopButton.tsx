@@ -4,8 +4,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/Toast"
+import { shopPath } from "@/lib/shop-paths"
 
-export default function OpenShopButton({ shopId, shopName }: { shopId: string; shopName: string }) {
+export default function OpenShopButton({ shopId, shopPublicId, shopName }: { shopId: string; shopPublicId: string; shopName: string }) {
     const router = useRouter()
     const toast = useToast()
     const [busy, setBusy] = useState(false)
@@ -24,7 +25,7 @@ export default function OpenShopButton({ shopId, shopName }: { shopId: string; s
                 return
             }
             toast.success(`Now working in ${shopName}`)
-            router.push("/provider/dashboard")
+            router.push(shopPath(shopPublicId, "dashboard"))
             router.refresh()
         } catch {
             toast.error("Something went wrong")

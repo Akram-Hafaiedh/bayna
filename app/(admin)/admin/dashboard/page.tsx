@@ -43,7 +43,7 @@ async function AdminStats() {
     return (
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Link
-                href="/admin/providers"
+                href="/admin/shops"
                 className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 transition"
             >
                 <h3 className="font-medium text-zinc-900">Pending shops</h3>
@@ -65,7 +65,7 @@ async function AdminStats() {
             </Link>
 
             <Link
-                href="/admin/providers"
+                href="/admin/shops"
                 className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 transition"
             >
                 <h3 className="font-medium text-zinc-900">Verified shops</h3>

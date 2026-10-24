@@ -1,5 +1,5 @@
 // lib/product-filters.ts
-// Pure (no database) helpers for the provider product list: filter types,
+// Pure (no database) helpers for the shop product list: filter types,
 // URL parsing and URL building. Safe to import from server AND client components.
 import { Unit } from "@/app/generated/prisma/enums"
 
@@ -7,7 +7,6 @@ export const LOW_STOCK_THRESHOLD = 5
 export const PAGE_SIZES = [10, 25, 50, 100] as const
 export const DEFAULT_PAGE_SIZE = 25
 export const SORT_KEYS = ["updatedAt", "name", "price", "stock"] as const
-export const PRODUCTS_PATH = "/provider/products"
 
 export type SortKey = (typeof SORT_KEYS)[number]
 export type StatusFilter = "all" | "active" | "hidden"
@@ -100,7 +99,9 @@ export function buildProductsHref(
     if (next.pageSize !== DEFAULT_PAGE_SIZE) p.set("pageSize", String(next.pageSize))
 
     const qs = p.toString()
-    return qs ? `${PRODUCTS_PATH}?${qs}` : PRODUCTS_PATH
+    // Only the query: the link stays on the page it is shown on (the products page of whichever shop), so
+    // nothing here needs to know the shop. "?" alone means the same page without filters.
+    return `?${qs}`
 }
 
 export function hasActiveFilters(f: ProductFilters): boolean {

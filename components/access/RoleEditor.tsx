@@ -87,7 +87,7 @@ export default function RoleEditor({
         setBusy("save")
         setError(null)
         try {
-            const res = await fetch(mode === "create" ? "/api/provider/roles" : `/api/provider/roles/${role?.id}`, {
+            const res = await fetch(mode === "create" ? "/api/roles" : `/api/roles/${role?.id}`, {
                 method: mode === "create" ? "POST" : "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ scope: owner.scope, targetId: owner.id, name, description, permissions }),
@@ -118,7 +118,7 @@ export default function RoleEditor({
         if (!ok) return
         setBusy("delete")
         try {
-            const res = await fetch(`/api/provider/roles/${role.id}`, { method: "DELETE" })
+            const res = await fetch(`/api/roles/${role.id}`, { method: "DELETE" })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
                 toast.error("Could not delete the role", { description: data.error })

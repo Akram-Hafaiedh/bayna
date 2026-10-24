@@ -24,7 +24,7 @@ async function ShopsContent() {
         prisma.shop.findMany({
             where: { businessId: business.id, deletedAt: null },
             orderBy: [{ name: "asc" }, { id: "asc" }],
-            select: { id: true, name: true, city: true, governorate: true, isVerified: true },
+            select: { id: true, publicId: true, name: true, city: true, governorate: true, isVerified: true },
         }),
         businessCan(business.id, ["business.shop.create"] as const),
     ])
@@ -53,7 +53,9 @@ async function ShopsContent() {
                         {shops.map((s) => (
                             <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
                                 <div className="min-w-0">
-                                    <p className="truncate font-medium text-zinc-900">{s.name}</p>
+                                    <Link href={`/business/shops/${s.publicId}`} className="block truncate font-medium text-zinc-900 hover:underline">
+                                        {s.name}
+                                    </Link>
                                     <p className="text-xs text-zinc-500">{[s.city, s.governorate].filter(Boolean).join(", ")}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -62,7 +64,7 @@ async function ShopsContent() {
                                     ) : (
                                         <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600">Waiting for approval</span>
                                     )}
-                                    {s.isVerified && openable.has(s.id) && <OpenShopButton shopId={s.id} shopName={s.name} />}
+                                    {s.isVerified && openable.has(s.id) && <OpenShopButton shopId={s.id} shopPublicId={s.publicId} shopName={s.name} />}
                                 </div>
                             </li>
                         ))}

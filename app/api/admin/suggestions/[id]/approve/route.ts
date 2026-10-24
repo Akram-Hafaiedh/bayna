@@ -12,7 +12,7 @@ import { slugify } from "@/lib/slug"
 import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalog-input"
 import { unitChangeReason } from "@/lib/price-review"
 import { loadShopMembersWith } from "@/lib/access/members"
-import { notifications, notify } from "@/lib/notifications"
+import { notifications, notify, shopPublicIds } from "@/lib/notifications"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
@@ -113,10 +113,12 @@ export async function POST(
                 })
                 if (unitDiffers && product && !product.deletedAt) {
                     const members = await loadShopMembersWith(tx, [product.providerId], "product.price.edit")
+                    const publicIds = await shopPublicIds(tx, [product.providerId])
                     await notify(
                         tx,
                         members.get(product.providerId) ?? [],
                         notifications.priceReviewNeeded({
+                            shop: publicIds.get(product.providerId)!,
                             itemName: approved.name,
                             reason: unitChangeReason(product.unit, approved.unit),
                             count: 1,

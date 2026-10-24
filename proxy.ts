@@ -22,7 +22,7 @@ const { auth } = NextAuth({
 
 function homeFor(role?: Role) {
     if (role === "ADMIN") return "/admin/dashboard"
-    if (role === "PROVIDER") return "/provider/dashboard"
+    if (role === "PROVIDER") return "/shop"
     if (role === "CLIENT") return "/dashboard"
     return "/"
 }
@@ -30,7 +30,7 @@ function homeFor(role?: Role) {
 // roles undefined = any logged-in user
 const RULES: { prefix: string; roles?: Role[] }[] = [
     { prefix: "/admin", roles: ["ADMIN"] },
-    { prefix: "/provider", roles: ["PROVIDER"] },
+    { prefix: "/shop", roles: ["PROVIDER"] },
     { prefix: "/business", roles: ["PROVIDER"] },
     { prefix: "/dashboard", roles: ["CLIENT"] },
     { prefix: "/profile" },

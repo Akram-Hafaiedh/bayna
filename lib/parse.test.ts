@@ -6,7 +6,7 @@ import { safeNextPath } from "./parse"
 
 test("safeNextPath keeps paths inside the site", () => {
     assert.equal(safeNextPath("/invite/abc"), "/invite/abc")
-    assert.equal(safeNextPath("/provider/team?x=1"), "/provider/team?x=1")
+    assert.equal(safeNextPath("/shop/abc/team?x=1"), "/shop/abc/team?x=1")
 })
 
 test("safeNextPath refuses anything that could leave the site", () => {

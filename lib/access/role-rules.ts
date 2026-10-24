@@ -14,7 +14,7 @@ import { missingKeys } from "./team-rules"
 export type RoleInput = { name: string; description: string | null; permissions: string[] }
 export type RoleLevel = "BUSINESS" | "SHOP"
 
-/** Body of POST /api/provider/roles and PATCH /api/provider/roles/[id]. */
+/** Body of POST /api/roles and PATCH /api/roles/[id]. */
 export function parseRoleInput(body: unknown, level: RoleLevel): Parsed<RoleInput> {
     if (!body || typeof body !== "object") return fail("Send the role's name and permissions")
     const b = body as Record<string, unknown>

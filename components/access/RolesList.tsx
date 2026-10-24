@@ -24,7 +24,7 @@ export default function RolesList({
     emptyHint,
 }: {
     items: RoleListItem[]
-    /** where the role pages live, for example "/provider/roles": a role opens at `${basePath}/<id>`, new ones at `${basePath}/new`.
+    /** where the role pages live, for example "/shop/abc/roles": a role opens at `${basePath}/<id>`, new ones at `${basePath}/new`.
      *  A string, not functions: a server page cannot pass functions to a client component. */
     basePath: string
     /** this person may create roles somewhere here (shows New role and Clone) */
@@ -136,60 +136,60 @@ export default function RolesList({
                 <p className="rounded-xl border border-zinc-200 bg-white px-5 py-8 text-center text-sm text-zinc-500">No role matches these filters.</p>
             ) : (
                 <>
-                    <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
-                        {page.visible.map((r) => {
-                            const modules = holdsEverything(r.permissions) ? [] : roleModules(r.permissions)
-                            return (
-                                <li key={r.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-5 py-4">
-                                    <div className="min-w-0 flex-1 basis-72">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Link href={openHref(r.id)} className="text-sm font-semibold text-zinc-900 hover:underline">
-                                                {r.name}
-                                            </Link>
-                                            {holdsEverything(r.permissions) && <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white">Everything</span>}
-                                            {owners.length > 1 && (
-                                                <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] text-zinc-600">
-                                                    {r.owner.scope === "BUSINESS" ? "Business" : r.owner.name}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {r.description && <p className="mt-0.5 text-xs text-zinc-500">{r.description}</p>}
-                                        {modules.length > 0 && (
-                                            <div className="mt-2 flex flex-wrap gap-1.5">
-                                                {modules.slice(0, MAX_CHIPS).map((m) => (
-                                                    <span key={m} className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600">{m}</span>
-                                                ))}
-                                                {modules.length > MAX_CHIPS && <span className="px-1 py-0.5 text-[11px] text-zinc-400">+{modules.length - MAX_CHIPS} more</span>}
-                                            </div>
+                <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
+                    {page.visible.map((r) => {
+                        const modules = holdsEverything(r.permissions) ? [] : roleModules(r.permissions)
+                        return (
+                            <li key={r.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-5 py-4">
+                                <div className="min-w-0 flex-1 basis-72">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Link href={openHref(r.id)} className="text-sm font-semibold text-zinc-900 hover:underline">
+                                            {r.name}
+                                        </Link>
+                                        {holdsEverything(r.permissions) && <span className="rounded-full bg-zinc-900 px-2 py-0.5 text-[11px] font-medium text-white">Everything</span>}
+                                        {owners.length > 1 && (
+                                            <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] text-zinc-600">
+                                                {r.owner.scope === "BUSINESS" ? "Business" : r.owner.name}
+                                            </span>
                                         )}
-                                        <p className="mt-2 text-xs text-zinc-400">{accessLabel(r.permissions)}</p>
                                     </div>
-                                    <div className="flex shrink-0 flex-col items-end gap-2">
-                                        <p className="text-xs text-zinc-500">
-                                            {r.members} {r.members === 1 ? "person" : "people"}
-                                            {r.invites > 0 ? ` · ${r.invites} ${r.invites === 1 ? "invitation" : "invitations"} waiting` : ""}
-                                        </p>
-                                        <div className="flex gap-2">
-                                            <Link href={openHref(r.id)} className={ghostBtn}>
-                                                {r.editable ? "Edit" : "View"}
-                                            </Link>
-                                            {newHref && r.editable && (
-                                                <Link href={cloneHref(r.id)} className={ghostBtn}>
-                                                    Clone
-                                                </Link>
-                                            )}
-                                            {r.editable && (
-                                                <button type="button" className={ghostBtn} disabled={busy === r.id || r.members + r.invites > 0} title={r.members + r.invites > 0 ? "People or invitations still use this role" : undefined} onClick={() => void remove(r)}>
-                                                    Delete
-                                                </button>
-                                            )}
+                                    {r.description && <p className="mt-0.5 text-xs text-zinc-500">{r.description}</p>}
+                                    {modules.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-1.5">
+                                            {modules.slice(0, MAX_CHIPS).map((m) => (
+                                                <span key={m} className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-[11px] text-zinc-600">{m}</span>
+                                            ))}
+                                            {modules.length > MAX_CHIPS && <span className="px-1 py-0.5 text-[11px] text-zinc-400">+{modules.length - MAX_CHIPS} more</span>}
                                         </div>
+                                    )}
+                                    <p className="mt-2 text-xs text-zinc-400">{accessLabel(r.permissions)}</p>
+                                </div>
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                    <p className="text-xs text-zinc-500">
+                                        {r.members} {r.members === 1 ? "person" : "people"}
+                                        {r.invites > 0 ? ` · ${r.invites} ${r.invites === 1 ? "invitation" : "invitations"} waiting` : ""}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Link href={openHref(r.id)} className={ghostBtn}>
+                                            {r.editable ? "Edit" : "View"}
+                                        </Link>
+                                        {newHref && r.editable && (
+                                            <Link href={cloneHref(r.id)} className={ghostBtn}>
+                                                Clone
+                                            </Link>
+                                        )}
+                                        {r.editable && (
+                                            <button type="button" className={ghostBtn} disabled={busy === r.id || r.members + r.invites > 0} title={r.members + r.invites > 0 ? "People or invitations still use this role" : undefined} onClick={() => void remove(r)}>
+                                                Delete
+                                            </button>
+                                        )}
                                     </div>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                    <ShowMore next={page.next} remaining={page.remaining} onMore={page.more} />
+                                </div>
+                            </li>
+                        )
+                    })}
+                </ul>
+                <ShowMore next={page.next} remaining={page.remaining} onMore={page.more} />
                 </>
             )}
         </section>

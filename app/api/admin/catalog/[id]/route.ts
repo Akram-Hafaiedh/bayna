@@ -14,7 +14,7 @@ import { withAudit } from "@/lib/audit/run"
 import { parseCatalogFields } from "@/lib/catalog-input"
 import { countAffected, describeCounts, unitChangeReason, unitName } from "@/lib/price-review"
 import { loadShopMembersWith } from "@/lib/access/members"
-import { notifications, notify } from "@/lib/notifications"
+import { notifications, notify, shopPublicIds } from "@/lib/notifications"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
@@ -101,11 +101,12 @@ export async function PATCH(
                 const perShop = new Map<string, number>()
                 for (const p of live) perShop.set(p.providerId, (perShop.get(p.providerId) ?? 0) + 1)
                 const members = await loadShopMembersWith(tx, [...perShop.keys()], "product.price.edit")
+                const publicIds = await shopPublicIds(tx, [...perShop.keys()])
                 for (const [providerId, count] of perShop) {
                     await notify(
                         tx,
                         members.get(providerId) ?? [],
-                        notifications.priceReviewNeeded({ itemName: updated.name, reason, count })
+                        notifications.priceReviewNeeded({ shop: publicIds.get(providerId)!, itemName: updated.name, reason, count })
                     )
                 }
             }

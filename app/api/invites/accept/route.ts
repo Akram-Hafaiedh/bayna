@@ -11,7 +11,7 @@ import { withAudit, logActivity } from "@/lib/audit/run"
 import { hashInviteToken, inviteState, isPlausibleToken } from "@/lib/access/invite-token"
 import { ACCEPT_ERRORS, checkAcceptable } from "@/lib/access/invite-accept"
 import { assertTeamKeepsOwner, targetLabel, TeamError } from "@/lib/access/team-actions"
-import { notifications, notify } from "@/lib/notifications"
+import { notifications, notify, shopPublicIds } from "@/lib/notifications"
 
 export async function POST(req: Request) {
     try {
@@ -109,7 +109,7 @@ export async function POST(req: Request) {
                 note: `${user.name || user.email} accepted an invitation to ${label} as ${invite.role.name}`,
             })
             if (invite.invitedById) {
-                await notify(tx, invite.invitedById, notifications.teamJoined({ who: user.name || user.email, where: label, role: invite.role.name }))
+                await notify(tx, invite.invitedById, notifications.teamJoined({ who: user.name || user.email, where: label, role: invite.role.name, shop: scope === "SHOP" ? (await shopPublicIds(tx, [levelId])).get(levelId) ?? null : null }))
             }
         })
 
