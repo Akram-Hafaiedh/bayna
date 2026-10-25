@@ -106,8 +106,10 @@ export default function ProductsToolbar({
                     className={selectClass}
                 >
                     <option value="all">Any status</option>
+                    <option value="draft">Draft</option>
                     <option value="active">Active</option>
                     <option value="hidden">Hidden</option>
+                    <option value="blocked">Blocked</option>
                 </select>
 
                 <select

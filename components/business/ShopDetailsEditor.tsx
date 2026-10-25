@@ -13,11 +13,14 @@ export default function ShopDetailsEditor({
     shopPublicId,
     initial,
     mode,
+    aside,
 }: {
     shopPublicId: string
     initial: ProfileValues
     /** "profile" = a live shop; "application" = waiting for approval (applicant only); "readonly" = view only */
     mode: "profile" | "application" | "readonly"
+    /** shown in the right column under the contact details (server-rendered by the page) */
+    aside?: React.ReactNode
 }) {
     const router = useRouter()
     const [version, setVersion] = useState(0)
@@ -61,6 +64,7 @@ export default function ShopDetailsEditor({
                 initial={initial}
                 submitLabel="Save changes"
                 disabled={mode === "readonly"}
+                wide
                 onSubmit={save}
                 notice={
                     mode === "readonly"
@@ -69,7 +73,9 @@ export default function ShopDetailsEditor({
                             ? "This shop is waiting for approval. You can keep filling in its details until then."
                             : "Changing the name, address, city, governorate or map pin is saved right away and shown to an admin for review. Phone, WhatsApp and description need no review."
                 }
-            />
+            >
+                {aside}
+            </ShopProfileForm>
         </div>
     )
 }

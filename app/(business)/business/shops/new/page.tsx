@@ -24,7 +24,7 @@ async function NewShopContent() {
         businessCan(business.id, ["business.shop.create"] as const),
         // One application at a time (the same rule as the application route)
         prisma.shop.findFirst({
-            where: { userId, isVerified: false, deletedAt: null },
+            where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { name: true, publicId: true, businessId: true },
         }),
     ])

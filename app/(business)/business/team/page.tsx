@@ -41,7 +41,7 @@ async function TeamContent() {
 
     // Shop-level teams can only be managed for shops that are live
     const shops = await prisma.shop.findMany({
-        where: { businessId: business.id, deletedAt: null, isVerified: true },
+        where: { businessId: business.id, deletedAt: null, status: "ACTIVE" },
         orderBy: [{ name: "asc" }, { id: "asc" }],
         select: { id: true, name: true, city: true },
     })

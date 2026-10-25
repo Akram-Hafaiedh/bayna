@@ -12,6 +12,7 @@ import { loadInvites, loadMembers, loadRoleOptions } from "@/lib/access/team"
 import { teamPermission } from "@/lib/access/team-rules"
 import { toInviteView, toMemberView, toRoleChoices } from "@/lib/access/team-view"
 import TeamSection from "@/components/access/TeamSection"
+import ThroughBusiness from "@/components/access/ThroughBusiness"
 
 export const metadata: Metadata = { title: "Team" }
 
@@ -31,7 +32,7 @@ async function TeamContent({ params }: { params: Promise<{ publicId: string }> }
     const shop = await requireShopPage(publicId)
     const session = await auth()
     const access = session?.user?.id ? await loadAccess(session.user.id) : null
-    if (!shop?.isVerified || !access) {
+    if (shop?.status !== "ACTIVE" || !access) {
         return (
             <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 The team page opens once your shop is approved.
@@ -99,31 +100,8 @@ async function TeamContent({ params }: { params: Promise<{ publicId: string }> }
                     remove: can(teamPermission("SHOP", "remove")),
                 }}
                 footer={
-                    business && throughBusiness.length > 0 ? (
-                        <details className="rounded-xl border border-zinc-200 bg-white">
-                            <summary className="cursor-pointer list-none px-6 py-4 text-sm">
-                                <span className="font-medium text-zinc-900">Through the business</span>
-                                <span className="ml-2 text-zinc-400">
-                                    {throughBusiness.length} {throughBusiness.length === 1 ? "person" : "people"} who work in every shop of {business.name}
-                                </span>
-                            </summary>
-                            <div className="border-t border-zinc-100 px-6 pb-4">
-                                <p className="mt-4 text-sm text-zinc-500">They are managed by the business owner.</p>
-                                <ul className="mt-2 divide-y divide-zinc-100 text-sm">
-                                    {throughBusiness.map((m) => (
-                                        <li key={m.id} className="flex items-center justify-between gap-3 py-2.5">
-                                            <span className="min-w-0 truncate font-medium text-zinc-900">{m.name || m.email}</span>
-                                            <span className="shrink-0 rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">{m.roleName}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                {canManageBusiness && (
-                                    <Link href="/business/team" className="mt-4 inline-block text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900">
-                                        Manage the whole business team
-                                    </Link>
-                                )}
-                            </div>
-                        </details>
+                    business ? (
+                        <ThroughBusiness members={throughBusiness} businessName={business.name} manageHref={canManageBusiness ? "/business/team" : undefined} />
                     ) : null
                 }
             />

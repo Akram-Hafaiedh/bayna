@@ -9,6 +9,7 @@ import {
 } from "@/lib/product-filters"
 import { UNIT_LABELS } from "@/lib/units"
 import { timeAgo } from "@/lib/time-ago"
+import { PRODUCT_STATUS_LABEL } from "@/lib/product-status"
 import DeleteProductButton from "./DeleteProductButton"
 import InlineEdit from "./InlineEdit"
 
@@ -140,12 +141,16 @@ export default function ProductsTable({
                                 </td>
                                 <td className="hidden px-4 py-3 md:table-cell">
                                     <span
-                                        className={`rounded-full px-2 py-0.5 text-xs ${p.isActive
+                                        className={`rounded-full px-2 py-0.5 text-xs ${p.status === "ACTIVE"
                                             ? "bg-emerald-50 text-emerald-700"
-                                            : "bg-zinc-100 text-zinc-500"
+                                            : p.status === "BLOCKED"
+                                                ? "bg-red-50 text-red-700"
+                                                : p.status === "DRAFT"
+                                                    ? "bg-amber-50 text-amber-700"
+                                                    : "bg-zinc-100 text-zinc-500"
                                             }`}
                                     >
-                                        {p.isActive ? "Active" : "Hidden"}
+                                        {PRODUCT_STATUS_LABEL[p.status]}
                                     </span>
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-right">

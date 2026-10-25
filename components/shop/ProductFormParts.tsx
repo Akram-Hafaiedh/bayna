@@ -4,6 +4,7 @@
 import type { Unit } from "@/app/generated/prisma/enums"
 import type { CategoryTree } from "@/lib/provider-products"
 import { UNIT_OPTIONS } from "@/lib/units"
+import { PRODUCT_STATUS_LABEL, SHOP_CHOICES, type ProductStatusValue } from "@/lib/product-status"
 
 export type FormValues = {
     name: string
@@ -16,7 +17,7 @@ export type FormValues = {
     price: string
     stock: string
     minOrderQty: string
-    isActive: boolean
+    status: ProductStatusValue
 }
 
 export type SetField = <K extends keyof FormValues>(key: K, value: FormValues[K]) => void
@@ -129,15 +130,20 @@ export function OfferFields({
                     />
                 </Field>
             )}
-            <label className="flex items-center gap-2 text-sm text-zinc-700">
-                <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(e) => set("isActive", e.target.checked)}
-                    className="rounded border-zinc-300"
-                />
-                Active (visible to clients)
-            </label>
+            <Field
+                label="Status"
+                hint={form.status === "BLOCKED" ? "The platform team removed this product from sale. Contact support to ask why." : "Active products are visible to customers. Draft and hidden ones are only visible to your team."}
+            >
+                {form.status === "BLOCKED" ? (
+                    <input value={PRODUCT_STATUS_LABEL.BLOCKED} disabled className={inputClass} />
+                ) : (
+                    <select value={form.status} onChange={(e) => set("status", e.target.value as ProductStatusValue)} className={inputClass}>
+                        {SHOP_CHOICES.map((s) => (
+                            <option key={s} value={s}>{PRODUCT_STATUS_LABEL[s]}</option>
+                        ))}
+                    </select>
+                )}
+            </Field>
         </Section>
     )
 }

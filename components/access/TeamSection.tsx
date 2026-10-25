@@ -3,11 +3,12 @@
 // One team list: the people, the pending invitations, and the invite form, for one level (a shop or
 // its business). The server page decides what this person may do and passes it in; the routes check
 // everything again. Black and white like the rest of the site; ask with useConfirm, report with useToast.
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import { ShowMore, useShowMore } from "@/components/access/ShowMore"
+import RowMenu from "@/components/ui/RowMenu"
 import { NO_MEMBER_FILTERS, filterMembers, initials, type MemberFilters } from "@/lib/access/team-filter"
 
 export type TeamMemberView = {
@@ -59,65 +60,6 @@ function Avatar({ name, email, muted }: { name: string | null; email: string; mu
         >
             {initials(name, email)}
         </span>
-    )
-}
-
-/** The "..." menu of a row: the less common actions (suspend, remove), out of the way. */
-function RowMenu({ label, items, disabled }: { label: string; items: { label: string; onClick: () => void; danger?: boolean }[]; disabled?: boolean }) {
-    const [open, setOpen] = useState(false)
-    const box = useRef<HTMLDivElement>(null)
-    useEffect(() => {
-        if (!open) return
-        const down = (e: MouseEvent) => {
-            if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
-        }
-        const key = (e: KeyboardEvent) => {
-            if (e.key === "Escape") setOpen(false)
-        }
-        document.addEventListener("mousedown", down)
-        document.addEventListener("keydown", key)
-        return () => {
-            document.removeEventListener("mousedown", down)
-            document.removeEventListener("keydown", key)
-        }
-    }, [open])
-    if (items.length === 0) return null
-    return (
-        <div ref={box} className="relative">
-            <button
-                type="button"
-                aria-label={label}
-                aria-haspopup="menu"
-                aria-expanded={open}
-                disabled={disabled}
-                onClick={() => setOpen((o) => !o)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-50"
-            >
-                <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor" aria-hidden>
-                    <circle cx="4.5" cy="10" r="1.5" />
-                    <circle cx="10" cy="10" r="1.5" />
-                    <circle cx="15.5" cy="10" r="1.5" />
-                </svg>
-            </button>
-            {open && (
-                <div role="menu" className="absolute right-0 z-30 mt-1 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
-                    {items.map((item) => (
-                        <button
-                            key={item.label}
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                                setOpen(false)
-                                item.onClick()
-                            }}
-                            className={`block w-full px-3.5 py-2 text-left text-sm hover:bg-zinc-50 ${item.danger ? "text-red-600" : "text-zinc-800"}`}
-                        >
-                            {item.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
     )
 }
 

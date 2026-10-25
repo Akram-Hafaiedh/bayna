@@ -4,14 +4,15 @@ import Link from "next/link"
 import { requireBusinessArea } from "@/lib/business-auth"
 import { businessCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
-import OpenShopButton from "@/components/business/OpenShopButton"
+import ShopsList from "@/components/business/ShopsList"
 import { shopSetup } from "@/lib/shop-setup"
+import type { ShopRow } from "@/lib/shop-list"
 
 export const metadata: Metadata = { title: "Shops" }
 
 export default function BusinessShopsPage() {
     return (
-        <div className="max-w-3xl space-y-6">
+        <div className="space-y-6">
             <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-zinc-200" />}>
                 <ShopsContent />
             </Suspense>
@@ -21,19 +22,43 @@ export default function BusinessShopsPage() {
 
 async function ShopsContent() {
     const { business, access } = await requireBusinessArea()
-    const [shops, perms] = await Promise.all([
+    const [found, perms] = await Promise.all([
         prisma.shop.findMany({
             where: { businessId: business.id, deletedAt: null },
             orderBy: [{ name: "asc" }, { id: "asc" }],
             select: {
-                id: true, publicId: true, name: true, city: true, governorate: true, isVerified: true,
+                id: true, publicId: true, name: true, city: true, governorate: true, status: true,
                 description: true, phone: true, whatsapp: true, address: true, latitude: true, longitude: true,
+                _count: {
+                    select: {
+                        products: { where: { deletedAt: null } },
+                        accessAssignments: { where: { status: "ACTIVE" } },
+                    },
+                },
             },
         }),
-        businessCan(business.id, ["business.shop.create"] as const),
+        businessCan(business.id, ["business.shop.create", "business.shop.change_status"] as const),
     ])
     // Only shops the person can really open (the business-level role reaches every live shop)
-    const openable = new Set(access.businessShops[business.id] ?? [])
+    const reachable = new Set(access.businessShops[business.id] ?? [])
+
+    const shops: ShopRow[] = found.map((s) => {
+        const setup = shopSetup(s)
+        const required = setup.items.filter((i) => !i.optional).length
+        return {
+            id: s.id,
+            publicId: s.publicId,
+            name: s.name,
+            city: s.city,
+            governorate: s.governorate,
+            status: s.status,
+            products: s._count.products,
+            team: s._count.accessAssignments,
+            setupDone: required - setup.missing,
+            setupTotal: required,
+            openable: s.status === "ACTIVE" && reachable.has(s.id),
+        }
+    })
 
     return (
         <>
@@ -49,45 +74,10 @@ async function ShopsContent() {
                 )}
             </div>
 
-            <section className="rounded-xl border border-zinc-200 bg-white">
-                {shops.length === 0 ? (
-                    <p className="px-5 py-8 text-center text-sm text-zinc-500">No shops yet.</p>
-                ) : (
-                    <ul className="divide-y divide-zinc-100 text-sm">
-                        {shops.map((s) => {
-                            const left = shopSetup(s).missing
-                            return (
-                                <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
-                                    <div className="min-w-0">
-                                        <Link href={`/business/shops/${s.publicId}`} className="block truncate font-medium text-zinc-900 hover:underline">
-                                            {s.name}
-                                        </Link>
-                                        <p className="text-xs text-zinc-500">{[s.city, s.governorate].filter(Boolean).join(", ")}</p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {left > 0 && (
-                                            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs text-amber-800 ring-1 ring-amber-200">
-                                                {left} to fill in
-                                            </span>
-                                        )}
-                                        {s.isVerified ? (
-                                            <span className="rounded-full border border-zinc-200 px-2.5 py-0.5 text-xs text-zinc-700">Live</span>
-                                        ) : (
-                                            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-600">Waiting for approval</span>
-                                        )}
-                                        <Link href={`/business/shops/${s.publicId}`} className="inline-flex h-8 items-center rounded-lg border border-zinc-200 px-3 text-xs font-medium text-zinc-800 hover:bg-zinc-50">
-                                            Edit
-                                        </Link>
-                                        {s.isVerified && openable.has(s.id) && <OpenShopButton shopId={s.id} shopPublicId={s.publicId} shopName={s.name} />}
-                                    </div>
-                                </li>
-                            )
-                        })}
-                    </ul>
-                )}
-            </section>
+            <ShopsList shops={shops} canChangeStatus={perms["business.shop.change_status"] === true} />
+
             <p className="text-xs text-zinc-500">
-                A new shop is checked by an administrator before it goes live. Open a shop to edit its details; its products are managed from its dashboard.
+                A new shop is checked by an administrator before it goes live. Use the menu on a row to edit a shop, open its dashboard or close it.
             </p>
         </>
     )

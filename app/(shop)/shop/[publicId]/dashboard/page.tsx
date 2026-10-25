@@ -50,7 +50,7 @@ async function ProviderStats({ params }: { params: Promise<{ publicId: string }>
 
     return (
         <>
-            {!provider?.isVerified && (
+            {provider?.status !== "ACTIVE" && (
                 <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     Your account is not verified yet. Product listing may be
                     limited until an admin approves you.

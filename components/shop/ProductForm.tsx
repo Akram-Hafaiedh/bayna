@@ -30,7 +30,7 @@ const EMPTY: FormValues = {
     price: "",
     stock: "0",
     minOrderQty: "",
-    isActive: true,
+    status: "ACTIVE",
 }
 
 function fromProduct(p: ProductDetail): FormValues {
@@ -45,7 +45,7 @@ function fromProduct(p: ProductDetail): FormValues {
         price: p.price,
         stock: String(p.stock),
         minOrderQty: p.minOrderQty === null ? "" : String(p.minOrderQty),
-        isActive: p.isActive,
+        status: p.status,
     }
 }
 

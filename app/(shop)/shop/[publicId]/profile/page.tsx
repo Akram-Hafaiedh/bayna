@@ -6,7 +6,7 @@ import { NOTIFICATIONS_NEW_EVENT } from "@/components/NotificationBell"
 import ShopProfileForm, { type ProfileValues } from "@/components/shop/ShopProfileForm"
 import { shopFetch } from "@/lib/shop-fetch"
 
-type Loaded = ProfileValues & { canEdit: boolean; isVerified: boolean; needsReview: boolean }
+type Loaded = ProfileValues & { canEdit: boolean; active: boolean; needsReview: boolean }
 
 function toValues(p: Record<string, unknown>): Loaded {
     const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "")
@@ -23,7 +23,7 @@ function toValues(p: Record<string, unknown>): Loaded {
         longitude: n("longitude"),
         locationSource: typeof p.locationSource === "string" ? p.locationSource : null,
         canEdit: p.canEdit === true,
-        isVerified: p.isVerified === true,
+        active: p.status === "ACTIVE",
         needsReview: p.needsReview === true,
     }
 }
@@ -58,7 +58,7 @@ export default function ProviderProfilePage() {
                 if (!res.ok) return
                 const json = await res.json()
                 setData((prev) =>
-                    prev ? { ...prev, needsReview: json.provider.needsReview === true, isVerified: json.provider.isVerified === true } : prev
+                    prev ? { ...prev, needsReview: json.provider.needsReview === true, active: json.provider.status === "ACTIVE" } : prev
                 )
             } catch {
                 // keep what is shown

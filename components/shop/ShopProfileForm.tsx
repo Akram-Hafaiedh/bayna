@@ -43,6 +43,12 @@ type Props = {
     /** Shown above the buttons, e.g. the notice that name/address changes are reviewed */
     notice?: React.ReactNode
     disabled?: boolean
+    /**
+     * Two columns on wide screens: shop and location on the left, contact (and `children`) on the right.
+     * Meant for pages that already have the full width, such as a shop in the Business area. On a phone
+     * the order stays shop, contact, location, then the save button.
+     */
+    wide?: boolean
     children?: React.ReactNode
 }
 
@@ -63,7 +69,7 @@ function Field({ title, required, hint, children }: { title: string; required?: 
     )
 }
 
-export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice, disabled, children }: Props) {
+export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice, disabled, wide, children }: Props) {
     const [v, setV] = useState<ProfileValues>({
         ...initial,
         phone: initial.phone ? formatPhone(initial.phone) : "",
@@ -134,9 +140,16 @@ export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice
 
     const searchText = [v.address, v.city, v.governorate, "Tunisia"].filter((x) => x.trim()).join(", ")
 
+    // Wide: a two-column grid on large screens, each block placed by hand so the phone order stays natural
+    const form = wide ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start" : "space-y-6"
+    const shopPlace = wide ? "lg:col-start-1 lg:row-start-1" : ""
+    const contactPlace = wide ? "lg:col-start-2 lg:row-start-1 lg:row-span-3 lg:space-y-5" : ""
+    const locationPlace = wide ? "lg:col-start-1 lg:row-start-2" : ""
+    const actionsPlace = wide ? "lg:col-start-1 lg:row-start-3" : ""
+
     return (
-        <form onSubmit={submit} className="space-y-6">
-            <section className={card}>
+        <form onSubmit={submit} className={form}>
+            <section className={`${card} ${shopPlace}`}>
                 <h2 className="text-base font-semibold text-zinc-900">Your shop</h2>
                 <Field title="Shop name" required>
                     <input required disabled={disabled} type="text" maxLength={120} placeholder="e.g. Auto Parts Sousse" value={v.name} onChange={(e) => set("name", e.target.value)} className={input} />
@@ -146,9 +159,10 @@ export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice
                 </Field>
             </section>
 
+            <div className={`space-y-6 ${contactPlace}`}>
             <section className={card}>
                 <h2 className="text-base font-semibold text-zinc-900">Contact</h2>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className={`grid gap-4 ${wide ? "sm:grid-cols-2 lg:grid-cols-1" : "sm:grid-cols-2"}`}>
                     <Field title="Phone" required hint="Tunisian number, for example 20 123 456">
                         <input required disabled={disabled} type="tel" placeholder="+216 20 123 456" value={v.phone} onChange={(e) => set("phone", e.target.value)} className={input} />
                     </Field>
@@ -157,8 +171,10 @@ export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice
                     </Field>
                 </div>
             </section>
+            {wide && children}
+            </div>
 
-            <section className={card}>
+            <section className={`${card} ${locationPlace}`}>
                 <h2 className="text-base font-semibold text-zinc-900">Location</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field title="Governorate" required>
@@ -189,15 +205,17 @@ export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice
                 </div>
             </section>
 
-            {children}
+            {!wide && children}
 
-            {notice && <div className="rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{notice}</div>}
+            <div className={`space-y-6 ${actionsPlace}`}>
+                {notice && <div className="rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{notice}</div>}
 
-            {error && <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
+                {error && <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">{error}</div>}
 
-            <button type="submit" disabled={saving || disabled} className="h-11 px-5 rounded-lg bg-zinc-900 text-white text-[15px] font-medium hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed">
-                {saving ? "Saving..." : submitLabel}
-            </button>
+                <button type="submit" disabled={saving || disabled} className="h-11 px-5 rounded-lg bg-zinc-900 text-white text-[15px] font-medium hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {saving ? "Saving..." : submitLabel}
+                </button>
+            </div>
         </form>
     )
 }
