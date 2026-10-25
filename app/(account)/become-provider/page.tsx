@@ -5,6 +5,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import ShopProfileForm, { EMPTY_PROFILE, type ProfileValues } from "@/components/shop/ShopProfileForm"
 
 function toValues(p: Record<string, unknown>): ProfileValues {
@@ -40,6 +41,7 @@ export default function BecomeProviderPage() {
     const [newBusinessName, setNewBusinessName] = useState("")
     const confirm = useConfirm()
     const toast = useToast()
+    const router = useRouter()
 
     const role = session?.user?.role
 
@@ -54,14 +56,16 @@ export default function BecomeProviderPage() {
                 if (data.status === "pending") {
                     setApplication(toValues(data.provider))
                     setAppStatus("pending")
-                }
-                else setAppStatus("none")
+                } else if (options.length > 0) {
+                    // Someone who runs a business adds a shop from the Business area, not from here
+                    router.replace("/business/shops/new")
+                } else setAppStatus("none")
             } catch {
                 setAppStatus("none")
             }
         }
         if (session?.user) loadStatus()
-    }, [session])
+    }, [session, router])
 
     if (role === "ADMIN") {
         return (

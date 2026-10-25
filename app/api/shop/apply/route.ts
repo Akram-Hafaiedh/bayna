@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json(
-            { message: "Application submitted. Waiting for admin approval.", providerId: provider.id, status: "pending" },
+            { message: "Application submitted. Waiting for admin approval.", providerId: provider.id, publicId: provider.publicId, status: "pending" },
             { status: 201 }
         )
     } catch (error) {
