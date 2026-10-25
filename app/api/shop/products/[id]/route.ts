@@ -13,6 +13,7 @@ import {
     parseText,
     parseUnit,
 } from "@/lib/product-input"
+import { isProductStatus, shopMayChange } from "@/lib/product-status"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
@@ -102,7 +103,13 @@ export async function PATCH(
             if (!r.ok) return bad(r.error)
             data.minOrderQty = r.value
         }
-        if (body.isActive !== undefined) data.isActive = Boolean(body.isActive)
+        if (body.status !== undefined) {
+            if (!isProductStatus(body.status)) return bad("Unknown status")
+            if (!shopMayChange(current.status, body.status)) {
+                return bad(current.status === "BLOCKED" ? "The platform team removed this product from sale" : "Only the platform team can block a product", 403)
+            }
+            data.status = body.status
+        }
 
         // Unit and category come from the catalogue for linked products
         if (body.unit !== undefined) {

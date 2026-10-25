@@ -30,8 +30,11 @@ export async function POST(
             )
         }
 
-        if (provider.isVerified) {
+        if (provider.status === "ACTIVE") {
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
+        }
+        if (provider.status !== "PENDING") {
+            return NextResponse.json({ error: "Only a shop waiting for approval can be approved" }, { status: 400 })
         }
 
         // The applicant becomes an owner of the business (which reaches every shop of it): they get the
@@ -59,7 +62,7 @@ export async function POST(
         await withAudit(guard.actor, async (tx) => {
             await tx.shop.update({
                 where: { id },
-                data: { isVerified: true },
+                data: { status: "ACTIVE" },
             })
             await tx.user.update({
                 where: { id: provider.userId },

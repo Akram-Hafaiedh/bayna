@@ -116,9 +116,9 @@ export async function POST(req: Request) {
         // Which shop to open: the shop itself, or the first live shop of the business
         const shop =
             scope === "SHOP"
-                ? await prisma.shop.findFirst({ where: { id: levelId, isVerified: true, deletedAt: null }, select: { id: true } })
+                ? await prisma.shop.findFirst({ where: { id: levelId, status: "ACTIVE", deletedAt: null }, select: { id: true } })
                 : await prisma.shop.findFirst({
-                    where: { businessId: levelId, isVerified: true, deletedAt: null },
+                    where: { businessId: levelId, status: "ACTIVE", deletedAt: null },
                     orderBy: { id: "asc" },
                     select: { id: true },
                 })

@@ -1,7 +1,7 @@
 // prisma/seed/seeders/shops.ts
 // The demo shops and their owner accounts: the data (each shop has an owner, belongs to a company from
 // businesses.ts by name, and lists a share of the catalogue at its own price level) and the seeder. A shop
-// is found by owner + name, so running twice updates it in place. Shops are approved (isVerified). Who may
+// is found by owner + name, so running twice updates it in place. Shops are approved (status ACTIVE). Who may
 // do what in them comes from the `access` seeder. Everything here is fictional.
 import bcrypt from "bcryptjs"
 import { SEED_PASSWORD, SeedError, type Seeder } from "../core"
@@ -163,7 +163,7 @@ export const shops: Seeder = {
                 governorate: s.governorate,
                 latitude: s.latitude,
                 longitude: s.longitude,
-                isVerified: true,
+                status: "ACTIVE" as const,
             }
             const existing = await prisma.shop.findFirst({ where: { userId: owner.id, name: s.name }, select: { id: true } })
             if (existing) await prisma.shop.update({ where: { id: existing.id }, data })

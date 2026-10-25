@@ -9,7 +9,7 @@ export const DEFAULT_PAGE_SIZE = 25
 export const SORT_KEYS = ["updatedAt", "name", "price", "stock"] as const
 
 export type SortKey = (typeof SORT_KEYS)[number]
-export type StatusFilter = "all" | "active" | "hidden"
+export type StatusFilter = "all" | "draft" | "active" | "hidden" | "blocked"
 export type StockFilter = "all" | "low" | "out"
 export type LinkedFilter = "all" | "yes" | "no"
 /** "yes" = only products whose price is waiting for the shop to confirm it */
@@ -62,7 +62,7 @@ export function parseProductFilters(raw: RawParams): ProductFilters {
     return {
         q: (pick(raw, "q") ?? "").trim().slice(0, 100),
         categoryId: pick(raw, "category") || null,
-        status: oneOf(pick(raw, "status"), ["all", "active", "hidden"] as const, "all"),
+        status: oneOf(pick(raw, "status"), ["all", "draft", "active", "hidden", "blocked"] as const, "all"),
         stock: oneOf(pick(raw, "stock"), ["all", "low", "out"] as const, "all"),
         linked: oneOf(pick(raw, "linked"), ["all", "yes", "no"] as const, "all"),
         review: oneOf(pick(raw, "review"), ["all", "yes"] as const, "all"),

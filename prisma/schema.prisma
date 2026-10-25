@@ -120,11 +120,11 @@ model Shop {
   // Opaque id for URLs (for example /shop/[publicId]); never guessable, unlike a counter.
   publicId String @unique @default(cuid())
   // The applicant. Who works in the shop, and as what, is AccessAssignment (the applicant becomes OWNER on approval).
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // The name of the shop itself, not of the company (that is Business.name). Column keeps its old name.
-  name           String @map("businessName")
+  name           String          @map("businessName")
   description    String?
   phone          String?
   whatsapp       String?
@@ -136,12 +136,13 @@ model Shop {
   // null while there are no coordinates
   locationSource LocationSource?
 
-  isVerified  Boolean   @default(false)
-  // Set when a verified shop changes its name, address, city, governorate or location, so an admin
+  // Where the shop is in its life; only ACTIVE shops can be opened and sell (see lib/shop-status.ts).
+  status      ShopStatus @default(PENDING)
+  // Set when an active shop changes its name, address, city, governorate or location, so an admin
   // sees it in the providers list. The shop stays live. Cleared by "Mark reviewed".
-  needsReview Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  needsReview Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   createdById String?
   updatedById String?
   deletedAt   DateTime?
@@ -160,6 +161,14 @@ model Shop {
   @@index([userId])
   @@index([businessId])
   @@map("Provider")
+}
+
+enum ShopStatus {
+  DRAFT
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
 }
 
 // The trader or company behind one or more shops (one legal entity). A shop is one outlet of it.
@@ -245,9 +254,9 @@ model CatalogItem {
 // Created alongside a custom product; on approval the product is linked to the
 // resulting CatalogItem so it joins price comparisons.
 model CatalogSuggestion {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   providerId String
-  provider   Shop @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // The provider's custom product that triggered the suggestion (relinked on approval)
   productId String?  @unique
@@ -278,10 +287,17 @@ model CatalogSuggestion {
   @@index([providerId])
 }
 
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  HIDDEN
+  BLOCKED
+}
+
 model Product {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   providerId String
-  provider   Shop @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop   @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   // Optional link to the shared catalogue — enables price comparison
   catalogItemId String?
@@ -295,9 +311,10 @@ model Product {
   sku         String?
   unit        Unit    @default(PIECE)
 
-  price       Decimal @db.Decimal(12, 3)
-  stock       Int     @default(0)
-  isActive    Boolean @default(true)
+  price       Decimal       @db.Decimal(12, 3)
+  stock       Int           @default(0)
+  // DRAFT, ACTIVE, HIDDEN or BLOCKED (by the platform team); see lib/product-status.ts
+  status      ProductStatus @default(ACTIVE)
   minOrderQty Int?
 
   // When the price was last set or confirmed by the shop. Null for products from before this was
@@ -469,7 +486,7 @@ model AccessRole {
   businessId  String?
   business    Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   providerId  String?
-  provider    Shop?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider    Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   permissions String[]
 
   createdAt   DateTime @default(now())
@@ -497,7 +514,7 @@ model AccessAssignment {
   role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
   scope      AccessScope
   providerId String? // the shop, for SHOP scope; null otherwise
-  provider   Shop?        @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?            @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope; null otherwise
   business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
@@ -525,7 +542,7 @@ model AccessInvite {
   id         String      @id @default(cuid())
   scope      AccessScope // SHOP or BUSINESS (never PLATFORM)
   providerId String? // the shop, for SHOP scope
-  provider   Shop?   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  provider   Shop?       @relation(fields: [providerId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope
   business   Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   roleId     String

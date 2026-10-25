@@ -149,7 +149,7 @@ export async function loadShopRolesContext(publicId: string): Promise<ShopRolesC
     const shop = await requireShopPage(publicId)
     const session = await auth()
     const access = session?.user?.id ? await loadAccess(session.user.id) : null
-    if (!shop?.isVerified || !access) return { ready: false, reason: "not-approved" }
+    if (shop?.status !== "ACTIVE" || !access) return { ready: false, reason: "not-approved" }
 
     const found = await prisma.shop.findUnique({
         where: { id: shop.id },
@@ -167,7 +167,7 @@ export async function loadShopRolesContext(publicId: string): Promise<ShopRolesC
 export async function loadBusinessRolesContext(): Promise<{ access: Access; business: { id: string; name: string }; owners: OwnerOption[] }> {
     const { business, access } = await requireBusinessArea()
     const shops = await prisma.shop.findMany({
-        where: { businessId: business.id, deletedAt: null, isVerified: true },
+        where: { businessId: business.id, deletedAt: null, status: "ACTIVE" },
         orderBy: [{ name: "asc" }, { id: "asc" }],
         select: { id: true, name: true },
     })

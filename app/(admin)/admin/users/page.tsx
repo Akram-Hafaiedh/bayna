@@ -12,7 +12,7 @@ type UserRow = {
     providers: {
         id: string
         name: string
-        isVerified: boolean
+        status: string
     }[]
 }
 
@@ -110,7 +110,7 @@ export default function AdminUsersPage() {
                                                 {u.providers.map((p) => (
                                                     <li key={p.id}>
                                                         {p.name}
-                                                        {!p.isVerified && (
+                                                        {p.status === "PENDING" && (
                                                             <span className="ml-1 text-xs text-amber-600">
                                                                 (pending)
                                                             </span>

@@ -5,6 +5,7 @@ import { Unit } from "@/app/generated/prisma/enums"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { listProducts } from "@/lib/provider-products"
+import { SHOP_CHOICES } from "@/lib/product-status"
 import { parseProductFilters } from "@/lib/product-filters"
 import {
     parseMinOrderQty,
@@ -146,6 +147,10 @@ export async function POST(req: Request) {
         const note = parseText(body.suggestionNote, "Note", 500)
         if (!note.ok) return bad(note.error)
 
+        // Active unless the shop chose to save it as a draft or hidden
+        const status = body.status === undefined ? "ACTIVE" : SHOP_CHOICES.find((s) => s === body.status)
+        if (!status) return bad("Status must be draft, active or hidden")
+
         const product = await withAudit(guard.actor, (tx) =>
             tx.product.create({
                 data: {
@@ -161,7 +166,7 @@ export async function POST(req: Request) {
                     stock: stock.ok ? stock.value : 0,
                     minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
                     categoryId,
-                    isActive: body.isActive !== false,
+                    status,
                     priceUpdatedAt: new Date(),
                     images: [],
                     ...(wantsSuggestion && categoryId

@@ -71,7 +71,7 @@ export async function syncAccess(prisma: PrismaClient, opts: { dry?: boolean } =
 
             // 4. Approved shops: the business gets its owner (the applicant)
             const needOwner = await tx.shop.findMany({
-                where: { isVerified: true, deletedAt: null, business: { accessAssignments: { none: {} } } },
+                where: { status: "ACTIVE", deletedAt: null, business: { accessAssignments: { none: {} } } },
                 select: { userId: true, name: true, businessId: true },
             })
             const done = new Set<string>()

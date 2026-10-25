@@ -2,7 +2,7 @@
 // The demo offers: each shop lists a share of the catalogue at its own price level, plus one product that is
 // not in the catalogue. Prices are INVENTED (the price model below), never market data. Offers are matched by
 // (shop, catalogue item), so running twice updates in place and the ids stay stable.
-import { Unit } from "../../../app/generated/prisma/enums"
+import { ProductStatus, Unit } from "../../../app/generated/prisma/enums"
 import { SeedError, type Seeder } from "../core"
 import { SHOPS } from "./shops"
 
@@ -135,7 +135,7 @@ export const products: Seeder = {
                         stock: outOfStock ? 0 : Math.floor(unit01(`${p.key}:stock:${item.slug}`) * 400) + 1,
                         minOrderQty: minOrderFor(item.unit),
                         sku: `DEMO-${p.key.toUpperCase()}-${hash(item.slug).toString(36).toUpperCase()}`,
-                        isActive: true,
+                        status: ProductStatus.ACTIVE,
                     },
                 ]
             })
@@ -166,7 +166,7 @@ export const products: Seeder = {
                 unit: Unit.PIECE,
                 price: "25.000",
                 stock: 10,
-                isActive: true,
+                status: ProductStatus.ACTIVE,
                 categoryId: customCategory?.id ?? null,
             }
             const existingCustom = await prisma.product.findFirst({

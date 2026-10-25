@@ -50,7 +50,7 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
     if (businessIds.length > 0) {
         const shops = await prisma.shop.findMany({
             // approved shops only: a shop still waiting for approval cannot be worked in
-            where: { businessId: { in: businessIds }, deletedAt: null, isVerified: true },
+            where: { businessId: { in: businessIds }, deletedAt: null, status: "ACTIVE" },
             select: { id: true, businessId: true },
         })
         for (const s of shops) {

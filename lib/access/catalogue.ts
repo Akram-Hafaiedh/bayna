@@ -57,7 +57,7 @@ export const SHOP_PERMISSIONS = {
 // keys then work in every shop of the business.
 export const BUSINESS_PERMISSIONS = {
     "business.profile": ["view", "edit", "edit_legal"],
-    "business.shop": ["create"],
+    "business.shop": ["create", "change_status"],
     "business.team": ["view", "invite", "update_role", "suspend", "remove", "transfer_ownership"],
     "business.role": ["view", "manage"],
 } as const

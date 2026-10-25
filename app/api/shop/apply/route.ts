@@ -33,7 +33,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Admin accounts cannot become providers" }, { status: 400 })
         }
         const waiting = await prisma.shop.findFirst({
-            where: { userId, isVerified: false, deletedAt: null },
+            where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true },
         })
         if (waiting) {
@@ -91,7 +91,7 @@ export async function POST(req: Request) {
                     latitude: data.latitude,
                     longitude: data.longitude,
                     locationSource: data.locationSource,
-                    isVerified: false,
+                    status: "PENDING",
                 },
             })
             // ... and every shop starts with its own copy of the default shop roles
@@ -116,7 +116,7 @@ export async function GET() {
         if (!session?.user?.id) return unauthorized()
 
         const provider = await prisma.shop.findFirst({
-            where: { userId: session.user.id, isVerified: false, deletedAt: null },
+            where: { userId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             orderBy: { createdAt: "desc" },
         })
         // The businesses a new shop could be added to (for the "Create shop" form)
@@ -135,7 +135,7 @@ async function pendingApplication() {
     const session = await auth()
     if (!session?.user?.id) return { error: unauthorized() } as const
     const provider = await prisma.shop.findFirst({
-        where: { userId: session.user.id, isVerified: false, deletedAt: null },
+        where: { userId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
         orderBy: { createdAt: "desc" },
     })
     if (!provider) return { error: NextResponse.json({ error: "You have no application waiting" }, { status: 404 }) } as const

@@ -9,10 +9,11 @@ import { pickActiveShop } from "@/lib/access/active-shop"
 import { readActiveShopHint } from "@/lib/access/active-cookie"
 import { loadMyShops } from "@/lib/access/shops"
 import { shopPath } from "@/lib/shop-paths"
+import type { ShopStatusValue } from "@/lib/shop-status"
 
-export type ShopPage = { id: string; publicId: string; name: string; isVerified: boolean }
+export type ShopPage = { id: string; publicId: string; name: string; status: ShopStatusValue }
 
-const select = { id: true, publicId: true, name: true, isVerified: true } as const
+const select = { id: true, publicId: true, name: true, status: true } as const
 
 /**
  * For the pages under /shop/[publicId] (call inside a <Suspense> boundary).

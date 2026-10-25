@@ -21,7 +21,7 @@ const SELECT = {
     latitude: true,
     longitude: true,
     locationSource: true,
-    isVerified: true,
+    status: true,
     needsReview: true,
 } as const
 
@@ -72,7 +72,7 @@ export async function PATCH(req: Request) {
             return NextResponse.json({ provider: present(current, true), changed, flaggedForReview: false })
         }
 
-        const flag = current.isVerified && sensitive
+        const flag = current.status === "ACTIVE" && sensitive
         const updated = await withAudit(guard.actor, (tx) =>
             tx.shop.update({
                 where: { id: current.id },

@@ -29,7 +29,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
                 scope: "SHOP",
                 providerId: { not: null },
                 ...live(now),
-                provider: { deletedAt: null, isVerified: true },
+                provider: { deletedAt: null, status: "ACTIVE" },
             },
             select: {
                 role: { select: { name: true } },
@@ -51,7 +51,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
                         id: true,
                         name: true,
                         shops: {
-                            where: { deletedAt: null, isVerified: true },
+                            where: { deletedAt: null, status: "ACTIVE" },
                             select: { id: true, publicId: true, name: true, city: true },
                         },
                     },
@@ -59,7 +59,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
             },
         }),
         prisma.shop.findMany({
-            where: { userId, isVerified: false, deletedAt: null },
+            where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true, publicId: true, name: true, city: true, business: { select: { id: true, name: true } } },
         }),
     ])

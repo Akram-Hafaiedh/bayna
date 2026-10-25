@@ -2,7 +2,7 @@
 // Server-side querying for the provider's product list: search, filters, sort, pagination.
 // Used by the API route today and by the products page (Server Component) next.
 import type { Prisma } from "@/app/generated/prisma/client"
-import type { SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
+import type { ProductStatus, SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
 import { LOW_STOCK_THRESHOLD, type ProductFilters } from "@/lib/product-filters"
 
@@ -16,7 +16,7 @@ export type ProductRow = {
     unit: Unit
     price: string
     stock: number
-    isActive: boolean
+    status: ProductStatus
     minOrderQty: number | null
     catalogItemId: string | null
     updatedAt: string
@@ -47,7 +47,7 @@ const rowSelect = {
     unit: true,
     price: true,
     stock: true,
-    isActive: true,
+    status: true,
     minOrderQty: true,
     catalogItemId: true,
     updatedAt: true,
@@ -99,8 +99,7 @@ async function buildWhere(
         and.push({ categoryId: { in: [f.categoryId, ...children.map((c) => c.id)] } })
     }
 
-    if (f.status === "active") and.push({ isActive: true })
-    if (f.status === "hidden") and.push({ isActive: false })
+    if (f.status !== "all") and.push({ status: f.status.toUpperCase() as ProductStatus })
 
     if (f.stock === "out") and.push({ stock: { lte: 0 } })
     if (f.stock === "low") and.push({ stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } })
@@ -142,6 +141,8 @@ export async function listProducts(
 export type ProductStats = {
     total: number
     hidden: number
+    draft: number
+    blocked: number
     lowStock: number
     outOfStock: number
     needsReview: number
@@ -151,9 +152,11 @@ export type ProductStats = {
 
 export async function getProductStats(providerId: string): Promise<ProductStats> {
     const live = { providerId, deletedAt: null }
-    const [total, hidden, lowStock, outOfStock, needsReview, trashed] = await Promise.all([
+    const [total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed] = await Promise.all([
         prisma.product.count({ where: live }),
-        prisma.product.count({ where: { ...live, isActive: false } }),
+        prisma.product.count({ where: { ...live, status: "HIDDEN" } }),
+        prisma.product.count({ where: { ...live, status: "DRAFT" } }),
+        prisma.product.count({ where: { ...live, status: "BLOCKED" } }),
         prisma.product.count({
             where: { ...live, stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } },
         }),
@@ -161,7 +164,7 @@ export async function getProductStats(providerId: string): Promise<ProductStats>
         prisma.product.count({ where: { ...live, needsPriceReview: true } }),
         prisma.product.count({ where: { providerId, deletedAt: { not: null } } }),
     ])
-    return { total, hidden, lowStock, outOfStock, needsReview, trashed }
+    return { total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed }
 }
 
 // ---------------------------------------------------------------------------
@@ -302,7 +305,7 @@ export type ProductDetail = {
     price: string
     stock: number
     minOrderQty: number | null
-    isActive: boolean
+    status: ProductStatus
     priceUpdatedAt: string | null
     needsPriceReview: boolean
     priceReviewReason: string | null
@@ -330,7 +333,7 @@ export async function getProviderProduct(
             price: true,
             stock: true,
             minOrderQty: true,
-            isActive: true,
+            status: true,
             priceUpdatedAt: true,
             needsPriceReview: true,
             priceReviewReason: true,

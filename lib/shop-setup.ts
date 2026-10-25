@@ -2,6 +2,8 @@
 // What is still missing from a shop's details, for the setup checklist on the shop's page in the Business
 // area. A shop can be created with the essentials; the rest is filled in over time. Pure (unit tested).
 
+import type { ShopStatusValue } from "./shop-status"
+
 export type ShopSetupInput = {
     description: string | null
     phone: string | null
@@ -11,7 +13,7 @@ export type ShopSetupInput = {
     governorate: string | null
     latitude: number | null
     longitude: number | null
-    isVerified: boolean
+    status: ShopStatusValue
 }
 
 export type SetupItem = { key: string; label: string; done: boolean; hint: string; optional?: boolean }
@@ -28,5 +30,5 @@ export function shopSetup(shop: ShopSetupInput): { items: SetupItem[]; missing: 
         { key: "whatsapp", label: "WhatsApp number", done: filled(shop.whatsapp), hint: "Optional, handy for quick questions.", optional: true },
     ]
     const missing = items.filter((i) => !i.done && !i.optional).length
-    return { items, missing, complete: missing === 0 && shop.isVerified }
+    return { items, missing, complete: missing === 0 && shop.status === "ACTIVE" }
 }

@@ -78,7 +78,7 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
     if (!provider) {
         return <Notice>Shop not found.</Notice>
     }
-    if (!provider.isVerified) {
+    if (provider.status !== "ACTIVE") {
         return (
             <Notice>
                 Your account is not verified yet. Product listing is available once an
@@ -133,6 +133,14 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
         {
             label: "Hidden", count: stats.hidden, active: filters.status === "hidden",
             href: buildProductsHref(filters, { status: filters.status === "hidden" ? "all" : "hidden" })
+        },
+        {
+            label: "Draft", count: stats.draft, active: filters.status === "draft",
+            href: buildProductsHref(filters, { status: filters.status === "draft" ? "all" : "draft" })
+        },
+        {
+            label: "Blocked", count: stats.blocked, active: filters.status === "blocked",
+            href: buildProductsHref(filters, { status: filters.status === "blocked" ? "all" : "blocked" })
         },
     ]
 

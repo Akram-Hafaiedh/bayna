@@ -35,9 +35,9 @@ async function AdminStats() {
     await requireRole([Role.ADMIN])
 
     const [pendingProviders, totalUsers, verifiedProviders] = await Promise.all([
-        prisma.shop.count({ where: { isVerified: false } }),
+        prisma.shop.count({ where: { status: "PENDING" } }),
         prisma.user.count(),
-        prisma.shop.count({ where: { isVerified: true } }),
+        prisma.shop.count({ where: { status: "ACTIVE" } }),
     ])
 
     return (

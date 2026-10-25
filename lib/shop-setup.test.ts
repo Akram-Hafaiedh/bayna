@@ -13,7 +13,7 @@ const full: ShopSetupInput = {
     governorate: "Tunis",
     latitude: 36.8,
     longitude: 10.18,
-    isVerified: true,
+    status: "ACTIVE",
 }
 
 test("a complete, approved shop has nothing missing", () => {
@@ -23,7 +23,7 @@ test("a complete, approved shop has nothing missing", () => {
 })
 
 test("a new shop with only the essentials lists what is still to fill in", () => {
-    const s = shopSetup({ ...full, description: null, address: "  ", latitude: null, longitude: null, whatsapp: null, isVerified: false })
+    const s = shopSetup({ ...full, description: null, address: "  ", latitude: null, longitude: null, whatsapp: null, status: "PENDING" })
     assert.deepEqual(s.items.filter((i) => !i.done && !i.optional).map((i) => i.key), ["address", "pin", "description"])
     assert.equal(s.missing, 3)
     assert.equal(s.complete, false)
@@ -36,7 +36,7 @@ test("WhatsApp is optional: it never counts as missing", () => {
 })
 
 test("details can all be there while the shop still waits for approval", () => {
-    const s = shopSetup({ ...full, isVerified: false })
+    const s = shopSetup({ ...full, status: "PENDING" })
     assert.equal(s.missing, 0)
     assert.equal(s.complete, false)
 })

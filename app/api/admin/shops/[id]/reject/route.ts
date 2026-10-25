@@ -30,7 +30,7 @@ export async function POST(
         }
 
         // Only a waiting application can be rejected; an approved shop is closed another way
-        if (provider.isVerified) {
+        if (provider.status !== "PENDING" && provider.status !== "DRAFT") {
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
         }
 

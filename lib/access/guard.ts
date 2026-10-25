@@ -124,7 +124,7 @@ export async function requireShop(
     } else if (shopIds.length === 0) {
         // An applicant still waiting for approval has no assignment yet; keep the clearer message.
         const pending = await prisma.shop.findFirst({
-            where: { userId: a.access.userId, isVerified: false, deletedAt: null },
+            where: { userId: a.access.userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true },
         })
         if (pending) return fail("Your shop is not approved yet", 403)
@@ -142,10 +142,11 @@ export async function requireShop(
 
     const provider = await prisma.shop.findUnique({
         where: { id: providerId },
-        select: { id: true, isVerified: true, deletedAt: true, businessId: true },
+        select: { id: true, status: true, deletedAt: true, businessId: true },
     })
     if (!provider || provider.deletedAt) return fail("Shop not found", 404)
-    if (!provider.isVerified) return fail("Your shop is not approved yet", 403)
+    if (provider.status === "PENDING" || provider.status === "DRAFT") return fail("Your shop is not approved yet", 403)
+    if (provider.status !== "ACTIVE") return fail("This shop is closed or suspended", 403)
 
     // businessId lets a business-level role (owner, accountant) count inside this shop
     const ctx = { providerId: provider.id, businessId: provider.businessId }

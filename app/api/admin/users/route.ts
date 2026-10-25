@@ -23,7 +23,7 @@ export async function GET(req: Request) {
                     select: {
                         id: true,
                         name: true,
-                        isVerified: true,
+                        status: true,
                     },
                     orderBy: { createdAt: "asc" },
                 },

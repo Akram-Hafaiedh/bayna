@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
+import StatusPill from "@/components/business/StatusPill"
+import type { ShopStatusValue } from "@/lib/shop-status"
 
 type ProviderRow = {
     id: string
@@ -10,7 +12,7 @@ type ProviderRow = {
     city: string
     governorate: string | null
     phone: string | null
-    isVerified: boolean
+    status: ShopStatusValue
     needsReview: boolean
     latitude: number | null
     longitude: number | null
@@ -25,7 +27,7 @@ type ProviderRow = {
 
 export default function AdminProvidersPage() {
     const [providers, setProviders] = useState<ProviderRow[]>([])
-    const [filter, setFilter] = useState<"pending" | "verified" | "review" | "all">("pending")
+    const [filter, setFilter] = useState<"pending" | "verified" | "suspended" | "review" | "all">("pending")
     const [loading, setLoading] = useState(true)
     const [actionId, setActionId] = useState<string | null>(null)
     const [error, setError] = useState("")
@@ -72,6 +74,36 @@ export default function AdminProvidersPage() {
             await load()
         } catch {
             setError("Approve failed")
+        } finally {
+            setActionId(null)
+        }
+    }
+
+    // Suspend or reinstate: the shop stops (or resumes) selling; its owners cannot undo a suspension
+    async function setSuspended(id: string, suspend: boolean) {
+        const verb = suspend ? "suspend" : "reinstate"
+        if (suspend) {
+            const yes = await confirm({
+                title: `Suspend ${nameOf(id)}?`,
+                message: "The shop stops selling and its team cannot open it until you reinstate it. Nothing is deleted.",
+                confirmLabel: "Suspend shop",
+                tone: "danger",
+            })
+            if (!yes) return
+        }
+        setActionId(id)
+        try {
+            const res = await fetch(`/api/admin/shops/${id}/${verb}`, { method: "POST" })
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}))
+                setError(data.error || `Could not ${verb}`)
+                toast.error(`Could not ${verb}`, { description: data.error })
+                return
+            }
+            toast.success(suspend ? `${nameOf(id)} suspended` : `${nameOf(id)} reinstated`)
+            await load()
+        } catch {
+            setError(`Could not ${verb}`)
         } finally {
             setActionId(null)
         }
@@ -136,7 +168,7 @@ export default function AdminProvidersPage() {
                     </p>
                 </div>
                 <div className="flex gap-1 rounded-lg border border-zinc-200 bg-white p-1">
-                    {(["pending", "verified", "review", "all"] as const).map((f) => (
+                    {(["pending", "verified", "suspended", "review", "all"] as const).map((f) => (
                         <button
                             key={f}
                             type="button"
@@ -218,25 +250,37 @@ export default function AdminProvidersPage() {
                                         )}
                                     </td>
                                     <td className="px-4 py-3">
-                                        {p.isVerified ? (
-                                            <span className="inline-flex gap-1.5">
-                                                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-                                                    Verified
+                                        <span className="inline-flex gap-1.5">
+                                            <StatusPill status={p.status} />
+                                            {p.status === "ACTIVE" && p.needsReview && (
+                                                <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                                                    Needs review
                                                 </span>
-                                                {p.needsReview && (
-                                                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-                                                        Needs review
-                                                    </span>
-                                                )}
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
-                                                Pending
-                                            </span>
-                                        )}
+                                            )}
+                                        </span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
-                                        {p.isVerified && p.needsReview && (
+                                        {p.status === "ACTIVE" && (
+                                            <button
+                                                type="button"
+                                                disabled={actionId === p.id}
+                                                onClick={() => setSuspended(p.id, true)}
+                                                className="mr-3 text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                                            >
+                                                Suspend
+                                            </button>
+                                        )}
+                                        {p.status === "SUSPENDED" && (
+                                            <button
+                                                type="button"
+                                                disabled={actionId === p.id}
+                                                onClick={() => setSuspended(p.id, false)}
+                                                className="text-xs font-medium text-emerald-700 hover:underline disabled:opacity-50"
+                                            >
+                                                Reinstate
+                                            </button>
+                                        )}
+                                        {p.status === "ACTIVE" && p.needsReview && (
                                             <button
                                                 type="button"
                                                 disabled={actionId === p.id}
@@ -246,7 +290,7 @@ export default function AdminProvidersPage() {
                                                 Mark reviewed
                                             </button>
                                         )}
-                                        {!p.isVerified && (
+                                        {p.status === "PENDING" && (
                                             <div className="inline-flex gap-2">
                                                 <button
                                                     type="button"

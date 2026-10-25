@@ -29,7 +29,7 @@ export default function EditProductPage({
 async function EditProductContent({ params }: { params: Promise<{ publicId: string; id: string }> }) {
     const { publicId, id } = await params
     const provider = await requireShopPage(publicId)
-    if (!provider?.isVerified) notFound()
+    if (provider?.status !== "ACTIVE") notFound()
 
     const [product, categories, perms] = await Promise.all([
         getProviderProduct(provider.id, id),
