@@ -203,6 +203,12 @@ export default function Navbar() {
                     ) : (
                         <div className="flex items-center gap-2">
                             <Link
+                                href="/plans"
+                                className="hidden rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-900 sm:inline-block"
+                            >
+                                Plans
+                            </Link>
+                            <Link
                                 href="/login"
                                 className="rounded-lg px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-900"
                             >

@@ -4,6 +4,8 @@
 //
 //   ACTIVE            can sign in and work
 //   SUSPENDED         cannot sign in; every open session is ended; the platform team can reinstate
+//                     (the reason is kept in the activity log for the admins; the person is only told
+//                     that the account is suspended)
 //   BANNED            kept for later (no action yet)
 //   PENDING_DELETION  kept for later (no action yet)
 
@@ -15,6 +17,26 @@ export const USER_STATUS_LABEL: Record<UserStatusValue, string> = {
     SUSPENDED: "Suspended",
     BANNED: "Banned",
     PENDING_DELETION: "Pending deletion",
+}
+
+/**
+ * What the sign-in page says to a person whose account cannot be used. It is only ever shown after the
+ * right password was typed, so it does not tell a stranger that an email has an account.
+ */
+export const SIGN_IN_BLOCK = {
+    SUSPENDED: { code: "account_suspended", message: "Your account has been suspended. Contact support if you think this is a mistake." },
+    BANNED: { code: "account_banned", message: "Your account has been closed." },
+    PENDING_DELETION: { code: "account_pending_deletion", message: "Your account is scheduled for deletion." },
+} as const
+
+/** The block that applies to this status, or null when the account can sign in. */
+export function signInBlockFor(status: string): (typeof SIGN_IN_BLOCK)[keyof typeof SIGN_IN_BLOCK] | null {
+    return status in SIGN_IN_BLOCK ? SIGN_IN_BLOCK[status as keyof typeof SIGN_IN_BLOCK] : null
+}
+
+/** The message for the `code` the sign-in call came back with; null for any other error. */
+export function messageForSignInCode(code: unknown): string | null {
+    return Object.values(SIGN_IN_BLOCK).find((b) => b.code === code)?.message ?? null
 }
 
 export type UserAction = "suspend" | "reinstate" | "revoke_sessions" | "reset_password"

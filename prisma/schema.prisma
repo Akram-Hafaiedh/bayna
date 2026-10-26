@@ -198,6 +198,8 @@ model Business {
   accessAssignments AccessAssignment[]
   accessRoles       AccessRole[]
   invites           AccessInvite[]
+  // The plan this business pays for; none = the free plan (see lib/plans.ts)
+  subscription      Subscription?
 }
 
 model Category {
@@ -589,4 +591,65 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+}
+
+// ---- Plans -----------------------------------------------------------------------------------
+// A free plan with limits and paid plans that raise them (decision 4 of 16 Oct 2026). The plan belongs
+// to the BUSINESS: it is the account holder, and limits count across all of its shops. A business with
+// no Subscription row is on the free plan, so nothing has to be created for existing businesses.
+// The default plans and their limits live in lib/plans.ts and are copied here by `npm run seed plans`.
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model Plan {
+  id           String   @id @default(cuid())
+  key          String   @unique // FREE, PRO, BUSINESS
+  name         String
+  description  String?
+  // Prices in TND; null = free, or not decided yet (the Subscription page says "price on request").
+  // Stored, not worked out: the yearly price is its own number (a small discount on 12 months), so each
+  // can be changed on its own. Change them with `npm run db:set-price`.
+  priceMonthly Decimal? @db.Decimal(12, 3)
+  priceYearly  Decimal? @db.Decimal(12, 3)
+  // { "shops": 1, "products": 50, "teamSeats": 1 }; a missing or null key means no limit
+  limits       Json     @default("{}")
+  // { "advancedReports": true, "bulkImport": false }
+  features     Json     @default("{}")
+  sortOrder    Int      @default(0)
+  // Shown on the Business Subscription page
+  isPublic     Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  businessId         String             @unique
+  business           Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId             String
+  plan               Plan               @relation(fields: [planId], references: [id], onDelete: Restrict)
+  status             SubscriptionStatus @default(ACTIVE)
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  canceledAt         DateTime?
+  // Set by hand by the platform team until a payment method exists (npm run db:set-plan)
+  note               String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([planId])
 }

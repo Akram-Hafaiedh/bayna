@@ -2,11 +2,11 @@
 // POST: forces a password reset. The old password stops working, every session ends, and a one-time reset
 // link is returned for the admin to pass on (there is no email service yet; the link is shown once).
 // Needs user.credential.reset_password.
-import crypto from "crypto"
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
+import { newResetToken } from "@/lib/reset-token"
 import { checkTarget } from "@/lib/user-status"
 
 const VALID_HOURS = 24
@@ -23,13 +23,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const user = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true, email: true } })
         if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
-        const token = crypto.randomBytes(32).toString("hex")
+        // Shown once to the admin; the table keeps only its hash
+        const { token, hash } = newResetToken()
         const expires = new Date(Date.now() + VALID_HOURS * 60 * 60 * 1000)
 
         await withAudit(guard.actor, async (tx) => {
             // Only one link at a time: a new one replaces any earlier one
             await tx.passwordResetToken.deleteMany({ where: { email: user.email } })
-            await tx.passwordResetToken.create({ data: { email: user.email, token, expires } })
+            await tx.passwordResetToken.create({ data: { email: user.email, token: hash, expires } })
             await tx.user.update({ where: { id }, data: { password: null, passwordChangedAt: new Date() } })
             await tx.loginSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } })
         })

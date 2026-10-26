@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { guardTeam, targetLabel, TeamError } from "@/lib/access/team-actions"
 import { hashInviteToken, inviteExpiry, newInviteToken } from "@/lib/access/invite-token"
+import { holdsSeat, limitBlock } from "@/lib/plan-limits"
 import { checkInvitee, missingKeys, parseInviteInput, roleUsableAt } from "@/lib/access/team-rules"
 
 export async function POST(req: Request) {
@@ -79,6 +80,12 @@ export async function POST(req: Request) {
         }
         const who = checkInvitee({ inviteeEmail: email, actorEmail: actorUser?.email ?? null, scope, member, viaBusiness })
         if (!who.ok) return NextResponse.json({ error: who.error }, { status: 400 })
+
+        // A new person takes a team seat of the business's plan (someone already on its team takes none)
+        if (guard.businessId && !(existing && (await holdsSeat(guard.businessId, existing.id)))) {
+            const blocked = await limitBlock(guard.businessId, "teamSeats")
+            if (blocked) return NextResponse.json({ error: blocked, code: "plan_limit" }, { status: 403 })
+        }
 
         const token = newInviteToken()
         const now = new Date()

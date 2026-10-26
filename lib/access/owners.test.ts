@@ -3,7 +3,7 @@
 import { test } from "vitest"
 import assert from "node:assert/strict"
 import { OWNERSHIP_KEY } from "./catalogue"
-import { checkOwnerRule, type LevelMember } from "./owners"
+import { checkOwnerRule, platformMembers, type LevelMember, type StaffRow } from "./owners"
 
 // There is no special Owner role: an owner is anyone whose role holds the ownership key
 const KEY = OWNERSHIP_KEY.SHOP
@@ -63,4 +63,42 @@ test("business owners use the business key", () => {
     const biz = OWNERSHIP_KEY.BUSINESS
     assert.equal(checkOwnerRule([owner("a")], { type: "set_role", assignmentId: "a", newPermissions: [biz] }, biz).ok, true)
     assert.equal(checkOwnerRule([owner("a")], { type: "set_role", assignmentId: "a", newPermissions: [KEY] }, biz).ok, false)
+})
+
+// ---- platform staff ----
+const PKEY = OWNERSHIP_KEY.PLATFORM
+const NOW = new Date("2026-10-26T12:00:00Z")
+const row = (userId: string, permissions: string[], extra: Partial<StaffRow> = {}): StaffRow => ({
+    userId,
+    status: "ACTIVE",
+    expiresAt: null,
+    role: { permissions },
+    user: { status: "ACTIVE", deletedAt: null },
+    ...extra,
+})
+
+test("the only super admin cannot be suspended, a second one makes it fine", () => {
+    const one = platformMembers([row("root", ["*"]), row("agent", ["support.ticket.reply"])], PKEY, NOW)
+    assert.equal(checkOwnerRule(one, { type: "suspend", assignmentId: "root" }, PKEY).ok, false)
+    const two = platformMembers([row("root", ["*"]), row("root2", [PKEY])], PKEY, NOW)
+    assert.equal(checkOwnerRule(two, { type: "suspend", assignmentId: "root" }, PKEY).ok, true)
+})
+
+test("an Admin without the grant key is not a platform owner", () => {
+    const members = platformMembers([row("root", ["*"]), row("admin", ["user.account.suspend"])], PKEY, NOW)
+    assert.equal(checkOwnerRule(members, { type: "suspend", assignmentId: "admin" }, PKEY).ok, true)
+    assert.equal(checkOwnerRule(members, { type: "suspend", assignmentId: "root" }, PKEY).ok, false)
+})
+
+test("a suspended or expired owner does not count as the other owner", () => {
+    const suspended = platformMembers([row("root", ["*"]), row("old", ["*"], { user: { status: "SUSPENDED", deletedAt: null } })], PKEY, NOW)
+    assert.equal(checkOwnerRule(suspended, { type: "suspend", assignmentId: "root" }, PKEY).ok, false)
+    const expired = platformMembers([row("root", ["*"]), row("temp", ["*"], { expiresAt: new Date("2026-10-01T00:00:00Z") })], PKEY, NOW)
+    assert.equal(checkOwnerRule(expired, { type: "suspend", assignmentId: "root" }, PKEY).ok, false)
+})
+
+test("staff are counted per person: two roles of one person are still one owner", () => {
+    const members = platformMembers([row("root", ["*"]), row("root", [PKEY])], PKEY, NOW)
+    assert.equal(members.length, 1)
+    assert.equal(checkOwnerRule(members, { type: "suspend", assignmentId: "root" }, PKEY).ok, false)
 })

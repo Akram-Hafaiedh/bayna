@@ -16,6 +16,7 @@ import { parseText } from "@/lib/parse"
 import { businessesForNewShop } from "@/lib/access/business-options"
 import { resolveBusinessChoice } from "@/lib/business-choice"
 import { seedBusinessRoles, seedShopRoles } from "@/lib/access/role-seed"
+import { limitBlock } from "@/lib/plan-limits"
 
 const unauthorized = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 const failed = () => NextResponse.json({ error: "Something went wrong" }, { status: 500 })
@@ -56,6 +57,12 @@ export async function POST(req: Request) {
         const options = await businessesForNewShop(userId)
         const choice = resolveBusinessChoice(options.map((b) => b.id), (body as { businessId?: unknown } | null)?.businessId)
         if (!choice.ok) return NextResponse.json({ error: choice.error }, { status: 400 })
+
+        // A shop added to an existing business counts against that business's plan (a new business starts empty)
+        if (choice.kind === "existing") {
+            const blocked = await limitBlock(choice.businessId, "shops")
+            if (blocked) return NextResponse.json({ error: blocked, code: "plan_limit" }, { status: 403 })
+        }
 
         // A new business is named after the shop unless the form gave it a name of its own
         let newBusinessName = data.name!

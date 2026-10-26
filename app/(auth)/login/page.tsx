@@ -5,6 +5,7 @@ import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { readAuthReturn } from "@/lib/auth-return"
+import { messageForSignInCode } from "@/lib/user-status"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -33,7 +34,8 @@ export default function LoginPage() {
         setLoading(false)
 
         if (result?.error) {
-            setError("Invalid email or password")
+            // A suspended or closed account says so (only after the right password); anything else is generic
+            setError(messageForSignInCode((result as { code?: unknown }).code) ?? "Invalid email or password")
             return
         }
 

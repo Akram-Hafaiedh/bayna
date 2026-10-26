@@ -143,6 +143,8 @@ export const ALL_CLIENT_KEYS = flatten(CLIENT_PERMISSIONS) as ClientPermission[]
 export const OWNERSHIP_KEY = {
     BUSINESS: "business.team.transfer_ownership",
     SHOP: "team.member.transfer_ownership",
+    /** The platform owner is whoever can give staff roles (a Super admin; the Admin template cannot) */
+    PLATFORM: "access.assignment.grant",
 } as const
 
 /** Does this list of keys hold `key`? ("*" holds everything.) */

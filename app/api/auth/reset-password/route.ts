@@ -4,12 +4,13 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
+import { hashResetToken } from "@/lib/reset-token"
 
 export async function POST(req: Request) {
     try {
         const { token, password } = await req.json()
 
-        if (!token || !password) {
+        if (typeof token !== "string" || typeof password !== "string" || !token || !password) {
             return NextResponse.json(
                 { error: "Token and password are required" },
                 { status: 400 }
@@ -23,8 +24,9 @@ export async function POST(req: Request) {
             )
         }
 
+        // The table keeps only the hash of the secret in the link
         const resetToken = await prisma.passwordResetToken.findUnique({
-            where: { token },
+            where: { token: hashResetToken(token) },
         })
 
         if (!resetToken || resetToken.expires < new Date()) {
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
 
             // Delete the used token
             await tx.passwordResetToken.delete({
-                where: { token },
+                where: { token: resetToken.token },
             })
         })
 

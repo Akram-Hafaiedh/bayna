@@ -1,11 +1,20 @@
 // auth.ts
-import NextAuth from "next-auth"
+import NextAuth, { CredentialsSignin } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { normalizeEmail } from "@/lib/email-input"
+import { signInBlockFor } from "@/lib/user-status"
 import type { Role } from "@/app/generated/prisma/enums"
+
+// A sign-in refused because of the account's status. The `code` tells the login page which message to show.
+class AccountBlocked extends CredentialsSignin {
+    constructor(code: string) {
+        super()
+        this.code = code
+    }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     adapter: PrismaAdapter(prisma),
@@ -45,10 +54,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null
                 }
 
-                // A suspended, banned or closing account cannot sign in
-                if (user.status !== "ACTIVE") {
-                    return null
-                }
+                // A suspended, banned or closing account cannot sign in. The password was right, so saying why
+                // does not reveal that the email has an account.
+                const blocked = signInBlockFor(user.status)
+                if (blocked) throw new AccountBlocked(blocked.code)
+                if (user.status !== "ACTIVE") return null
 
                 return {
                     id: user.id,

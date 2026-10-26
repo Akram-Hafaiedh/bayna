@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
+import { assertPlatformKeepsAnOwner } from "@/lib/access/owners"
 import { checkTarget, parseReason, userMove } from "@/lib/user-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -27,15 +28,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!reason.ok) return NextResponse.json({ error: reason.error }, { status: 400 })
 
         const done = await withAudit(guard.actor, async (tx) => {
+            // The platform always keeps a live owner: the last Super admin cannot be suspended
+            const rule = await assertPlatformKeepsAnOwner(tx, id)
+            if (!rule.ok) return { kind: "owner" as const, error: rule.error }
             const changed = await tx.user.updateMany({
                 where: { id, status: user.status },
                 data: { status: next, suspendedReason: reason.value },
             })
-            if (changed.count === 0) return false
+            if (changed.count === 0) return { kind: "race" as const }
             await tx.loginSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } })
-            return true
+            return { kind: "done" as const }
         })
-        if (!done) return NextResponse.json({ error: "The account was just changed by someone else. Refresh and try again." }, { status: 409 })
+        if (done.kind === "owner") return NextResponse.json({ error: done.error }, { status: 400 })
+        if (done.kind === "race") return NextResponse.json({ error: "The account was just changed by someone else. Refresh and try again." }, { status: 409 })
 
         return NextResponse.json({ status: next })
     } catch (error) {

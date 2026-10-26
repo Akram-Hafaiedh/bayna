@@ -6,6 +6,7 @@ import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { listProducts } from "@/lib/provider-products"
 import { SHOP_CHOICES } from "@/lib/product-status"
+import { limitBlock } from "@/lib/plan-limits"
 import { parseProductFilters } from "@/lib/product-filters"
 import {
     parseMinOrderQty,
@@ -45,6 +46,12 @@ export async function POST(req: Request) {
         const guard = await requireShop("product.listing.create", req)
         if (!guard.ok) return bad(guard.error, guard.status)
         const providerId = guard.provider.id
+
+        // The business's plan may cap how many products it can list (off until plans are switched on)
+        if (guard.provider.businessId) {
+            const blocked = await limitBlock(guard.provider.businessId, "products")
+            if (blocked) return bad(blocked, 403)
+        }
 
         const body = await req.json()
 

@@ -1,7 +1,7 @@
 // app/api/auth/forgot-password/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import crypto from "crypto"
+import { newResetToken } from "@/lib/reset-token"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { parseEmail } from "@/lib/email-input"
@@ -29,8 +29,8 @@ export async function POST(req: Request) {
         // The token carries the address exactly as stored on the account
         const email = user.email
 
-        // Create a secure token
-        const token = crypto.randomBytes(32).toString("hex")
+        // Create a secure token; only its hash is stored
+        const { token, hash } = newResetToken()
         const expires = new Date(Date.now() + 1000 * 60 * 60) // 1 hour
 
         // Anyone can request a reset, so there is no signed-in person; the request's IP and
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
             await tx.passwordResetToken.create({
                 data: {
                     email,
-                    token,
+                    token: hash,
                     expires,
                 },
             })
