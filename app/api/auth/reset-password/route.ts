@@ -39,10 +39,13 @@ export async function POST(req: Request) {
         // The reset link proves who this is, but there is no session, so the actor is named by email.
         const actor = actorFromSession(null, requestMeta(req), { actorName: resetToken.email })
         await withAudit(actor, async (tx) => {
-            await tx.user.update({
+            const user = await tx.user.update({
                 where: { email: resetToken.email },
-                data: { password: hashedPassword },
+                data: { password: hashedPassword, passwordChangedAt: new Date() },
+                select: { id: true },
             })
+            // A new password ends every session opened with the old one
+            await tx.loginSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } })
 
             // Delete the used token
             await tx.passwordResetToken.delete({

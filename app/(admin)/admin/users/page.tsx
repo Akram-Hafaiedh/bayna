@@ -1,136 +1,64 @@
-"use client"
+import { Suspense } from "react"
+import type { Metadata } from "next"
+import { connection } from "next/server"
+import { requireRole } from "@/lib/session"
+import { platformCan } from "@/lib/access/page"
+import { listUsers } from "@/lib/admin-users"
+import { buildUsersHref, hasUserFilters, parseUserQuery, USER_PAGE_SIZES } from "@/lib/user-list"
+import { Role } from "@/app/generated/prisma/enums"
+import UsersList from "@/components/admin/UsersList"
+import UsersToolbar from "@/components/admin/UsersToolbar"
+import Pager from "@/components/ui/Pager"
 
-import { useEffect, useState } from "react"
+export const metadata: Metadata = { title: "Users" }
 
-type UserRow = {
-    id: string
-    email: string
-    name: string | null
-    phone: string | null
-    role: string
-    createdAt: string
-    providers: {
-        id: string
-        name: string
-        status: string
-    }[]
-}
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
-export default function AdminUsersPage() {
-    const [users, setUsers] = useState<UserRow[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState("")
-
-    useEffect(() => {
-        async function load() {
-            try {
-                const res = await fetch("/api/admin/users")
-                const data = await res.json()
-                if (!res.ok) {
-                    setError(data.error || "Failed to load")
-                    return
-                }
-                setUsers(data.users || [])
-            } catch {
-                setError("Failed to load users")
-            } finally {
-                setLoading(false)
-            }
-        }
-        load()
-    }, [])
-
-    function roleBadge(role: string) {
-        if (role === "ADMIN")
-            return "bg-violet-50 text-violet-700"
-        if (role === "PROVIDER")
-            return "bg-emerald-50 text-emerald-700"
-        return "bg-zinc-100 text-zinc-600"
-    }
-
+export default function AdminUsersPage({ searchParams }: { searchParams: SearchParams }) {
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-                    Users
-                </h1>
-                <p className="mt-1 text-sm text-zinc-500">
-                    All accounts on the platform
-                </p>
+                <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Users</h1>
+                <p className="mt-1 text-sm text-zinc-500">All accounts on the platform</p>
             </div>
-
-            {error && (
-                <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">
-                    {error}
-                </div>
-            )}
-
-            {loading ? (
-                <p className="text-sm text-zinc-500">Loading...</p>
-            ) : users.length === 0 ? (
-                <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
-                    No users yet.
-                </div>
-            ) : (
-                <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-zinc-50 border-b border-zinc-200">
-                            <tr className="text-left text-zinc-500">
-                                <th className="px-4 py-3 font-medium">User</th>
-                                <th className="px-4 py-3 font-medium">Role</th>
-                                <th className="px-4 py-3 font-medium hidden sm:table-cell">
-                                    Provider
-                                </th>
-                                <th className="px-4 py-3 font-medium hidden md:table-cell">
-                                    Joined
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                            {users.map((u) => (
-                                <tr key={u.id} className="hover:bg-zinc-50/50">
-                                    <td className="px-4 py-3">
-                                        <p className="font-medium text-zinc-900">
-                                            {u.name || "—"}
-                                        </p>
-                                        <p className="text-xs text-zinc-400">
-                                            {u.email}
-                                        </p>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span
-                                            className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${roleBadge(u.role)}`}
-                                        >
-                                            {u.role}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 hidden sm:table-cell text-zinc-600">
-                                        {u.providers.length > 0 ? (
-                                            <ul className="space-y-0.5">
-                                                {u.providers.map((p) => (
-                                                    <li key={p.id}>
-                                                        {p.name}
-                                                        {p.status === "PENDING" && (
-                                                            <span className="ml-1 text-xs text-amber-600">
-                                                                (pending)
-                                                            </span>
-                                                        )}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            "—"
-                                        )}
-                                    </td>
-                                    <td className="px-4 py-3 hidden md:table-cell text-zinc-500">
-                                        {new Date(u.createdAt).toLocaleDateString()}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+            <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-200" />}>
+                <UsersContent searchParams={searchParams} />
+            </Suspense>
         </div>
+    )
+}
+
+async function UsersContent({ searchParams }: { searchParams: SearchParams }) {
+    await connection()
+    const me = await requireRole([Role.ADMIN])
+    const perms = await platformCan(["user.account.view"] as const)
+    if (!perms["user.account.view"]) {
+        return <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">You do not have access to the user list.</p>
+    }
+
+    const query = parseUserQuery(await searchParams)
+    const result = await listUsers(query)
+
+    return (
+        <>
+            <UsersToolbar query={query} />
+
+            {result.total === 0 && !hasUserFilters(query) ? (
+                <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">No users yet.</div>
+            ) : (
+                <>
+                    <UsersList users={result.items} me={me.id ?? ""} />
+                    <Pager
+                        page={result.page}
+                        pageCount={result.pageCount}
+                        total={result.total}
+                        pageSize={result.pageSize}
+                        pageSizes={USER_PAGE_SIZES}
+                        pageHref={(p) => buildUsersHref(query, { page: p })}
+                        sizeHref={(n) => buildUsersHref(query, { pageSize: n })}
+                    />
+                </>
+            )}
+        </>
     )
 }

@@ -45,6 +45,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     return null
                 }
 
+                // A suspended, banned or closing account cannot sign in
+                if (user.status !== "ACTIVE") {
+                    return null
+                }
+
                 return {
                     id: user.id,
                     email: user.email,
@@ -79,8 +84,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 try {
                     const dbUser = await prisma.user.findUnique({
                         where: { id: token.id as string },
-                        select: { role: true, name: true },
+                        select: { role: true, name: true, status: true },
                     })
+                    // An account the platform team suspended is signed out on its next request
+                    if (dbUser && dbUser.status !== "ACTIVE") {
+                        return { ...token, id: undefined, role: undefined, loginSessionId: undefined }
+                    }
                     if (dbUser?.role) {
                         token.role = dbUser.role
                     }

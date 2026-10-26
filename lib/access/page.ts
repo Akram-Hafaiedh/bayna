@@ -4,7 +4,7 @@
 import { auth } from "@/auth"
 import { loadAccess } from "./load"
 import { can } from "./evaluate"
-import type { BusinessPermission, ShopPermission } from "./catalogue"
+import type { BusinessPermission, PlatformPermission, ShopPermission } from "./catalogue"
 
 export async function shopCan<K extends ShopPermission>(providerId: string, keys: readonly K[]): Promise<Record<K, boolean>> {
     const session = await auth()
@@ -33,6 +33,18 @@ export async function businessCan<K extends BusinessPermission | ShopPermission>
     const out = {} as Record<K, boolean>
     for (const k of keys) {
         out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, { businessId }, now)
+    }
+    return out
+}
+
+/** The same for platform keys: what may this person do for the platform (the admin area)? */
+export async function platformCan<K extends PlatformPermission>(keys: readonly K[]): Promise<Record<K, boolean>> {
+    const session = await auth()
+    const access = session?.user?.id ? await loadAccess(session.user.id) : null
+    const now = new Date()
+    const out = {} as Record<K, boolean>
+    for (const k of keys) {
+        out[k] = !!access && access.status === "ACTIVE" && can(access.assignments, k, {}, now)
     }
     return out
 }
