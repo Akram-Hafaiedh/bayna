@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { readAuthReturn } from "@/lib/auth-return"
 import { messageForSignInCode } from "@/lib/user-status"
+import { messageForRateLimitCode } from "@/lib/rate-limit/policies"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -35,7 +36,8 @@ export default function LoginPage() {
 
         if (result?.error) {
             // A suspended or closed account says so (only after the right password); anything else is generic
-            setError(messageForSignInCode((result as { code?: unknown }).code) ?? "Invalid email or password")
+            const code = (result as { code?: unknown }).code
+            setError(messageForSignInCode(code) ?? messageForRateLimitCode(code) ?? "Invalid email or password")
             return
         }
 

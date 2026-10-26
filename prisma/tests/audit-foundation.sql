@@ -32,8 +32,10 @@ SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test 
 INSERT INTO "User" (id, email, name, password, role, "updatedAt")
 VALUES ('audit_test_owner', 'owner@audit.test', 'Owner', 'secret-hash', 'PROVIDER', now());
 INSERT INTO "Category" (id, name, slug, "updatedAt") VALUES ('audit_test_cat', 'Audit Cat', 'audit-cat', now());
-INSERT INTO "Provider" (id, "userId", "businessName", city, "updatedAt")
-VALUES ('audit_test_prov', 'audit_test_owner', 'Audit Shop', 'Tunis', now());
+INSERT INTO "Business" (id, "publicId", name, "updatedAt")
+VALUES ('audit_test_biz', 'audit_test_biz_pub', 'Audit Business', now());
+INSERT INTO "Provider" (id, "publicId", "userId", "businessId", "businessName", city, "updatedAt")
+VALUES ('audit_test_prov', 'audit_test_prov_pub', 'audit_test_owner', 'audit_test_biz', 'Audit Shop', 'Tunis', now());
 INSERT INTO "Product" (id, "providerId", name, price, images, "updatedAt")
 VALUES ('audit_test_p1', 'audit_test_prov', 'P1', 12.500, '{}', now()),
        ('audit_test_p2', 'audit_test_prov', 'P2', 5.000, '{}', now());
@@ -107,10 +109,10 @@ SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test 
 
 DO $$
 BEGIN
-  UPDATE "Product" SET "isActive" = false WHERE "providerId" = 'audit_test_prov';
+  UPDATE "Product" SET "status" = 'HIDDEN' WHERE "providerId" = 'audit_test_prov';
   PERFORM pg_temp.expect(
     (SELECT count(*) FROM "ActivityLog" WHERE "entityType" = 'Product' AND "entityId" IN ('audit_test_p1', 'audit_test_p2')
-        AND action = 'UPDATE' AND changes @> '[{"field":"isActive"}]'::jsonb) = 2,
+        AND action = 'UPDATE' AND changes @> '[{"field":"status"}]'::jsonb) = 2,
     'bulk update logs one row per product');
 END $$;
 
@@ -274,9 +276,9 @@ BEGIN
   SELECT string_agg(c.relname, ', ') INTO missing
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE n.nspname = 'public' AND c.relkind = 'r'
-     AND c.relname NOT IN ('_prisma_migrations', 'ActivityLog', 'Session', 'VerificationToken', 'Notification')
+     AND c.relname NOT IN ('_prisma_migrations', 'ActivityLog', 'Session', 'VerificationToken', 'Notification', 'RateLimit')
      AND NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = c.oid AND t.tgname = 'audit_log' AND NOT t.tgisinternal);
-  PERFORM pg_temp.expect(missing IS NULL, 'every table (except Session, VerificationToken, Notification) has the audit_log trigger' || coalesce(' (missing: ' || missing || ')', ''));
+  PERFORM pg_temp.expect(missing IS NULL, 'every table (except Session, VerificationToken, Notification, RateLimit) has the audit_log trigger' || coalesce(' (missing: ' || missing || ')', ''));
 END $$;
 
 ROLLBACK;

@@ -573,6 +573,21 @@ model AccessInvite {
 // A message for one person, shown in the bell in the header. Created by notify() inside the same
 // transaction as the event it reports. The event itself is already in ActivityLog, so this table is
 // stamped (audit columns) but does not write log rows (see the notifications migration).
+// Counters behind the rate limiter (lib/rate-limit). The key is a hash, never an email or an IP. Rows are
+// throwaway: they expire with their window and are swept now and then, and they are not audit-logged.
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([resetAt])
+}
+
 model Notification {
   id     String @id @default(cuid())
   userId String

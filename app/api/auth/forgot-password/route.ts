@@ -5,14 +5,25 @@ import { newResetToken } from "@/lib/reset-token"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { parseEmail } from "@/lib/email-input"
+import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
+
+const SENT = { message: "If an account exists with this email, a reset link has been sent." }
 
 export async function POST(req: Request) {
     try {
+        const ipLimit = await rateLimit(RATE.forgotIp, clientIp(req))
+        if (!ipLimit.ok) return tooManyRequests(ipLimit.retryAfterSec)
+
         const body = await req.json()
         const parsedEmail = parseEmail(body?.email)
         if (!parsedEmail.ok) {
             return NextResponse.json({ error: parsedEmail.error }, { status: 400 })
         }
+
+        // Per address, so nobody can fill a mailbox with links. Answered exactly like a sent link, so the
+        // limit does not reveal whether the address has an account.
+        const emailLimit = await rateLimit(RATE.forgotEmail, parsedEmail.value)
+        if (!emailLimit.ok) return NextResponse.json(SENT)
 
         // Case-insensitive, so accounts saved before emails were normalised can still reset
         const user = await prisma.user.findFirst({

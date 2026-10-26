@@ -210,7 +210,8 @@ Full design and the permission catalogue: `docs/access-audit-support.md`.
 - [ ] Reusable Timeline component: entity history tab, shop activity page, admin global audit, user "account activity" (logins, password and role changes, support access)
 - [x] User columns added: `status`, `suspendedReason`, `lastLoginAt`, `locale`, `timezone`, `preferences`, `deletedAt`
 - [x] Guard refuses non-ACTIVE users (also soft-deleted ones)
-- [ ] Refuse non-ACTIVE users at login too, write `lastLoginAt` on login, record login events with `logActivity`
+- [x] Refuse non-ACTIVE users at login, write `lastLoginAt` on login (26 Oct 2026)
+- [ ] Record login events with `logActivity`
 
 **Permission layer: what was checked (15 Oct 2026).** Same limits as before (no npm in the session):
 - `lib/access` unit tests: 22 pass (catalogue, patterns, system roles, deny-wins, scopes, expiry, no escalation)
@@ -267,10 +268,10 @@ Fix first (small, and they affect data or deploys):
 
 Then:
 - [ ] Real email sending (Resend or similar); reset links are only `console.log`ged
-- [ ] Rate limiting on login, register, forgot / reset password
-- [ ] Password reset should set `passwordChangedAt` and revoke sessions; `passwordChangedAt` is written but never read
-- [ ] JWT callback does up to 3 queries + a write on every `auth()` call (15 call sites); throttle the `lastActiveAt` update
-- [ ] Hash reset tokens at rest
+- [x] Rate limiting on login, register, forgot / reset password (26 Oct 2026): two layers in `lib/rate-limit` (memory per instance, then a shared `RateLimit` table in Postgres); policies in `policies.ts`. Sign-in checks first and counts only FAILED passwords, a good sign-in clears the per-email counter, a refused forgot-password for one address answers like a sent link. The database reports "ms left in the window" (all times in UTC), never a date. Requests with no readable IP (local dev) skip the per-IP limits. Swap `db-store.ts` for Redis if traffic outgrows it. Per-IP limits trust `x-forwarded-for`, so they are only reliable behind Vercel
+- [x] Password reset sets `passwordChangedAt` and revokes sessions. `passwordChangedAt` is still written but never read (a JWT issued before a change is only stopped by the revoked session)
+- [x] `lastActiveAt` is written at most every 5 minutes (`lib/session-activity.ts`). The JWT callback still does up to 3 queries on every `auth()` call (15 call sites)
+- [x] Hash reset tokens at rest
 - [x] Tests for the pure logic (`product-input`, `product-filters`, `slug`, `email-input`, `price-review`, `members`) and a CI workflow (`.github/workflows/ci.yml`: generate, `tsc`, unit tests). Catalogue input needs a database and is not covered
 - [ ] Verify end to end: a newly approved provider can reach `/provider/*` without logging out (proxy reads the role from the JWT cookie)
 

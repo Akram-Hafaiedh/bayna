@@ -5,9 +5,14 @@ import bcrypt from "bcryptjs"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { hashResetToken } from "@/lib/reset-token"
+import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {
     try {
+        // Stops guessing reset tokens one request after another
+        const limited = await rateLimit(RATE.resetIp, clientIp(req))
+        if (!limited.ok) return tooManyRequests(limited.retryAfterSec)
+
         const { token, password } = await req.json()
 
         if (typeof token !== "string" || typeof password !== "string" || !token || !password) {

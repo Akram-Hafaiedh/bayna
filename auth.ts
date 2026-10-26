@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { normalizeEmail } from "@/lib/email-input"
 import { signInBlockFor } from "@/lib/user-status"
+import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"
+import { shouldTouchActivity } from "@/lib/session-activity"
 import type { Role } from "@/app/generated/prisma/enums"
 
 // A sign-in refused because of the account's status. The `code` tells the login page which message to show.
@@ -29,12 +31,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
+            async authorize(credentials, request) {
                 if (!credentials?.email || !credentials?.password) {
                     return null
                 }
 
                 const email = normalizeEmail(String(credentials.email))
+
+                // Per IP stops one machine trying many accounts; per email stops many machines trying one.
+                // Only FAILED tries are counted (below), so good sign-ins never use up the budget. Once a
+                // budget is spent even the right password is refused until the window ends. That is the point.
+                const attempt = [
+                    { policy: RATE.loginIp, subject: clientIp(request) },
+                    { policy: RATE.loginEmail, subject: email },
+                ]
+                // Before the lookup and the (slow) password check, so a flood costs almost nothing
+                const limited = await checkRateLimits(attempt)
+                if (!limited.ok) throw new AccountBlocked(RATE_LIMITED_CODE)
                 // Exact match first; the case-insensitive lookup covers accounts saved before
                 // emails were normalised (see scripts/normalize-emails.ts)
                 const user =
@@ -42,6 +55,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     (await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } }))
 
                 if (!user || !user.password) {
+                    // Unknown emails count too, so the limit looks the same for every address
+                    await recordRateLimits(attempt)
                     return null
                 }
 
@@ -51,6 +66,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 )
 
                 if (!isValid) {
+                    await recordRateLimits(attempt)
                     return null
                 }
 
@@ -59,6 +75,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 const blocked = signInBlockFor(user.status)
                 if (blocked) throw new AccountBlocked(blocked.code)
                 if (user.status !== "ACTIVE") return null
+
+                // A good sign-in clears the per-email counter, so a person who mistyped is not locked out
+                await clearRateLimit(RATE.loginEmail, email)
 
                 return {
                     id: user.id,
@@ -87,6 +106,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 } catch {
                     // don't block login if LoginSession fails
                 }
+
+                // The audit trigger ignores this column, so the write leaves no log row
+                await prisma.user
+                    .update({ where: { id: user.id as string }, data: { lastLoginAt: new Date() } })
+                    .catch(() => { })
             }
 
             // ALWAYS refresh role and name from the DB (a role change or a profile edit shows without signing in again)
@@ -126,7 +150,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         }
                     }
 
-                    if (trigger !== "signIn") {
+                    // At most once per interval: this callback runs on every auth() call
+                    if (trigger !== "signIn" && shouldTouchActivity(loginSession.lastActiveAt, Date.now())) {
                         await prisma.loginSession
                             .update({
                                 where: { id: loginSession.id },
