@@ -42,8 +42,10 @@ const toView = (p: PlanRow): PlanView => ({
     // `== null` also covers a client generated before the yearly column existed (the field is then missing)
     priceMonthly: p.priceMonthly == null ? null : Number(p.priceMonthly.toString()),
     priceYearly: p.priceYearly == null ? null : Number(p.priceYearly.toString()),
-    limits: parseLimits(p.limits),
-    features: parseFeatures(p.features),
+    // A limit or feature the row does not mention takes the default of that built-in plan, so a new row
+    // in the plan tables needs no database change
+    limits: { ...(defaultPlan(p.key)?.limits ?? {}), ...parseLimits(p.limits) },
+    features: { ...(defaultPlan(p.key)?.features ?? {}), ...parseFeatures(p.features) },
     sortOrder: p.sortOrder,
 })
 
@@ -88,7 +90,9 @@ export async function usageFor(businessId: string, key: LimitKey): Promise<numbe
             })
             return rows.length
         }
-        // No warehouses or custom taxes exist yet (R4, R7)
+        // Nothing to count yet: warehouses and custom taxes do not exist (R4, R7), and a role is not marked
+        // as custom, so custom roles cannot be told apart from the default copies
+        case "customRoles":
         case "warehouses":
         case "customTaxes":
             return 0

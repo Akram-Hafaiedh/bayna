@@ -6,13 +6,10 @@ import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 import { parseEmail } from "@/lib/email-input"
-import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
+import { parseAcceptance } from "@/lib/terms"
 
 export async function POST(req: Request) {
     try {
-        const limited = await rateLimit(RATE.registerIp, clientIp(req))
-        if (!limited.ok) return tooManyRequests(limited.retryAfterSec)
-
         const body = await req.json()
         const { password, name } = body
 
@@ -21,6 +18,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: parsedEmail.error }, { status: 400 })
         }
         const email = parsedEmail.value
+
+        // The Terms and the Privacy policy must be accepted, and what was accepted is kept with the account
+        const accepted = parseAcceptance(body.acceptTerms)
+        if (!accepted.ok) {
+            return NextResponse.json({ error: accepted.error }, { status: 400 })
+        }
 
         if (!password) {
             return NextResponse.json(
@@ -62,6 +65,8 @@ export async function POST(req: Request) {
                     name: name || null,
                     password: hashedPassword,
                     role: Role.CLIENT,
+                    termsAcceptedAt: new Date(),
+                    termsVersion: accepted.version,
                 },
             })
         )

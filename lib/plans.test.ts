@@ -3,8 +3,9 @@
 import { test } from "vitest"
 import assert from "node:assert/strict"
 import {
-    DEFAULT_PLANS, FREE_PLAN_KEY, LIMIT_KEYS, evaluateLimit, formatAmount, limitMessage, limitOf, limitsEnforced,
-    parseFeatures, parseLimits, planInForce, priceDisplay, yearlySaving, type SubscriptionInput,
+    COMPARISON_GROUPS, DEFAULT_PLANS, FEATURE_KEYS, FREE_PLAN_KEY, LIMIT_KEYS, SOON_KEYS, cellFor, evaluateLimit,
+    formatAmount, limitMessage, limitOf, limitPhrase, limitsEnforced, parseFeatures, parseLimits, planHighlights,
+    planInForce, priceDisplay, rowLabel, yearlySaving, type SubscriptionInput,
 } from "./plans"
 
 const NOW = new Date("2026-10-26T12:00:00Z")
@@ -108,16 +109,16 @@ test("amounts drop trailing zeros", () => {
 })
 
 test("the monthly view shows the monthly price and the yearly one beside it", () => {
-    assert.deepEqual(priceDisplay(PRO, "monthly"), { main: "40 TND / month", sub: "or 400 TND / year", badge: null })
+    assert.deepEqual(priceDisplay(PRO, "monthly"), { amount: "40", unit: "TND / month", main: "40 TND / month", sub: "or 400 TND / year", badge: null })
 })
 
 test("the yearly view shows the yearly price, the monthly equivalent and the saving", () => {
-    assert.deepEqual(priceDisplay(PRO, "yearly"), { main: "400 TND / year", sub: "about 33.33 TND / month", badge: "Save 17%" })
+    assert.deepEqual(priceDisplay(PRO, "yearly"), { amount: "400", unit: "TND / year", main: "400 TND / year", sub: "about 33.33 TND / month", badge: "Save 17%" })
 })
 
 test("Free says Free, and a paid plan without a price says price on request", () => {
-    assert.deepEqual(priceDisplay({ key: "FREE", priceMonthly: null, priceYearly: null }, "yearly"), { main: "Free", sub: null, badge: null })
-    assert.deepEqual(priceDisplay({ key: "PRO", priceMonthly: null, priceYearly: null }, "monthly"), { main: "Price on request", sub: null, badge: null })
+    assert.deepEqual(priceDisplay({ key: "FREE", priceMonthly: null, priceYearly: null }, "yearly"), { amount: "Free", unit: null, main: "Free", sub: null, badge: null })
+    assert.deepEqual(priceDisplay({ key: "PRO", priceMonthly: null, priceYearly: null }, "monthly"), { amount: "Price on request", unit: null, main: "Price on request", sub: null, badge: null })
 })
 
 test("a plan with one price only still shows both periods, without claiming a saving", () => {
@@ -126,4 +127,54 @@ test("a plan with one price only still shows both periods, without claiming a sa
     assert.equal(onlyMonthly.badge, null)
     const onlyYearly = priceDisplay({ key: "PRO", priceMonthly: null, priceYearly: 480 }, "monthly")
     assert.equal(onlyYearly.main, "40 TND / month")
+})
+
+// ---- what the tables show ----
+test("every row of the comparison is a known limit or feature, once, and every key appears in some group", () => {
+    const seen = COMPARISON_GROUPS.flatMap((g) => g.rows.map((r) => `${r.kind}:${r.key}`))
+    assert.equal(new Set(seen).size, seen.length)
+    for (const k of LIMIT_KEYS) assert.ok(seen.includes(`limit:${k}`), k)
+    for (const k of FEATURE_KEYS) assert.ok(seen.includes(`feature:${k}`), k)
+})
+
+test("every default plan says something about every limit, and Business can do everything Pro can", () => {
+    for (const p of DEFAULT_PLANS) for (const k of LIMIT_KEYS) assert.ok(k in p.limits, `${p.key} ${k}`)
+    const pro = DEFAULT_PLANS[1]
+    const business = DEFAULT_PLANS[2]
+    for (const k of FEATURE_KEYS) if (pro.features[k]) assert.ok(business.features[k], k)
+})
+
+test("things that are not built yet are marked Soon, things that work are not", () => {
+    assert.equal(SOON_KEYS.has("warehouses"), true)
+    assert.equal(SOON_KEYS.has("invoicing"), true)
+    assert.equal(SOON_KEYS.has("shops"), false)
+    assert.equal(SOON_KEYS.has("products"), false)
+    assert.equal(SOON_KEYS.has("teamSeats"), false)
+})
+
+test("limits read naturally on a plan card", () => {
+    assert.equal(limitPhrase("shops", 1), "1 shop")
+    assert.equal(limitPhrase("shops", 3), "Up to 3 shops")
+    assert.equal(limitPhrase("teamSeats", 10), "Up to 10 team members")
+    assert.equal(limitPhrase("products", null), "Unlimited products")
+})
+
+test("table cells: numbers and Unlimited for limits, yes or no for features", () => {
+    const pro = DEFAULT_PLANS[1]
+    assert.deepEqual(cellFor(pro, { kind: "limit", key: "shops" }), { kind: "text", text: "3" })
+    assert.deepEqual(cellFor(DEFAULT_PLANS[2], { kind: "limit", key: "products" }), { kind: "text", text: "Unlimited" })
+    assert.deepEqual(cellFor(pro, { kind: "feature", key: "advancedReports" }), { kind: "yes" })
+    assert.deepEqual(cellFor(pro, { kind: "feature", key: "apiAccess" }), { kind: "no" })
+    assert.equal(rowLabel({ kind: "limit", key: "teamSeats" }), "Team members")
+    assert.equal(rowLabel({ kind: "feature", key: "apiAccess" }), "API access")
+})
+
+test("a plan card lists the main limits, the first features and how many more", () => {
+    assert.deepEqual(planHighlights(DEFAULT_PLANS[0]), ["1 shop", "Up to 50 products", "1 team member"])
+    const pro = planHighlights(DEFAULT_PLANS[1])
+    assert.deepEqual(pro.slice(0, 3), ["Up to 3 shops", "Up to 500 products", "Up to 3 team members"])
+    assert.equal(pro.length, 6) // three limits, three features, nothing left over
+    const business = planHighlights(DEFAULT_PLANS[2])
+    assert.equal(business[2], "Up to 10 team members")
+    assert.equal(business.at(-1), "and 4 more")
 })

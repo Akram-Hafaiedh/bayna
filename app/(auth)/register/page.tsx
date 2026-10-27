@@ -13,6 +13,7 @@ export default function RegisterPage() {
         email: "",
         password: "",
     })
+    const [accepted, setAccepted] = useState(false)
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(false)
 
@@ -31,7 +32,7 @@ export default function RegisterPage() {
             const res = await fetch("/api/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(form),
+                body: JSON.stringify({ ...form, acceptTerms: accepted }),
             })
 
             const data = await res.json()
@@ -139,6 +140,22 @@ export default function RegisterPage() {
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />
                 </div>
+
+                <label className="flex items-start gap-2.5 text-sm text-zinc-600">
+                    <input
+                        type="checkbox"
+                        required
+                        checked={accepted}
+                        onChange={(e) => setAccepted(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                    />
+                    <span>
+                        I agree to the{" "}
+                        <Link href="/terms" target="_blank" className="font-medium text-zinc-900 underline underline-offset-2">Terms of use</Link>{" "}
+                        and the{" "}
+                        <Link href="/privacy" target="_blank" className="font-medium text-zinc-900 underline underline-offset-2">Privacy policy</Link>.
+                    </span>
+                </label>
 
                 {error && (
                     <div className="rounded-lg bg-red-50 border border-red-100 px-3.5 py-2.5 text-sm text-red-600">

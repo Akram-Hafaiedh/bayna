@@ -7,30 +7,37 @@
 //   - The numbers below are placeholders to tune; so are the prices. Both live in the database once seeded
 //     and are changed there (`npm run db:set-price`), never by editing this file after the first seed.
 //   - Limits only block anything when PLAN_LIMITS=on (see limitsEnforced). Until then they are shown, not applied.
-//   - A missing or null limit means "no limit".
+//   - A null limit means "no limit". A limit missing from a plan row falls back to the default of that
+//     built-in plan (so a new row below needs no database change), and to "no limit" for any other plan.
 //   - Security and safety (2FA, the audit log, notifications) are never limited.
 
-export const LIMIT_KEYS = ["shops", "products", "teamSeats", "warehouses", "customTaxes"] as const
+export const LIMIT_KEYS = ["shops", "products", "teamSeats", "customRoles", "warehouses", "customTaxes"] as const
 export type LimitKey = (typeof LIMIT_KEYS)[number]
 
 export const LIMIT_LABEL: Record<LimitKey, { one: string; many: string }> = {
     shops: { one: "shop", many: "shops" },
     products: { one: "product", many: "products" },
     teamSeats: { one: "team member", many: "team members" },
+    customRoles: { one: "custom role", many: "custom roles" },
     warehouses: { one: "warehouse", many: "warehouses" },
     customTaxes: { one: "custom tax", many: "custom taxes" },
 }
 
 export type Limits = Partial<Record<LimitKey, number | null>>
 
-export const FEATURE_KEYS = ["advancedReports", "bulkImport", "apiAccess", "priorityPlacement"] as const
+export const FEATURE_KEYS = [
+    "advancedReports", "lowStockAlerts", "invoicing", "bulkImport", "apiAccess", "priorityPlacement", "prioritySupport",
+] as const
 export type FeatureKey = (typeof FEATURE_KEYS)[number]
 
 export const FEATURE_LABEL: Record<FeatureKey, string> = {
     advancedReports: "Advanced reports and exports",
+    lowStockAlerts: "Low-stock alerts",
+    invoicing: "Invoices and tax reports",
     bulkImport: "Bulk import (CSV)",
     apiAccess: "API access",
-    priorityPlacement: "Priority placement",
+    priorityPlacement: "Priority placement in results",
+    prioritySupport: "Priority support",
 }
 
 export type Features = Partial<Record<FeatureKey, boolean>>
@@ -62,7 +69,7 @@ export const DEFAULT_PLANS: readonly PlanDefinition[] = [
         description: "For a business that is starting out.",
         priceMonthly: null,
         priceYearly: null,
-        limits: { shops: 1, products: 50, teamSeats: 1, warehouses: 1, customTaxes: 3 },
+        limits: { shops: 1, products: 50, teamSeats: 1, customRoles: 1, warehouses: 1, customTaxes: 3 },
         features: {},
         sortOrder: 0,
     },
@@ -72,8 +79,8 @@ export const DEFAULT_PLANS: readonly PlanDefinition[] = [
         description: "More room for a growing business, with full reports.",
         priceMonthly: 40,
         priceYearly: 400, // two months free
-        limits: { shops: 3, products: 500, teamSeats: 3, warehouses: 3, customTaxes: 10 },
-        features: { advancedReports: true },
+        limits: { shops: 3, products: 500, teamSeats: 3, customRoles: 5, warehouses: 3, customTaxes: 10 },
+        features: { advancedReports: true, lowStockAlerts: true, invoicing: true },
         sortOrder: 1,
     },
     {
@@ -82,8 +89,11 @@ export const DEFAULT_PLANS: readonly PlanDefinition[] = [
         description: "For several outlets and a bigger team.",
         priceMonthly: 100,
         priceYearly: 1000, // two months free
-        limits: { shops: 10, products: null, teamSeats: 10, warehouses: 10, customTaxes: null },
-        features: { advancedReports: true, bulkImport: true, apiAccess: true, priorityPlacement: true },
+        limits: { shops: 10, products: null, teamSeats: 10, customRoles: null, warehouses: 10, customTaxes: null },
+        features: {
+            advancedReports: true, lowStockAlerts: true, invoicing: true, bulkImport: true, apiAccess: true,
+            priorityPlacement: true, prioritySupport: true,
+        },
         sortOrder: 2,
     },
 ]
@@ -215,7 +225,11 @@ export function yearlySaving(plan: Pick<Priced, "priceMonthly" | "priceYearly">)
 }
 
 export type PriceDisplay = {
-    /** The price for the chosen period, for example "40 TND / month" */
+    /** The big part of the price for the chosen period: "40", "Free" or "Price on request" */
+    amount: string
+    /** The small part after it: "TND / month", or null when there is none */
+    unit: string | null
+    /** The price for the chosen period in one line, for example "40 TND / month" */
     main: string
     /** The other period, so both prices are always visible */
     sub: string | null
@@ -229,17 +243,116 @@ export type PriceDisplay = {
  * (without a saving) so the switch never shows an empty card.
  */
 export function priceDisplay(plan: Priced, period: BillingPeriod): PriceDisplay {
-    if (plan.key === FREE_PLAN_KEY) return { main: "Free", sub: null, badge: null }
-    if (plan.priceMonthly === null && plan.priceYearly === null) return { main: "Price on request", sub: null, badge: null }
+    if (plan.key === FREE_PLAN_KEY) return { amount: "Free", unit: null, main: "Free", sub: null, badge: null }
+    if (plan.priceMonthly === null && plan.priceYearly === null) {
+        return { amount: "Price on request", unit: null, main: "Price on request", sub: null, badge: null }
+    }
     const monthly = plan.priceMonthly ?? plan.priceYearly! / 12
     const yearly = plan.priceYearly ?? plan.priceMonthly! * 12
     const saving = yearlySaving(plan)
     if (period === "monthly") {
-        return { main: `${money(monthly)} / month`, sub: `or ${money(yearly)} / year`, badge: null }
+        return { amount: formatAmount(monthly), unit: `${CURRENCY} / month`, main: `${money(monthly)} / month`, sub: `or ${money(yearly)} / year`, badge: null }
     }
     return {
+        amount: formatAmount(yearly),
+        unit: `${CURRENCY} / year`,
         main: `${money(yearly)} / year`,
         sub: `about ${money(yearly / 12)} / month`,
         badge: saving ? `Save ${saving.percent}%` : null,
     }
+}
+
+// ---- What the tables show ---------------------------------------------------------------------
+
+/** The plan most people should look at first; the public page marks it. */
+export const POPULAR_PLAN_KEY = "PRO"
+
+/**
+ * Rows that are listed so people can see what is coming but are not built (or not applied) yet. They get
+ * a "Soon" tag. Remove a key from here when it works.
+ */
+export const SOON_KEYS: ReadonlySet<string> = new Set([
+    "customRoles", "warehouses", "customTaxes",
+    "advancedReports", "lowStockAlerts", "invoicing", "bulkImport", "apiAccess", "priorityPlacement", "prioritySupport",
+])
+
+export type ComparisonRow = { kind: "limit"; key: LimitKey } | { kind: "feature"; key: FeatureKey }
+
+export const COMPARISON_GROUPS: readonly { title: string; rows: readonly ComparisonRow[] }[] = [
+    {
+        title: "Your business",
+        rows: [
+            { kind: "limit", key: "shops" },
+            { kind: "limit", key: "products" },
+            { kind: "limit", key: "teamSeats" },
+            { kind: "limit", key: "customRoles" },
+        ],
+    },
+    {
+        title: "Running the shop",
+        rows: [
+            { kind: "limit", key: "warehouses" },
+            { kind: "limit", key: "customTaxes" },
+            { kind: "feature", key: "lowStockAlerts" },
+            { kind: "feature", key: "bulkImport" },
+        ],
+    },
+    {
+        title: "Reports and integrations",
+        rows: [
+            { kind: "feature", key: "advancedReports" },
+            { kind: "feature", key: "invoicing" },
+            { kind: "feature", key: "apiAccess" },
+        ],
+    },
+    {
+        title: "Visibility and support",
+        rows: [
+            { kind: "feature", key: "priorityPlacement" },
+            { kind: "feature", key: "prioritySupport" },
+        ],
+    },
+]
+
+/** What every plan has, so the table only shows what differs. */
+export const EVERY_PLAN_INCLUDES: readonly string[] = [
+    "A shop page with its address and a pin on the map",
+    "Products linked to the shared catalogue, with price comparison",
+    "Team roles and permissions, with an invitation link for each person",
+    "An activity log of who changed what",
+    "Notifications for approvals and team changes",
+    "Your data stays yours: nothing is removed when you change plan",
+]
+
+export function rowLabel(row: ComparisonRow): string {
+    if (row.kind === "feature") return FEATURE_LABEL[row.key]
+    const l = LIMIT_LABEL[row.key].many
+    return l.charAt(0).toUpperCase() + l.slice(1)
+}
+
+export const isSoon = (row: ComparisonRow) => SOON_KEYS.has(row.key)
+
+/** "Up to 3 shops", "1 shop", "Unlimited products" */
+export function limitPhrase(key: LimitKey, limit: number | null): string {
+    const label = LIMIT_LABEL[key]
+    if (limit === null) return `Unlimited ${label.many}`
+    return limit === 1 ? `1 ${label.one}` : `Up to ${limit} ${label.many}`
+}
+
+export type Cell = { kind: "text"; text: string } | { kind: "yes" } | { kind: "no" }
+
+/** What one cell of the comparison table says for one plan. */
+export function cellFor(plan: { limits: Limits; features: Features }, row: ComparisonRow): Cell {
+    if (row.kind === "feature") return plan.features[row.key] ? { kind: "yes" } : { kind: "no" }
+    const limit = limitOf(plan.limits, row.key)
+    return { kind: "text", text: limit === null ? "Unlimited" : String(limit) }
+}
+
+/** The short list on a plan card: the main limits, then up to `maxFeatures` features, then "and N more". */
+export function planHighlights(plan: { limits: Limits; features: Features }, maxFeatures = 3): string[] {
+    const out: string[] = (["shops", "products", "teamSeats"] as const).map((k) => limitPhrase(k, limitOf(plan.limits, k)))
+    const on = FEATURE_KEYS.filter((k) => plan.features[k])
+    for (const k of on.slice(0, maxFeatures)) out.push(FEATURE_LABEL[k])
+    if (on.length > maxFeatures) out.push(`and ${on.length - maxFeatures} more`)
+    return out
 }

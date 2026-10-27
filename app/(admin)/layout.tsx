@@ -17,6 +17,7 @@ export default function AdminLayout({
                     { href: "/admin/catalogue-requests", label: "Catalogue requests" },
                     { href: "/admin/categories", label: "Categories" },
                     { href: "/admin/users", label: "Users" },
+                    { href: "/admin/messages", label: "Messages" },
                 ]}
             />
             <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>

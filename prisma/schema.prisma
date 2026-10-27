@@ -91,6 +91,10 @@ model User {
   status          UserStatus @default(ACTIVE)
   suspendedReason String?
   lastLoginAt     DateTime?
+  // The Terms and Privacy policy accepted at sign-up: when, and which version (LEGAL_VERSION in lib/site.ts).
+  // Empty for accounts created before the acceptance existed.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
   locale          String?
   timezone        String?
   preferences     Json?
@@ -111,6 +115,8 @@ model User {
   // Permissions come from these, never from User.role (which only decides which dashboard opens).
   accessAssignments AccessAssignment[]
   notifications     Notification[]
+  // Messages this person sent from the Contact page while signed in
+  contactMessages   ContactMessage[]
 }
 
 // One outlet: what customers see, find and buy from. It always belongs to one Business (the company).
@@ -667,4 +673,49 @@ model Subscription {
   updatedById String?
 
   @@index([planId])
+}
+
+// ---- Contact page ----------------------------------------------------------------------------
+// What a visitor sends from /contact. The team reads and handles these in the admin area (Messages);
+// they are the first part of the Support module's inbox. Anyone can send one, signed in or not.
+
+enum ContactTopic {
+  ACCOUNT
+  SHOP
+  LISTING
+  PRIVACY
+  PARTNER
+  OTHER
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  HANDLED
+}
+
+model ContactMessage {
+  id        String        @id @default(cuid())
+  name      String
+  email     String
+  topic     ContactTopic
+  message   String
+  status    ContactStatus @default(NEW)
+  // Set when the sender was signed in
+  userId    String?
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Kept to limit abuse (a few messages per hour); not shown outside the admin area
+  ip        String?
+  userAgent String?
+  handledAt DateTime?
+  handledById String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
 }

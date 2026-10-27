@@ -98,7 +98,7 @@ async function SubscriptionContent() {
                 </ul>
             </section>
 
-            <PlansTable plans={plans.map(({ key, name, priceMonthly, priceYearly, limits, features }) => ({ key, name, priceMonthly, priceYearly, limits, features }))} currentKey={plan.key} />
+            <PlansTable plans={plans.map(({ key, name, description, priceMonthly, priceYearly, limits, features }) => ({ key, name, description, priceMonthly, priceYearly, limits, features }))} currentKey={plan.key} />
             <p className="text-xs text-zinc-500">Security and safety features (two-step sign-in, the activity log, notifications) are never limited.</p>
         </>
     )
