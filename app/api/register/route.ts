@@ -7,9 +7,13 @@ import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
 import { parseEmail } from "@/lib/email-input"
 import { parseAcceptance } from "@/lib/terms"
+import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {
     try {
+        const limited = await rateLimit(RATE.registerIp, clientIp(req))
+        if (!limited.ok) return tooManyRequests(limited.retryAfterSec)
+
         const body = await req.json()
         const { password, name } = body
 
