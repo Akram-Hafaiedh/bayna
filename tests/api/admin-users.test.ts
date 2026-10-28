@@ -6,8 +6,12 @@ import { POST as suspend } from "@/app/api/admin/users/[id]/suspend/route"
 import { POST as reinstate } from "@/app/api/admin/users/[id]/reinstate/route"
 import { POST as revokeSessions } from "@/app/api/admin/users/[id]/revoke-sessions/route"
 import { POST as resetLink } from "@/app/api/admin/users/[id]/reset-link/route"
+import { POST as ban } from "@/app/api/admin/users/[id]/ban/route"
+import { POST as unban } from "@/app/api/admin/users/[id]/unban/route"
+import { POST as register } from "@/app/api/register/route"
+import { requirePlatform } from "@/lib/access/guard"
 import { hashResetToken } from "@/lib/reset-token"
-import { call, cleanUp, createTarget, demo, freshEmail, prisma, signInAs, signOut } from "./helpers"
+import { call, cleanUp, createStaff, createTarget, demo, freshEmail, freshIp, prisma, signInAs, signOut } from "./helpers"
 
 afterEach(() => signOut())
 afterAll(cleanUp)
@@ -107,6 +111,138 @@ describe("suspend", () => {
             await prisma.user.updateMany({ where: { id: { in: owners.map((o) => o.id) } }, data: { status: "ACTIVE" } })
             await prisma.accessAssignment.deleteMany({ where: { userId: actor.id } })
         }
+    })
+})
+
+describe("ban", () => {
+    test("needs the permission: a support agent or a client is refused", async () => {
+        const t = await createTarget()
+        signOut()
+        expect((await call(ban, { params: { id: t.id }, body: { reason: "fraud" } })).status).toBe(401)
+        await signInAs(demo("client"))
+        expect((await call(ban, { params: { id: t.id }, body: { reason: "fraud" } })).status).toBe(403)
+        await signInAs(demo("support"))
+        expect((await call(ban, { params: { id: t.id }, body: { reason: "fraud" } })).status).toBe(403)
+        expect((await prisma.user.findUniqueOrThrow({ where: { id: t.id } })).status).toBe("ACTIVE")
+    })
+
+    test("a reason is required", async () => {
+        const t = await createTarget()
+        await signInAs(demo("admin"))
+        const res = await call(ban, { params: { id: t.id }, body: {} })
+        expect(res.status).toBe(400)
+        expect(String(res.json?.error)).toMatch(/banned/)
+    })
+
+    test("bans an active account, keeps the reason and ends every session", async () => {
+        const t = await createTarget()
+        await signInAs(demo("admin"))
+        const res = await call(ban, { params: { id: t.id }, body: { reason: "Repeated fraud" } })
+        expect(res).toMatchObject({ status: 200, json: { status: "BANNED" } })
+        const after = await prisma.user.findUniqueOrThrow({ where: { id: t.id } })
+        expect(after).toMatchObject({ status: "BANNED", suspendedReason: "Repeated fraud" })
+        expect(await openSessions(t.id)).toBe(0)
+    })
+
+    test("a suspended account can be banned too, a banned one cannot be banned again", async () => {
+        const t = await createTarget()
+        await signInAs(demo("admin"))
+        await call(suspend, { params: { id: t.id }, body: { reason: "first look" } })
+        expect((await call(ban, { params: { id: t.id }, body: { reason: "decided" } })).status).toBe(200)
+        expect((await call(ban, { params: { id: t.id }, body: { reason: "again" } })).status).toBe(400)
+    })
+
+    test("nobody bans themselves, and an unknown account is 404", async () => {
+        const me = await signInAs(demo("admin"))
+        expect((await call(ban, { params: { id: me.id }, body: { reason: "oops" } })).status).toBe(400)
+        expect((await call(ban, { params: { id: "no-such-user" }, body: { reason: "x" } })).status).toBe(404)
+    })
+
+    test("a banned person is refused everywhere at once, even with a session cookie still in the browser", async () => {
+        const staffMember = await createStaff("Support agent", "banned-staff")
+        await signInAs(staffMember.email)
+        expect(await requirePlatform("support.ticket.view_all")).toMatchObject({ ok: true })
+
+        await signInAs(demo("admin"))
+        await call(ban, { params: { id: staffMember.id }, body: { reason: "Left the company" } })
+
+        await signInAs(staffMember.email)
+        expect(await requirePlatform("support.ticket.view_all")).toMatchObject({ ok: false, status: 403, error: "Your account has been closed" })
+    })
+
+    test("the email stays taken: a banned person cannot register again with it", async () => {
+        const t = await createTarget("banned-mail")
+        await signInAs(demo("admin"))
+        await call(ban, { params: { id: t.id }, body: { reason: "fraud" } })
+        signOut()
+        const res = await call(register, {
+            ip: freshIp(),
+            body: { email: t.email, password: "secret123", name: "Again", acceptTerms: true },
+        })
+        expect(res.status).toBe(400)
+        expect(String(res.json?.error)).toMatch(/already in use/i)
+    })
+
+    test("the last platform owner cannot be banned", async () => {
+        const adminRole = await prisma.accessRole.findFirstOrThrow({ where: { scope: "PLATFORM", name: "Admin" }, select: { id: true } })
+        const actorEmail = freshEmail("ban-admin")
+        const actor = await prisma.user.create({ data: { email: actorEmail, name: "Plain Admin", password: "x", role: "ADMIN" }, select: { id: true } })
+        await prisma.accessAssignment.create({ data: { userId: actor.id, roleId: adminRole.id, scope: "PLATFORM", status: "ACTIVE" } })
+        const owners = await prisma.user.findMany({
+            where: {
+                status: "ACTIVE",
+                deletedAt: null,
+                email: { not: demo("admin") },
+                accessAssignments: {
+                    some: { scope: "PLATFORM", status: "ACTIVE", role: { OR: [{ permissions: { has: "*" } }, { permissions: { has: "access.assignment.grant" } }] } },
+                },
+            },
+            select: { id: true },
+        })
+        await prisma.user.updateMany({ where: { id: { in: owners.map((o) => o.id) } }, data: { status: "SUSPENDED" } })
+        try {
+            const theOwner = await prisma.user.findUniqueOrThrow({ where: { email: demo("admin") }, select: { id: true } })
+            await signInAs(actorEmail)
+            const res = await call(ban, { params: { id: theOwner.id }, body: { reason: "test" } })
+            expect(res.status).toBe(400)
+            expect(String(res.json?.error)).toMatch(/owner/i)
+            expect((await prisma.user.findUniqueOrThrow({ where: { id: theOwner.id } })).status).toBe("ACTIVE")
+        } finally {
+            await prisma.user.updateMany({ where: { id: { in: owners.map((o) => o.id) } }, data: { status: "ACTIVE" } })
+            await prisma.accessAssignment.deleteMany({ where: { userId: actor.id } })
+        }
+    })
+})
+
+describe("unban", () => {
+    test("lifts a ban and clears the reason; only a banned account can be unbanned", async () => {
+        const t = await createTarget()
+        await signInAs(demo("admin"))
+        expect((await call(unban, { params: { id: t.id } })).status).toBe(400)
+        await call(ban, { params: { id: t.id }, body: { reason: "fraud" } })
+
+        const res = await call(unban, { params: { id: t.id } })
+        expect(res).toMatchObject({ status: 200, json: { status: "ACTIVE" } })
+        const after = await prisma.user.findUniqueOrThrow({ where: { id: t.id } })
+        expect(after).toMatchObject({ status: "ACTIVE", suspendedReason: null })
+        // the old sessions stay ended: the person signs in again
+        expect(await openSessions(t.id)).toBe(0)
+    })
+
+    test("a plain reinstate does not lift a ban, and unban does not reinstate a suspension", async () => {
+        const banned = await createTarget()
+        const suspended = await createTarget()
+        await signInAs(demo("admin"))
+        await call(ban, { params: { id: banned.id }, body: { reason: "fraud" } })
+        await call(suspend, { params: { id: suspended.id }, body: { reason: "look" } })
+        expect((await call(reinstate, { params: { id: banned.id } })).status).toBe(400)
+        expect((await call(unban, { params: { id: suspended.id } })).status).toBe(400)
+    })
+
+    test("refused without the permission", async () => {
+        const t = await createTarget()
+        await signInAs(demo("support"))
+        expect((await call(unban, { params: { id: t.id } })).status).toBe(403)
     })
 })
 

@@ -18,12 +18,13 @@ const ROLE_BADGE: Record<string, string> = {
 const STATUS_BADGE: Record<UserStatusValue, string> = {
     ACTIVE: "bg-emerald-50 text-emerald-700",
     SUSPENDED: "bg-red-50 text-red-700",
-    BANNED: "bg-red-50 text-red-700",
+        BANNED: "bg-red-50 text-red-700",
     PENDING_DELETION: "bg-amber-50 text-amber-700",
 }
 
 type Dialog =
     | { kind: "suspend"; user: UserRow }
+    | { kind: "ban"; user: UserRow }
     | { kind: "link"; user: UserRow; url: string; expires: string }
     | null
 
@@ -65,6 +66,18 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
             await load()
         }
     }
+    async function unban(u: UserRow) {
+        const yes = await confirm({
+            title: `Lift the ban on ${who(u)}?`,
+            message: "They can sign in again with their password. Their old sessions stay ended.",
+            confirmLabel: "Lift ban",
+        })
+        if (!yes) return
+        if (await call(u, "unban")) {
+            toast.success(`${who(u)} can sign in again`)
+            await load()
+        }
+    }
     async function revoke(u: UserRow) {
         const yes = await confirm({
             title: `Sign ${who(u)} out everywhere?`,
@@ -92,6 +105,8 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
         return userActions(u.status, u.id === me).map((a) => {
             if (a === "suspend") return { label: "Suspend", onClick: () => setDialog({ kind: "suspend", user: u }), danger: true }
             if (a === "reinstate") return { label: "Reinstate", onClick: () => void reinstate(u) }
+            if (a === "ban") return { label: "Ban", onClick: () => setDialog({ kind: "ban", user: u }), danger: true }
+            if (a === "unban") return { label: "Lift ban", onClick: () => void unban(u) }
             if (a === "revoke_sessions") return { label: "Sign out everywhere", onClick: () => void revoke(u) }
             return { label: "Force password reset", onClick: () => void resetLink(u), danger: true }
         })
@@ -123,7 +138,7 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
                                 </td>
                                 <td className="px-3 py-3">
                                     <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[u.status]}`}>{USER_STATUS_LABEL[u.status]}</span>
-                                    {u.status === "SUSPENDED" && u.suspendedReason && (
+                                    {(u.status === "SUSPENDED" || u.status === "BANNED") && u.suspendedReason && (
                                         <p className="mt-0.5 max-w-[14rem] truncate text-xs text-zinc-400" title={u.suspendedReason}>{u.suspendedReason}</p>
                                     )}
                                 </td>
@@ -156,6 +171,7 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
 
             {dialog?.kind === "suspend" && (
                 <SuspendDialog
+                    mode="suspend"
                     name={who(dialog.user)}
                     onClose={() => setDialog(null)}
                     onSubmit={async (reason) => {
@@ -164,6 +180,22 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
                         if (done) {
                             setDialog(null)
                             toast.success(`${who(u)} was suspended`, { description: "Their sessions were ended." })
+                            await load()
+                        }
+                    }}
+                />
+            )}
+            {dialog?.kind === "ban" && (
+                <SuspendDialog
+                    mode="ban"
+                    name={who(dialog.user)}
+                    onClose={() => setDialog(null)}
+                    onSubmit={async (reason) => {
+                        const u = dialog.user
+                        const done = await call(u, "ban", { reason })
+                        if (done) {
+                            setDialog(null)
+                            toast.success(`${who(u)} was banned`, { description: "Their sessions were ended." })
                             await load()
                         }
                     }}
@@ -192,12 +224,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     )
 }
 
-function SuspendDialog({ name, onClose, onSubmit }: { name: string; onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
+function SuspendDialog({ mode, name, onClose, onSubmit }: { mode: "suspend" | "ban"; name: string; onClose: () => void; onSubmit: (reason: string) => Promise<void> }) {
     const [reason, setReason] = useState("")
     const [saving, setSaving] = useState(false)
+    const ban = mode === "ban"
     return (
-        <Modal title={`Suspend ${name}?`} onClose={onClose}>
-            <p className="mt-2 text-sm text-zinc-500">They cannot sign in and every open session ends now. You can reinstate the account later.</p>
+        <Modal title={ban ? `Ban ${name}?` : `Suspend ${name}?`} onClose={onClose}>
+            <p className="mt-2 text-sm text-zinc-500">
+                {ban
+                    ? "They cannot sign in and every open session ends now. The email stays taken, so they cannot register again with it. You can lift the ban later."
+                    : "They cannot sign in and every open session ends now. You can reinstate the account later."}
+            </p>
             <label className="mt-4 block text-sm font-medium text-zinc-700" htmlFor="suspend-reason">Reason</label>
             <textarea
                 id="suspend-reason"
@@ -206,7 +243,7 @@ function SuspendDialog({ name, onClose, onSubmit }: { name: string; onClose: () 
                 maxLength={REASON_MAX}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Why is this account suspended?"
+                placeholder={ban ? "Why is this account banned?" : "Why is this account suspended?"}
                 className="mt-1.5 w-full resize-none rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900"
             />
             <div className="mt-5 flex justify-end gap-2">
@@ -221,7 +258,7 @@ function SuspendDialog({ name, onClose, onSubmit }: { name: string; onClose: () 
                     }}
                     className="h-9 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
                 >
-                    {saving ? "Suspending..." : "Suspend account"}
+                    {saving ? (ban ? "Banning..." : "Suspending...") : ban ? "Ban account" : "Suspend account"}
                 </button>
             </div>
         </Modal>

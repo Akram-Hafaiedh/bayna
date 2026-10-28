@@ -6,7 +6,9 @@
 //   SUSPENDED         cannot sign in; every open session is ended; the platform team can reinstate
 //                     (the reason is kept in the activity log for the admins; the person is only told
 //                     that the account is suspended)
-//   BANNED            kept for later (no action yet)
+//   BANNED            cannot sign in; every open session is ended; the platform team can lift the ban. It is a
+//                     suspension that is meant to last: the email stays taken (the row is kept), so the person
+//                     cannot simply register again. Same permissions as suspend and reinstate for now.
 //   PENDING_DELETION  kept for later (no action yet)
 
 export const USER_STATUSES = ["ACTIVE", "SUSPENDED", "BANNED", "PENDING_DELETION"] as const
@@ -39,19 +41,23 @@ export function messageForSignInCode(code: unknown): string | null {
     return Object.values(SIGN_IN_BLOCK).find((b) => b.code === code)?.message ?? null
 }
 
-export type UserAction = "suspend" | "reinstate" | "revoke_sessions" | "reset_password"
+export type UserAction = "suspend" | "reinstate" | "ban" | "unban" | "revoke_sessions" | "reset_password"
 
-/** The status a suspend / reinstate leads to from `from`, or null when it is not allowed from there. */
-export function userMove(action: "suspend" | "reinstate", from: UserStatusValue): UserStatusValue | null {
+/** The status a suspend / reinstate / ban / unban leads to from `from`, or null when it is not allowed from there. */
+export function userMove(action: "suspend" | "reinstate" | "ban" | "unban", from: UserStatusValue): UserStatusValue | null {
     if (action === "suspend") return from === "ACTIVE" ? "SUSPENDED" : null
-    return from === "SUSPENDED" ? "ACTIVE" : null
+    if (action === "reinstate") return from === "SUSPENDED" ? "ACTIVE" : null
+    // A ban can follow a suspension (the case was looked at and the answer is no)
+    if (action === "ban") return from === "ACTIVE" || from === "SUSPENDED" ? "BANNED" : null
+    return from === "BANNED" ? "ACTIVE" : null
 }
 
 /** The actions listed for a user in the admin list. Nobody acts on their own account from there. */
 export function userActions(status: UserStatusValue, isSelf: boolean): UserAction[] {
     if (isSelf) return []
-    if (status === "ACTIVE") return ["suspend", "revoke_sessions", "reset_password"]
-    if (status === "SUSPENDED") return ["reinstate", "reset_password"]
+    if (status === "ACTIVE") return ["suspend", "ban", "revoke_sessions", "reset_password"]
+    if (status === "SUSPENDED") return ["reinstate", "ban", "reset_password"]
+    if (status === "BANNED") return ["unban"]
     return []
 }
 
@@ -63,10 +69,10 @@ export function checkTarget(actorId: string, targetId: string): { ok: true } | {
 export const REASON_MIN = 3
 export const REASON_MAX = 300
 
-/** A suspension always says why; the person sees the reason and the activity log keeps it. */
-export function parseReason(raw: unknown): { ok: true; value: string } | { ok: false; error: string } {
+/** A suspension or a ban always says why; the activity log keeps it (the person is only told the account is closed). */
+export function parseReason(raw: unknown, what: "suspended" | "banned" = "suspended"): { ok: true; value: string } | { ok: false; error: string } {
     const value = typeof raw === "string" ? raw.trim().replace(/\s+/g, " ") : ""
-    if (value.length < REASON_MIN) return { ok: false, error: "Say why the account is suspended" }
+    if (value.length < REASON_MIN) return { ok: false, error: `Say why the account is ${what}` }
     if (value.length > REASON_MAX) return { ok: false, error: `The reason is too long (${REASON_MAX} characters at most)` }
     return { ok: true, value }
 }
