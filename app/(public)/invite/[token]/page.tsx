@@ -44,14 +44,15 @@ async function InviteContent({ params }: { params: Promise<{ token: string }> })
         })
         : null
 
-    if (!invite || invite.scope === "PLATFORM") {
+    if (!invite) {
         return <Card title="This link does not work"><p>The invitation link is not valid. Ask the person who invited you for a new one.</p></Card>
     }
 
     const state = inviteState(invite)
+    const isStaff = invite.scope === "PLATFORM"
     const target = invite.scope === "SHOP" ? invite.provider : invite.business
-    const name = invite.scope === "SHOP" ? invite.provider?.name : invite.business?.name
-    if (!target || target.deletedAt || !name) {
+    const name = isStaff ? "the Bayna team" : invite.scope === "SHOP" ? invite.provider?.name : invite.business?.name
+    if (!isStaff && (!target || target.deletedAt || !name)) {
         return <Card title="This invitation is no longer available"><p>The {invite.scope === "SHOP" ? "shop" : "business"} no longer exists.</p></Card>
     }
     if (state !== "pending") {
@@ -66,10 +67,10 @@ async function InviteContent({ params }: { params: Promise<{ token: string }> })
     const signedInEmail = session?.user?.email ? normalizeEmail(session.user.email) : null
 
     return (
-        <Card title={`Join ${name}`}>
+        <Card title={isStaff ? "Join the Bayna team" : `Join ${name}`}>
             <p>
                 {inviter ? <><span className="font-medium text-zinc-900">{inviter.name || inviter.email}</span> invited you</> : "You were invited"} to{" "}
-                {invite.scope === "SHOP" ? "work in the shop" : "work in every shop of the business"}{" "}
+                {isStaff ? "work for" : invite.scope === "SHOP" ? "work in the shop" : "work in every shop of the business"}{" "}
                 <span className="font-medium text-zinc-900">{name}</span> as{" "}
                 <span className="font-medium text-zinc-900">{invite.role.name}</span>.
             </p>

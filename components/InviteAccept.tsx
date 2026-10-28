@@ -80,7 +80,7 @@ export default function InviteAccept({
             // The account type may have changed (client to provider): refresh the sign-in before moving on
             await update()
             toast.success(`You joined ${data.where}`, { description: `Your role: ${data.role}` })
-            router.push("/shop")
+            router.push(typeof data.redirect === "string" ? data.redirect : "/shop")
             router.refresh()
         } catch {
             setError("Something went wrong")

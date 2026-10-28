@@ -61,9 +61,42 @@ export async function createTarget(label = "target") {
     return user
 }
 
+/** A platform role made for a test (name starts with "api-test-"), removed by cleanUp. */
+export async function createPlatformRole(name: string, permissions: string[]) {
+    return prisma.accessRole.create({
+        data: { name: `api-test-${name}-${randomUUID().slice(0, 6)}`, scope: "PLATFORM", permissions },
+        select: { id: true, name: true },
+    })
+}
+
+/** A new staff member with the platform role of this name (for example "Admin", "Support agent"). */
+export async function createStaff(roleName: string, label = "staff") {
+    const role = await prisma.accessRole.findFirstOrThrow({ where: { scope: "PLATFORM", name: roleName }, select: { id: true } })
+    return createStaffWithRole(role.id, label)
+}
+
+export async function createStaffWithRole(roleId: string, label = "staff") {
+    const user = await prisma.user.create({
+        data: { email: freshEmail(label), name: `Test ${label}`, password: "x", role: "ADMIN" },
+        select: { id: true, email: true },
+    })
+    const assignment = await prisma.accessAssignment.create({
+        data: { userId: user.id, roleId, scope: "PLATFORM", status: "ACTIVE" },
+        select: { id: true },
+    })
+    return { ...user, assignmentId: assignment.id }
+}
+
+/** The id of a platform role by name. */
+export async function platformRoleId(name: string) {
+    return (await prisma.accessRole.findFirstOrThrow({ where: { scope: "PLATFORM", name }, select: { id: true } })).id
+}
+
 /** Delete everything the tests created (all addresses ending in @api-test.invalid). */
 export async function cleanUp() {
+    await prisma.accessInvite.deleteMany({ where: { email: { endsWith: `@${TEST_MAIL_DOMAIN}` } } })
     await prisma.contactMessage.deleteMany({ where: { email: { endsWith: `@${TEST_MAIL_DOMAIN}` } } })
     await prisma.passwordResetToken.deleteMany({ where: { email: { endsWith: `@${TEST_MAIL_DOMAIN}` } } })
     await prisma.user.deleteMany({ where: { email: { endsWith: `@${TEST_MAIL_DOMAIN}` } } })
+    await prisma.accessRole.deleteMany({ where: { scope: "PLATFORM", name: { startsWith: "api-test-" } } })
 }

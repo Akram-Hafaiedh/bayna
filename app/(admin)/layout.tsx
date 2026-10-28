@@ -17,6 +17,7 @@ export default function AdminLayout({
                     { href: "/admin/catalogue-requests", label: "Catalogue requests" },
                     { href: "/admin/categories", label: "Categories" },
                     { href: "/admin/users", label: "Users" },
+                    { href: "/admin/staff", label: "Staff" },
                     { href: "/admin/messages", label: "Messages" },
                 ]}
             />

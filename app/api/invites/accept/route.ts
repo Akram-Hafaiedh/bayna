@@ -12,6 +12,8 @@ import { hashInviteToken, inviteState, isPlausibleToken } from "@/lib/access/inv
 import { ACCEPT_ERRORS, checkAcceptable } from "@/lib/access/invite-accept"
 import { assertTeamKeepsOwner, targetLabel, TeamError } from "@/lib/access/team-actions"
 import { notifications, notify, shopPublicIds } from "@/lib/notifications"
+import { checkStaffAccount } from "@/lib/access/staff-rules"
+import { STAFF_PLACE, assertStaffKeepsOwner, worksInShopOrBusiness } from "@/lib/access/staff-actions"
 
 export async function POST(req: Request) {
     try {
@@ -37,7 +39,65 @@ export async function POST(req: Request) {
                 business: { select: { id: true, deletedAt: true } },
             },
         })
-        if (!invite || invite.scope === "PLATFORM") return NextResponse.json({ error: "This invitation link is not valid" }, { status: 404 })
+        if (!invite) return NextResponse.json({ error: "This invitation link is not valid" }, { status: 404 })
+
+        // An invitation to work for Bayna itself (a platform role) has its own, shorter path
+        if (invite.scope === "PLATFORM") {
+            const verdict = checkAcceptable({
+                state: inviteState(invite),
+                inviteEmail: invite.email,
+                userEmail: user.email,
+                targetGone: false,
+                accountActive: user.status === "ACTIVE" && !user.deletedAt,
+            })
+            if (!verdict.ok) return NextResponse.json({ error: verdict.error }, { status: verdict.status })
+            const account = checkStaffAccount(await worksInShopOrBusiness(prisma, user.id))
+            if (!account.ok) return NextResponse.json({ error: account.error }, { status: 403 })
+            if (invite.role.businessId || invite.role.providerId) return NextResponse.json({ error: "This invitation link is not valid" }, { status: 404 })
+
+            const staffActor: AuditActor = {
+                actorId: user.id,
+                actorName: user.name || user.email,
+                actorRole: "invitee",
+                source: "WEB",
+                ...requestMeta(req),
+            }
+            await withAudit(staffActor, async (tx) => {
+                const claimed = await tx.accessInvite.updateMany({
+                    where: { id: invite.id, status: "PENDING" },
+                    data: { status: "ACCEPTED", acceptedAt: new Date(), acceptedById: user.id },
+                })
+                if (claimed.count === 0) throw new TeamError(ACCEPT_ERRORS.accepted, 409)
+
+                const existing = await tx.accessAssignment.findFirst({ where: { userId: user.id, scope: "PLATFORM" }, select: { id: true } })
+                if (existing) {
+                    const owner = await assertStaffKeepsOwner(tx, { type: "set_role", assignmentId: existing.id, newPermissions: invite.role.permissions })
+                    if (!owner.ok) throw new TeamError(owner.error, 409)
+                    await tx.accessAssignment.update({ where: { id: existing.id }, data: { roleId: invite.role.id, status: "ACTIVE" } })
+                } else {
+                    await tx.accessAssignment.create({
+                        data: { userId: user.id, roleId: invite.role.id, scope: "PLATFORM", status: "ACTIVE", invitedById: invite.invitedById },
+                    })
+                }
+                // The account type only decides which dashboard opens; the permissions come from the assignment
+                if (user.role !== "ADMIN") await tx.user.update({ where: { id: user.id }, data: { role: "ADMIN" } })
+
+                await logActivity(tx, staffActor, {
+                    entityType: "AccessAssignment",
+                    entityId: existing?.id ?? null,
+                    action: "STAFF_JOINED",
+                    changes: [{ field: "member", from: null, to: `${user.name || user.email} (${invite.role.name})` }],
+                    note: `${user.name || user.email} accepted an invitation to ${STAFF_PLACE} as ${invite.role.name}`,
+                })
+                if (invite.invitedById) {
+                    await notify(tx, invite.invitedById, {
+                        ...notifications.teamJoined({ who: user.name || user.email, where: STAFF_PLACE, role: invite.role.name }),
+                        href: "/admin/staff",
+                    })
+                }
+            })
+            return NextResponse.json({ ok: true, where: STAFF_PLACE, role: invite.role.name, shopId: null, redirect: "/admin/dashboard" })
+        }
 
         const scope = invite.scope
         const verdict = checkAcceptable({
