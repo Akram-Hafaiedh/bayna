@@ -18,6 +18,7 @@
     "db:normalize-emails": "npx tsx scripts/normalize-emails.ts",
     "audit:check": "npx tsx scripts/check-audit-schema.ts",
     "test:unit": "vitest run",
+    "test:api": "vitest run --config vitest.api.config.mts",
     "test:watch": "vitest",
     "test:audit-db": "npx tsx scripts/run-audit-db-test.ts"
   },
