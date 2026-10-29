@@ -2,6 +2,7 @@
 import NextAuth from "next-auth"
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server"
 import type { Role } from "@/app/generated/prisma/enums"
+import { decideRoute } from "@/lib/route-access"
 import { VIEW_AS_COOKIE, parseViewAsCookie, viewAsBlock } from "@/lib/impersonation"
 
 // Lightweight instance: same AUTH_SECRET and JWT cookie as auth.ts,
@@ -21,41 +22,15 @@ const { auth } = NextAuth({
     },
 })
 
-function homeFor(role?: Role) {
-    if (role === "ADMIN") return "/admin/dashboard"
-    if (role === "PROVIDER") return "/shop"
-    if (role === "CLIENT") return "/dashboard"
-    return "/"
-}
-
-// roles undefined = any logged-in user
-const RULES: { prefix: string; roles?: Role[] }[] = [
-    { prefix: "/admin", roles: ["ADMIN"] },
-    { prefix: "/shop", roles: ["PROVIDER"] },
-    { prefix: "/business", roles: ["PROVIDER"] },
-    { prefix: "/dashboard", roles: ["CLIENT"] },
-    { prefix: "/profile" },
-    { prefix: "/become-provider" },
-]
-
 const routePages = auth((req) => {
-    const { pathname } = req.nextUrl
-    const rule = RULES.find(
-        (r) => pathname === r.prefix || pathname.startsWith(r.prefix + "/")
-    )
-    if (!rule) return NextResponse.next()
-
-    const user = req.auth?.user
-    if (!user?.id) {
-        return NextResponse.redirect(new URL("/login", req.nextUrl))
-    }
     // "View as": an admin viewing another account is routed as that account (the cookie says which role). The cookie
     // only ever restricts; the pages and the API still check the real session on the server.
-    const viewAs = parseViewAsCookie(req.cookies.get(VIEW_AS_COOKIE)?.value)
-    const role = (user.role === "ADMIN" && viewAs ? viewAs.role : user.role) as Role
-    if (rule.roles && !rule.roles.includes(role)) {
-        return NextResponse.redirect(new URL(homeFor(role), req.nextUrl))
-    }
+    const decision = decideRoute({
+        pathname: req.nextUrl.pathname,
+        user: req.auth?.user,
+        viewAsRole: parseViewAsCookie(req.cookies.get(VIEW_AS_COOKIE)?.value)?.role,
+    })
+    if (decision.type === "redirect") return NextResponse.redirect(new URL(decision.to, req.nextUrl))
     return NextResponse.next()
 })
 

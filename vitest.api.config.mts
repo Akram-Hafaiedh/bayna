@@ -19,8 +19,9 @@ export default defineConfig({
         include: ["tests/api/**/*.test.ts"],
         globalSetup: ["tests/api/global-setup.ts"],
         setupFiles: ["tests/api/setup.ts"],
-        // Everything the code under test reads as DATABASE_URL is the test database
-        env: { DATABASE_URL: url, NODE_ENV: "test" },
+        // Everything the code under test reads as DATABASE_URL is the test database. Plan limits are off, so a
+        // PLAN_LIMITS=on in your .env cannot make the team and product tests depend on the demo plan.
+        env: { DATABASE_URL: url, NODE_ENV: "test", PLAN_LIMITS: "off" },
         // One file at a time: the tests share one database
         fileParallelism: false,
         testTimeout: 30_000,
