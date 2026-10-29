@@ -18,6 +18,7 @@ export default function AdminLayout({
                     { href: "/admin/categories", label: "Categories" },
                     { href: "/admin/users", label: "Users" },
                     { href: "/admin/staff", label: "Staff" },
+                    { href: "/admin/impersonation", label: "View as" },
                     { href: "/admin/messages", label: "Messages" },
                 ]}
             />
