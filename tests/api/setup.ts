@@ -5,7 +5,14 @@ import { vi } from "vitest"
 
 declare global {
     // eslint-disable-next-line no-var
-    var __testSession: { user: { id: string; email: string; name: string | null; role: string } } | null | undefined
+    var __testSession:
+        | {
+            user: { id: string; email: string; name: string | null; role: string }
+            /** Set by a test to act as a "view as" session (what auth.ts adds for a staff member viewing another account) */
+            impersonation?: { id: string; mode: "READ_ONLY" | "WRITE"; expiresAt: string; adminId: string; adminName: string; targetName: string }
+        }
+        | null
+        | undefined
 }
 
 vi.mock("@/auth", () => ({

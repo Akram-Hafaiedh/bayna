@@ -20,6 +20,7 @@ export const NOTIFICATION_TYPES = {
     teamReinstated: "team.member.reinstated",
     teamRemoved: "team.member.removed",
     accountDeletionCancelled: "account.deletion.cancelled",
+    supportViewedAccount: "account.support.viewed",
 } as const
 
 export type NotificationInput = {
@@ -45,6 +46,12 @@ export async function shopPublicIds(tx: Tx, shopIds: string[]): Promise<Map<stri
 
 /** Ready-made messages, so wording lives in one place. */
 export const notifications = {
+    supportViewedAccount: (): NotificationInput => ({
+        type: NOTIFICATION_TYPES.supportViewedAccount,
+        title: "Bayna support looked at your account",
+        body: "A member of our team viewed your account to help you. They could only look; nothing was changed.",
+        href: "/profile",
+    }),
     accountDeletionCancelled: (): NotificationInput => ({
         type: NOTIFICATION_TYPES.accountDeletionCancelled,
         title: "Account deletion cancelled",

@@ -12,6 +12,8 @@ import { describeActivity } from "@/lib/activity-format"
 import { daysLeft } from "@/lib/account-deletion"
 import { timeAgo } from "@/lib/time-ago"
 import { Role } from "@/app/generated/prisma/enums"
+import { checkTarget } from "@/lib/impersonation"
+import ViewAsButton from "@/components/admin/ViewAsButton"
 
 export const metadata: Metadata = { title: "User" }
 
@@ -32,8 +34,8 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ publ
 
 async function Detail({ params }: { params: Promise<{ publicUserId: string }> }) {
     await connection()
-    await requireRole([Role.ADMIN])
-    const perms = await platformCan(["user.account.view"] as const)
+    const me = await requireRole([Role.ADMIN])
+    const perms = await platformCan(["user.account.view", "impersonation.session.start_readonly"] as const)
     if (!perms["user.account.view"]) {
         return <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">You do not have access to user accounts.</p>
     }
@@ -42,6 +44,10 @@ async function Detail({ params }: { params: Promise<{ publicUserId: string }> })
     if (!u) notFound()
 
     const status = u.status as UserStatusValue
+    // "View as" is offered only when the route would accept it (the route checks again)
+    const canView =
+        perms["impersonation.session.start_readonly"] &&
+        checkTarget(me.id ?? "", { id: u.id, status: u.status, role: u.role, deletedAt: u.deletedAt, hasPlatformRole: u.assignments.some((a) => a.scope === "PLATFORM") }).ok
     const now = new Date()
     const facts: [string, string][] = [
         ["Email", u.email],
@@ -62,6 +68,7 @@ async function Detail({ params }: { params: Promise<{ publicUserId: string }> })
                 <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{u.name || u.email}</h1>
                 <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700">{USER_STATUS_LABEL[status]}</span>
                 {u.deletedAt && <span className="inline-flex rounded-full bg-zinc-900 px-2.5 py-0.5 text-xs font-medium text-white">Anonymised</span>}
+                {canView && <div className="ml-auto"><ViewAsButton publicUserId={u.publicUserId} name={u.name || u.email} /></div>}
             </div>
 
             {(status === "SUSPENDED" || status === "BANNED") && (

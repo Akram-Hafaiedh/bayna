@@ -11,13 +11,24 @@
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { serializeActor, type AuditActor } from "./actor"
+import { READ_ONLY_MESSAGE } from "@/lib/impersonation"
 
 export type Tx = Prisma.TransactionClient
+
+/** Thrown when something tries to write during a read-only "view as" session. */
+export class ReadOnlyViewError extends Error {
+    constructor() {
+        super(READ_ONLY_MESSAGE)
+        this.name = "ReadOnlyViewError"
+    }
+}
 
 export async function withAudit<T>(
     actor: AuditActor,
     fn: (tx: Tx) => Promise<T>
 ): Promise<T> {
+    // Every write goes through here, so this is the last line of defence behind the proxy and the guards
+    if (actor.readOnly) throw new ReadOnlyViewError()
     return prisma.$transaction(async (tx) => {
         // `true` scopes the setting to this transaction, so it cannot leak to other requests
         // that reuse the same pooled connection.

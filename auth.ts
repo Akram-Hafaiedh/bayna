@@ -11,6 +11,7 @@ import { withAudit, logActivity } from "@/lib/audit/run"
 import { notify, notifications } from "@/lib/notifications"
 import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"
 import { shouldTouchActivity } from "@/lib/session-activity"
+import { resolveImpersonation } from "@/lib/impersonation-session"
 import type { Role } from "@/app/generated/prisma/enums"
 
 // A sign-in refused because of the account's status. The `code` tells the login page which message to show.
@@ -198,6 +199,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 session.user.role = token.role as Role
                     ; (session as { loginSessionId?: string }).loginSessionId =
                         token.loginSessionId as string
+
+                // "View as": while a platform staff member has an open session the page, the guards and the
+                // queries see the viewed person. The token and the real login stay the admin's, so Exit always
+                // works. Only ADMIN accounts can have a session, so everyone else costs no extra query.
+                if (token.role === "ADMIN") {
+                    try {
+                        const viewing = await resolveImpersonation(token.id as string)
+                        if (viewing) {
+                            session.user.id = viewing.target.id
+                            session.user.role = viewing.target.role as Role
+                            session.user.name = viewing.target.name
+                            session.user.email = viewing.target.email
+                            session.impersonation = viewing.view
+                        }
+                    } catch {
+                        // if the lookup fails the person simply stays themselves
+                    }
+                }
             }
             return session
         },

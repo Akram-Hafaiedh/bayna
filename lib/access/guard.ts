@@ -14,7 +14,8 @@
 // 401 = not signed in (or login revoked). 403 = signed in but not allowed, or account not active.
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/actor"
+import { impersonationActor, requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/actor"
+import { READ_ONLY_MESSAGE, type ViewAs } from "@/lib/impersonation"
 import type { BusinessPermission, PlatformPermission, ShopPermission } from "./catalogue"
 import { effective, has, roleNames } from "./evaluate"
 import { loadAccess, type Access } from "./load"
@@ -61,7 +62,7 @@ const STATUS_MESSAGE: Record<string, string> = {
     PENDING_DELETION: "Your account is scheduled for deletion",
 }
 
-async function authenticate(req?: Request): Promise<{ ok: true; access: Access; meta: RequestMeta } | GuardFail> {
+async function authenticate(req?: Request): Promise<{ ok: true; access: Access; meta: RequestMeta; view: ViewAs | null } | GuardFail> {
     const session = await auth()
     if (!session?.user?.id) return fail("Unauthorized", 401)
 
@@ -69,10 +70,16 @@ async function authenticate(req?: Request): Promise<{ ok: true; access: Access; 
     if (!access) return fail("Unauthorized", 401)
     if (access.status !== "ACTIVE") return fail(STATUS_MESSAGE[access.status] ?? "Forbidden", 403)
 
-    return { ok: true, access, meta: req ? requestMeta(req) : {} }
+    // "View as": the access above is the viewed person's. While the session is read-only nothing may change.
+    const view = session.impersonation ?? null
+    if (view && view.mode !== "WRITE" && req && !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase())) {
+        return fail(READ_ONLY_MESSAGE, 403)
+    }
+    return { ok: true, access, meta: req ? requestMeta(req) : {}, view }
 }
 
-function actorFor(access: Access, meta: RequestMeta, roleLabel: string): AuditActor {
+function actorFor(access: Access, meta: RequestMeta, roleLabel: string, view: ViewAs | null = null): AuditActor {
+    if (view) return impersonationActor(access.userId, view, meta)
     return {
         actorId: access.userId,
         actorName: access.name || access.email,
@@ -95,7 +102,7 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
         ok: true,
         userId: a.access.userId,
         access: a.access,
-        actor: actorFor(a.access, a.meta, roleNames(a.access.assignments, {}, now).join(", ")),
+        actor: actorFor(a.access, a.meta, roleNames(a.access.assignments, {}, now).join(", "), a.view),
         can: (k) => has(eff, k),
     }
 }
@@ -159,7 +166,7 @@ export async function requireShop(
         userId: a.access.userId,
         access: a.access,
         provider: { id: provider.id, businessId: provider.businessId },
-        actor: actorFor(a.access, a.meta, label),
+        actor: actorFor(a.access, a.meta, label, a.view),
         can: (k) => has(eff, k),
     }
 }
@@ -215,7 +222,7 @@ export async function requireBusiness(
         userId: a.access.userId,
         access: a.access,
         business: { id: business.id },
-        actor: actorFor(a.access, a.meta, label),
+        actor: actorFor(a.access, a.meta, label, a.view),
         can: (k) => has(eff, k),
     }
 }

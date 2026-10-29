@@ -8,6 +8,8 @@ declare module "next-auth" {
             role: Role
         } & DefaultSession["user"]
         loginSessionId?: string
+        /** Set while a platform staff member is viewing as `user` (lib/impersonation.ts). `user` is then the viewed person. */
+        impersonation?: import("@/lib/impersonation").ViewAs
     }
 
     interface User {

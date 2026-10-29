@@ -15,6 +15,8 @@ export type AuditActor = {
     /** The user being impersonated, if any. */
     onBehalfOfId?: string | null
     impersonationId?: string | null
+    /** True during a read-only "view as" session: withAudit refuses to write. Not stored in the log. */
+    readOnly?: boolean
     source?: AuditSource
     requestId?: string | null
     ip?: string | null
@@ -31,6 +33,8 @@ type SessionLike =
             email?: string | null
             role?: string | null
         } | null
+        /** Set by auth.ts while a platform staff member is viewing as `user` (lib/impersonation.ts). */
+        impersonation?: { id: string; mode: string; adminId: string; adminName: string } | null
     }
     | null
     | undefined
@@ -78,10 +82,35 @@ export function actorFromSession(
     extra: Partial<AuditActor> = {}
 ): AuditActor {
     const user = session?.user
+    const view = session?.impersonation
+    if (user && view) return impersonationActor(user.id ?? null, view, meta, extra)
     return {
         actorId: user?.id || null,
         actorName: user?.name || user?.email || null,
         actorRole: user?.role ?? null,
+        source: "WEB",
+        ...meta,
+        ...extra,
+    }
+}
+
+/**
+ * The actor during "view as": the real admin acts, on behalf of the viewed person (who is `viewedId`). Writes are off
+ * while the session is read-only. The Exit route builds its own actor from this and clears `readOnly`.
+ */
+export function impersonationActor(
+    viewedId: string | null,
+    view: { id: string; mode: string; adminId: string; adminName: string },
+    meta: RequestMeta = {},
+    extra: Partial<AuditActor> = {}
+): AuditActor {
+    return {
+        actorId: view.adminId,
+        actorName: view.adminName,
+        actorRole: "ADMIN",
+        onBehalfOfId: viewedId,
+        impersonationId: view.id,
+        readOnly: view.mode !== "WRITE",
         source: "WEB",
         ...meta,
         ...extra,
