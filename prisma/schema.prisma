@@ -91,6 +91,9 @@ model User {
   status          UserStatus @default(ACTIVE)
   suspendedReason String?
   lastLoginAt     DateTime?
+  // Set when the person asked to delete their account (status PENDING_DELETION); the account is anonymised
+  // GRACE_DAYS later (lib/account-deletion.ts) unless they sign in before that, which cancels it.
+  deletionRequestedAt DateTime?
   // The Terms and Privacy policy accepted at sign-up: when, and which version (LEGAL_VERSION in lib/site.ts).
   // Empty for accounts created before the acceptance existed.
   termsAcceptedAt DateTime?

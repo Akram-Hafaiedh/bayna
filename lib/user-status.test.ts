@@ -55,14 +55,16 @@ test("a blocked account tells the person why at sign-in, an open one does not", 
     assert.equal(signInBlockFor("ACTIVE"), null)
     assert.equal(signInBlockFor("SUSPENDED")?.code, "account_suspended")
     assert.equal(signInBlockFor("BANNED")?.code, "account_banned")
-    assert.equal(signInBlockFor("PENDING_DELETION")?.code, "account_pending_deletion")
+    // Signing in cancels a pending deletion, so it is not a block
+    assert.equal(signInBlockFor("PENDING_DELETION"), null)
     assert.equal(signInBlockFor("SOMETHING_ELSE"), null)
 })
 
 test("the sign-in page maps each code to its message and ignores other errors", () => {
     assert.match(messageForSignInCode("account_suspended") ?? "", /suspended/)
     assert.match(messageForSignInCode("account_banned") ?? "", /closed/)
-    assert.match(messageForSignInCode("account_pending_deletion") ?? "", /deletion/)
+    // A pending deletion is cancelled by signing in, so it has no sign-in message
+    assert.equal(messageForSignInCode("account_pending_deletion"), null)
     assert.equal(messageForSignInCode("credentials"), null)
     assert.equal(messageForSignInCode(undefined), null)
 })

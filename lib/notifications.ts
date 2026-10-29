@@ -19,6 +19,7 @@ export const NOTIFICATION_TYPES = {
     teamSuspended: "team.member.suspended",
     teamReinstated: "team.member.reinstated",
     teamRemoved: "team.member.removed",
+    accountDeletionCancelled: "account.deletion.cancelled",
 } as const
 
 export type NotificationInput = {
@@ -44,6 +45,12 @@ export async function shopPublicIds(tx: Tx, shopIds: string[]): Promise<Map<stri
 
 /** Ready-made messages, so wording lives in one place. */
 export const notifications = {
+    accountDeletionCancelled: (): NotificationInput => ({
+        type: NOTIFICATION_TYPES.accountDeletionCancelled,
+        title: "Account deletion cancelled",
+        body: "You signed in again, so your account will not be deleted.",
+        href: "/profile",
+    }),
     applicationApproved: (a: { shop: string }): NotificationInput => ({
         type: NOTIFICATION_TYPES.applicationApproved,
         title: "Your shop was approved",

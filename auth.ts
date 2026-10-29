@@ -6,6 +6,9 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { normalizeEmail } from "@/lib/email-input"
 import { signInBlockFor } from "@/lib/user-status"
+import { signInCancelsDeletion } from "@/lib/account-deletion"
+import { withAudit, logActivity } from "@/lib/audit/run"
+import { notify, notifications } from "@/lib/notifications"
 import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"
 import { shouldTouchActivity } from "@/lib/session-activity"
 import type { Role } from "@/app/generated/prisma/enums"
@@ -74,7 +77,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 // does not reveal that the email has an account.
                 const blocked = signInBlockFor(user.status)
                 if (blocked) throw new AccountBlocked(blocked.code)
-                if (user.status !== "ACTIVE") return null
+
+                // Signing in during the grace period cancels the deletion the person asked for
+                if (signInCancelsDeletion(user.status)) {
+                    const actor = { actorId: user.id, actorName: user.name ?? user.email, source: "WEB" as const }
+                    await withAudit(actor, async (tx) => {
+                        const back = await tx.user.updateMany({
+                            where: { id: user.id, status: "PENDING_DELETION", deletedAt: null },
+                            data: { status: "ACTIVE", deletionRequestedAt: null },
+                        })
+                        if (back.count === 0) return
+                        await logActivity(tx, actor, { entityType: "User", entityId: user.id, action: "ACCOUNT_DELETION_CANCELLED", note: "Signed in during the grace period" })
+                        await notify(tx, user.id, notifications.accountDeletionCancelled())
+                    })
+                } else if (user.status !== "ACTIVE") return null
 
                 // A good sign-in clears the per-email counter, so a person who mistyped is not locked out
                 await clearRateLimit(RATE.loginEmail, email)

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import WhereIWork from "@/components/account/WhereIWork"
+import DeleteAccount from "@/components/account/DeleteAccount"
 
 type SessionRow = {
     id: string
@@ -352,6 +353,8 @@ export default function ProfilePage() {
                     </ul>
                 )}
             </section>
+
+            <DeleteAccount />
 
             {/* Modal: revoke other sessions after password change */}
             {showRevokeModal && (

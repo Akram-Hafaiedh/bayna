@@ -49,6 +49,7 @@ test("the ready-made messages are valid", () => {
         notifications.teamSuspended({ where: "Sfax BTP" }),
         notifications.teamReinstated({ where: "Sfax BTP" }),
         notifications.teamRemoved({ where: "Sfax BTP" }),
+        notifications.accountDeletionCancelled(),
     ]
     // Fails if a builder is added to `notifications` without being listed here.
     assert.equal(messages.length, Object.keys(notifications).length)
