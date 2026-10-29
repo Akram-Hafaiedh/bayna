@@ -52,17 +52,29 @@ test("the banner shows the time left", () => {
     assert.equal(timeLeft(new Date("2026-10-29T09:00:00Z"), now), "0:00")
 })
 
+const LATER = new Date(Date.now() + 30 * 60_000)
+
 test("the cookie round trips and ignores anything else", () => {
-    assert.equal(viewAsCookieValue("READ_ONLY", "CLIENT"), "ro.CLIENT")
-    assert.deepEqual(parseViewAsCookie("ro.PROVIDER"), { mode: "READ_ONLY", role: "PROVIDER" })
-    assert.deepEqual(parseViewAsCookie("rw.CLIENT"), { mode: "WRITE", role: "CLIENT" })
-    for (const bad of ["ro.ADMIN", "ro", "", "xx.CLIENT", "ro.CLIENT.extra", null, undefined]) {
+    assert.equal(viewAsCookieValue("READ_ONLY", "CLIENT", LATER), `ro.CLIENT.${LATER.getTime()}`)
+    assert.deepEqual(parseViewAsCookie(`ro.PROVIDER.${LATER.getTime()}`), { mode: "READ_ONLY", role: "PROVIDER", expiresAt: LATER.getTime() })
+    assert.deepEqual(parseViewAsCookie(`rw.CLIENT.${LATER.getTime()}`), { mode: "WRITE", role: "CLIENT", expiresAt: LATER.getTime() })
+    for (const bad of ["ro.ADMIN", "ro", "", "xx.CLIENT", "ro.CLIENT.extra", "ro.CLIENT", "ro.CLIENT.123", null, undefined]) {
         assert.equal(parseViewAsCookie(bad as string | null | undefined), null)
     }
 })
 
+test("a cookie past its end time is ignored, so it cannot outlive its session", () => {
+    const value = viewAsCookieValue("READ_ONLY", "CLIENT", LATER)
+    assert.ok(parseViewAsCookie(value))
+    assert.ok(parseViewAsCookie(value, new Date(LATER.getTime() - 1)))
+    assert.equal(parseViewAsCookie(value, LATER), null)
+    assert.equal(parseViewAsCookie(value, new Date(LATER.getTime() + 60_000)), null)
+    // and then nothing is blocked any more
+    assert.equal(viewAsBlock("POST", "/api/profile/password", parseViewAsCookie(value, new Date(LATER.getTime() + 1))), null)
+})
+
 test("while viewing read-only only reading is allowed, plus Exit and sign-out", () => {
-    const ro = parseViewAsCookie("ro.CLIENT")
+    const ro = parseViewAsCookie(viewAsCookieValue("READ_ONLY", "CLIENT", LATER))
     assert.equal(viewAsBlock("GET", "/dashboard", ro), null)
     assert.equal(viewAsBlock("HEAD", "/api/notifications", ro), null)
     for (const method of ["POST", "PUT", "PATCH", "DELETE", "post"]) {
@@ -72,7 +84,7 @@ test("while viewing read-only only reading is allowed, plus Exit and sign-out", 
     assert.equal(viewAsBlock("POST", "/api/auth/signout", ro), null)
     // no cookie, or a write session (not built): nothing is blocked here
     assert.equal(viewAsBlock("POST", "/api/profile/password", null), null)
-    assert.equal(viewAsBlock("POST", "/api/profile/password", parseViewAsCookie("rw.CLIENT")), null)
+    assert.equal(viewAsBlock("POST", "/api/profile/password", parseViewAsCookie(viewAsCookieValue("WRITE", "CLIENT", LATER))), null)
 })
 
 test("the landing page is the viewed person's own home", () => {

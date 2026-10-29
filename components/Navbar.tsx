@@ -30,6 +30,14 @@ function getRoleBadgeClass(role?: string) {
 export default function Navbar() {
     const { data: session, status } = useSession()
     const [menuOpen, setMenuOpen] = useState(false)
+
+    // Leaving while viewing as someone ends the view first (and clears its cookie), so it cannot outlive the sign-out
+    async function leave() {
+        if (session?.impersonation) {
+            await fetch("/api/admin/impersonation/end", { method: "POST" }).catch(() => { })
+        }
+        await signOut({ callbackUrl: "/" })
+    }
     const [hasBusiness, setHasBusiness] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
@@ -190,7 +198,7 @@ export default function Navbar() {
                                         <button
                                             onClick={() => {
                                                 setMenuOpen(false)
-                                                signOut({ callbackUrl: "/" })
+                                                void leave()
                                             }}
                                             className="block w-full px-3.5 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                                         >

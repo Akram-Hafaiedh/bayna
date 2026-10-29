@@ -8,7 +8,9 @@
 //   - One open session per admin; it lasts DEFAULT_MINUTES (the hard cap is MAX_MINUTES).
 //   - The page is drawn for the viewed person (auth.ts swaps the session user), every log row names the real admin.
 //   - A cookie (VIEW_AS_COOKIE) tells the proxy, which has no database, which role to route by and that writes
-//     are off. It only ever restricts: a forged one cannot give anyone access to anything.
+//     are off. It only ever restricts: a forged one cannot give anyone access to anything. It carries its own end
+//     time, so the proxy stops obeying it when the time is up. It is readable by the page (not httpOnly) so the
+//     banner can clear one that outlived its session (see ViewAsBanner).
 
 export const DEFAULT_MINUTES = 30
 export const MAX_MINUTES = 120
@@ -83,13 +85,19 @@ export function timeLeft(expiresAt: Date | string, now: Date = new Date()): stri
 
 // --- the cookie the proxy reads -------------------------------------------------------------------------------
 
-export type ViewAsCookie = { mode: ImpersonationMode; role: "CLIENT" | "PROVIDER" }
+export type ViewAsCookie = { mode: ImpersonationMode; role: "CLIENT" | "PROVIDER"; expiresAt: number }
 
-export const viewAsCookieValue = (mode: ImpersonationMode, role: string) => `${mode === "WRITE" ? "rw" : "ro"}.${role}`
+/** "ro.CLIENT.1793000000000": mode, role of the viewed person, and when the session ends (ms since 1970). */
+export const viewAsCookieValue = (mode: ImpersonationMode, role: string, expiresAt: Date) =>
+    `${mode === "WRITE" ? "rw" : "ro"}.${role}.${expiresAt.getTime()}`
 
-export function parseViewAsCookie(value: string | null | undefined): ViewAsCookie | null {
-    const m = /^(ro|rw)\.(CLIENT|PROVIDER)$/.exec(value ?? "")
-    return m ? { mode: m[1] === "rw" ? "WRITE" : "READ_ONLY", role: m[2] as "CLIENT" | "PROVIDER" } : null
+/** The cookie's content, or null when it is missing, malformed or past its end time. */
+export function parseViewAsCookie(value: string | null | undefined, now: Date = new Date()): ViewAsCookie | null {
+    const m = /^(ro|rw)\.(CLIENT|PROVIDER)\.(\d{10,15})$/.exec(value ?? "")
+    if (!m) return null
+    const expiresAt = Number(m[3])
+    if (expiresAt <= now.getTime()) return null
+    return { mode: m[1] === "rw" ? "WRITE" : "READ_ONLY", role: m[2] as "CLIENT" | "PROVIDER", expiresAt }
 }
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"])

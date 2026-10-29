@@ -3,6 +3,15 @@
 import { prisma } from "@/lib/prisma"
 import type { ViewAs } from "@/lib/impersonation"
 
+/** Signing out ends a view the staff member left open (auth.ts calls this from its sign-out event). */
+export async function endViewsOnSignOut(adminId: string, now: Date = new Date()): Promise<number> {
+    const done = await prisma.impersonationSession.updateMany({
+        where: { adminId, endedAt: null },
+        data: { endedAt: now, endedBy: "SIGNED_OUT" },
+    })
+    return done.count
+}
+
 export type ViewedAccount = { id: string; name: string | null; email: string; role: string }
 
 /**

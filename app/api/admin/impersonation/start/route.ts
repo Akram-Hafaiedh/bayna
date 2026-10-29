@@ -8,6 +8,7 @@ import { requirePlatform } from "@/lib/access/guard"
 import { prisma } from "@/lib/prisma"
 import { logActivity, withAudit } from "@/lib/audit/run"
 import { notify, notifications } from "@/lib/notifications"
+import { RATE, checkRateLimits, clearRateLimit, recordRateLimits, tooManyRequests } from "@/lib/rate-limit"
 import {
     DEFAULT_MINUTES, VIEW_AS_COOKIE, checkTarget, expiryFor, homeForViewedRole, parseStart, viewAsCookieValue,
 } from "@/lib/impersonation"
@@ -21,11 +22,18 @@ export async function POST(req: Request) {
         if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
         const { userId: publicUserId, reason, password } = parsed.value
 
+        // Wrong passwords are counted per staff member, so a stolen session cannot guess the password at full speed
+        const limit = [{ policy: RATE.viewAsPassword, subject: guard.userId }]
+        const blocked = await checkRateLimits(limit)
+        if (!blocked.ok) return tooManyRequests(blocked.retryAfterSec)
+
         const admin = await prisma.user.findUnique({ where: { id: guard.userId }, select: { password: true } })
         if (!admin?.password) return NextResponse.json({ error: "Password login is not available for this account" }, { status: 400 })
         if (!(await bcrypt.compare(password, admin.password))) {
+            await recordRateLimits(limit)
             return NextResponse.json({ error: "Password is incorrect" }, { status: 400 })
         }
+        await clearRateLimit(RATE.viewAsPassword, guard.userId)
 
         const target = await prisma.user.findUnique({
             where: { publicUserId },
@@ -41,7 +49,10 @@ export async function POST(req: Request) {
         const now = new Date()
         const expiresAt = expiryFor(now, DEFAULT_MINUTES)
         const done = await withAudit(guard.actor, async (tx) => {
-            // One open session per admin. Sessions found past their time are closed first.
+            // One open session per admin. Two starts at the same moment would both find none open, so the check and
+            // the insert run behind a lock on this admin (released when the transaction ends).
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${"view-as:" + guard.userId}))`
+            // Sessions found past their time are closed first.
             await tx.impersonationSession.updateMany({
                 where: { adminId: guard.userId, endedAt: null, expiresAt: { lte: now } },
                 data: { endedAt: now, endedBy: "EXPIRED" },
@@ -68,8 +79,9 @@ export async function POST(req: Request) {
         }
 
         const res = NextResponse.json({ redirect: homeForViewedRole(target.role), expiresAt: expiresAt.toISOString() })
-        res.cookies.set(VIEW_AS_COOKIE, viewAsCookieValue("READ_ONLY", target.role), {
-            httpOnly: true,
+        res.cookies.set(VIEW_AS_COOKIE, viewAsCookieValue("READ_ONLY", target.role, expiresAt), {
+            // Readable by the page on purpose: it only restricts, and the banner clears it when its session is gone
+            httpOnly: false,
             sameSite: "lax",
             path: "/",
             secure: process.env.NODE_ENV === "production",

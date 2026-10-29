@@ -22,6 +22,8 @@ export const RATE = {
     /** Per address, so nobody can fill a mailbox with reset links. Refused silently (see the route). */
     forgotEmail: { name: "forgot:email", limit: 3, windowMs: 60 * MINUTE },
     resetIp: { name: "reset:ip", limit: 10, windowMs: 15 * MINUTE },
+    /** "View as", per staff member (wrong passwords only): the password is asked again before opening someone's account. */
+    viewAsPassword: { name: "viewas:password", limit: 5, windowMs: 15 * MINUTE },
 } as const satisfies Record<string, RatePolicy>
 
 export const RATE_LIMITED_CODE = "too_many_attempts"

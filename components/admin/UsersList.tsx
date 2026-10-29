@@ -7,6 +7,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RowMenu, { type RowMenuItem } from "@/components/ui/RowMenu"
+import ViewAsDialog from "@/components/admin/ViewAsDialog"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import type { UserRow } from "@/lib/user-list"
@@ -27,10 +28,11 @@ const STATUS_BADGE: Record<UserStatusValue, string> = {
 type Dialog =
     | { kind: "suspend"; user: UserRow }
     | { kind: "ban"; user: UserRow }
+    | { kind: "viewas"; user: UserRow }
     | { kind: "link"; user: UserRow; url: string; expires: string }
     | null
 
-export default function UsersList({ users, me }: { users: UserRow[]; me: string }) {
+export default function UsersList({ users, me, canViewAs = false }: { users: UserRow[]; me: string; canViewAs?: boolean }) {
     const router = useRouter()
     const confirm = useConfirm()
     const toast = useToast()
@@ -104,6 +106,14 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
     }
 
     function menuFor(u: UserRow): RowMenuItem[] {
+        // Staff and accounts that are not active cannot be viewed as (the route says so too: lib/impersonation.ts)
+        const viewAs: RowMenuItem[] = canViewAs && u.id !== me && u.status === "ACTIVE" && u.role !== "ADMIN"
+            ? [{ label: "View as", onClick: () => setDialog({ kind: "viewas", user: u }) }]
+            : []
+        return [...viewAs, ...menuItemsFor(u)]
+    }
+
+    function menuItemsFor(u: UserRow): RowMenuItem[] {
         return userActions(u.status, u.id === me).map((a) => {
             if (a === "suspend") return { label: "Suspend", onClick: () => setDialog({ kind: "suspend", user: u }), danger: true }
             if (a === "reinstate") return { label: "Reinstate", onClick: () => void reinstate(u) }
@@ -186,6 +196,9 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
                         }
                     }}
                 />
+            )}
+            {dialog?.kind === "viewas" && (
+                <ViewAsDialog publicUserId={dialog.user.publicUserId} name={who(dialog.user)} onClose={() => setDialog(null)} />
             )}
             {dialog?.kind === "ban" && (
                 <SuspendDialog

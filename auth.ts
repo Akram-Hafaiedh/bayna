@@ -11,7 +11,7 @@ import { withAudit, logActivity } from "@/lib/audit/run"
 import { notify, notifications } from "@/lib/notifications"
 import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"
 import { shouldTouchActivity } from "@/lib/session-activity"
-import { resolveImpersonation } from "@/lib/impersonation-session"
+import { endViewsOnSignOut, resolveImpersonation } from "@/lib/impersonation-session"
 import type { Role } from "@/app/generated/prisma/enums"
 
 // A sign-in refused because of the account's status. The `code` tells the login page which message to show.
@@ -224,6 +224,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     events: {
         async signOut(message) {
             const token = "token" in message ? message.token : null
+            // Signing out ends a "view as" the person left open, so it cannot come back at the next sign-in
+            if (token?.role === "ADMIN" && token.id) {
+                await endViewsOnSignOut(token.id as string).catch(() => { })
+            }
             if (token?.loginSessionId) {
                 await prisma.loginSession
                     .update({

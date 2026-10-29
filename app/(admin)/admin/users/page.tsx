@@ -31,7 +31,7 @@ export default function AdminUsersPage({ searchParams }: { searchParams: SearchP
 async function UsersContent({ searchParams }: { searchParams: SearchParams }) {
     await connection()
     const me = await requireRole([Role.ADMIN])
-    const perms = await platformCan(["user.account.view"] as const)
+    const perms = await platformCan(["user.account.view", "impersonation.session.start_readonly"] as const)
     if (!perms["user.account.view"]) {
         return <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">You do not have access to the user list.</p>
     }
@@ -47,7 +47,7 @@ async function UsersContent({ searchParams }: { searchParams: SearchParams }) {
                 <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">No users yet.</div>
             ) : (
                 <>
-                    <UsersList users={result.items} me={me.id ?? ""} />
+                    <UsersList users={result.items} me={me.id ?? ""} canViewAs={perms["impersonation.session.start_readonly"]} />
                     <Pager
                         page={result.page}
                         pageCount={result.pageCount}

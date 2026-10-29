@@ -5,10 +5,10 @@
 // time runs out it closes the session and goes back to the admin area.
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { timeLeft } from "@/lib/impersonation"
+import { VIEW_AS_COOKIE, timeLeft } from "@/lib/impersonation"
 
 export default function ViewAsBanner() {
-    const { data: session } = useSession()
+    const { data: session, status } = useSession()
     const view = session?.impersonation
     const [now, setNow] = useState<Date | null>(null)
     const [busy, setBusy] = useState(false)
@@ -19,6 +19,17 @@ export default function ViewAsBanner() {
         const t = setInterval(() => setNow(new Date()), 1000)
         return () => clearInterval(t)
     }, [view])
+
+    // The "view as" cookie can outlive its session (the viewed account was suspended, or an admin ended the session).
+    // Left alone, the proxy would keep treating this staff member as that person. When the session says nobody is
+    // being viewed but the cookie is still here, clear it (the end route does, and only ever clears) and go back.
+    useEffect(() => {
+        if (status !== "authenticated" || view) return
+        if (!document.cookie.split("; ").some((c) => c.startsWith(`${VIEW_AS_COOKIE}=`))) return
+        void fetch("/api/admin/impersonation/end", { method: "POST" })
+            .then((res) => { if (res.ok) window.location.assign(session?.user?.role === "ADMIN" ? "/admin/users" : "/") })
+            .catch(() => { })
+    }, [status, view, session?.user?.role])
 
     async function exit(to: string) {
         setBusy(true)

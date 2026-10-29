@@ -8,12 +8,17 @@ import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { READ_ONLY_MESSAGE } from "@/lib/impersonation"
 import { resolveImpersonation } from "@/lib/impersonation-session"
+import { RATE, clearRateLimit } from "@/lib/rate-limit"
 import { cleanUp, createStaff, createTarget, demo, prisma, signInAs, signOut } from "./helpers"
 
 const PASSWORD = "demo1234"
 const made: string[] = []
 
-beforeEach(() => prisma.impersonationSession.deleteMany({}))
+beforeEach(async () => {
+    await prisma.impersonationSession.deleteMany({})
+    const support = await prisma.user.findUnique({ where: { email: demo("support") }, select: { id: true } })
+    if (support) await clearRateLimit(RATE.viewAsPassword, support.id)
+})
 afterEach(() => signOut())
 afterAll(async () => {
     await prisma.impersonationSession.deleteMany({})
@@ -78,7 +83,8 @@ describe("starting a view", () => {
         const res = await begin({ userId: t.publicUserId, reason, password: PASSWORD })
         expect(res.status).toBe(200)
         expect(res.json.redirect).toBe("/dashboard")
-        expect(res.cookie).toContain("bayna-view-as=ro.CLIENT")
+        expect(res.cookie).toMatch(/bayna-view-as=ro\.CLIENT\.\d+/)
+        expect(res.cookie.toLowerCase()).not.toContain("httponly")
 
         const row = await prisma.impersonationSession.findFirstOrThrow({ where: { targetUserId: t.id } })
         expect(row).toMatchObject({ adminId: support.id, mode: "READ_ONLY", reason, endedAt: null })
@@ -103,6 +109,28 @@ describe("starting a view", () => {
         expect((await begin({ userId: a.publicUserId, reason, password: PASSWORD })).status).toBe(200)
         expect((await begin({ userId: b.publicUserId, reason, password: PASSWORD })).status).toBe(409)
         expect(await prisma.impersonationSession.count()).toBe(1)
+    })
+
+    test("two starts at the same moment open only one view", async () => {
+        const a = await person("first")
+        const b = await person("second")
+        await signInAs(demo("support"))
+        const results = await Promise.all([
+            begin({ userId: a.publicUserId, reason, password: PASSWORD }),
+            begin({ userId: b.publicUserId, reason, password: PASSWORD }),
+        ])
+        expect(results.map((r) => r.status).sort()).toEqual([200, 409])
+        expect(await prisma.impersonationSession.count()).toBe(1)
+    })
+
+    test("wrong passwords are limited, and a right one afterwards is refused until the wait is over", async () => {
+        const t = await person()
+        await signInAs(demo("support"))
+        for (let i = 0; i < RATE.viewAsPassword.limit; i++) {
+            expect((await begin({ userId: t.publicUserId, reason, password: "wrong-one" })).status).toBe(400)
+        }
+        expect((await begin({ userId: t.publicUserId, reason, password: PASSWORD })).status).toBe(429)
+        expect(await prisma.impersonationSession.count()).toBe(0)
     })
 
     test("a view past its time is not open any more", async () => {
@@ -143,6 +171,21 @@ describe("ending a view", () => {
         const res = await end(new Request("http://localhost/api/admin/impersonation/end", { method: "POST" }))
         expect(res.status).toBe(200)
         expect((res.headers.get("set-cookie") ?? "").toLowerCase()).toContain("max-age=0")
+    })
+})
+
+describe("signing out", () => {
+    test("ends the view the staff member left open", async () => {
+        const t = await person()
+        const support = await signInAs(demo("support"))
+        await begin({ userId: t.publicUserId, reason, password: PASSWORD })
+        expect(await resolveImpersonation(support.id)).not.toBeNull()
+        // the sign-out event of auth.ts
+        const { endViewsOnSignOut } = await import("@/lib/impersonation-session")
+        await endViewsOnSignOut(support.id)
+        expect(await resolveImpersonation(support.id)).toBeNull()
+        const row = await prisma.impersonationSession.findFirstOrThrow({ where: { targetUserId: t.id } })
+        expect(row.endedBy).toBe("SIGNED_OUT")
     })
 })
 
