@@ -1,6 +1,6 @@
 "use client"
 // components/shop/ShopProfileForm.tsx
-// One form for the shop application (/become-provider) and the shop profile (/shop/<publicId>/profile).
+// One form for the shop application (/become-provider) and the shop profile (/shop/<publicShopId>/profile).
 // It collects the essentials; the parent decides where the body is sent.
 import { useState } from "react"
 import { GOVERNORATES, findGovernorate } from "@/lib/governorates"

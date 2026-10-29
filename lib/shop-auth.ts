@@ -11,25 +11,25 @@ import { loadMyShops } from "@/lib/access/shops"
 import { shopPath } from "@/lib/shop-paths"
 import type { ShopStatusValue } from "@/lib/shop-status"
 
-export type ShopPage = { id: string; publicId: string; name: string; status: ShopStatusValue }
+export type ShopPage = { id: string; publicShopId: string; name: string; status: ShopStatusValue }
 
-const select = { id: true, publicId: true, name: true, status: true } as const
+const select = { id: true, publicShopId: true, name: true, status: true } as const
 
 /**
- * For the pages under /shop/[publicId] (call inside a <Suspense> boundary).
+ * For the pages under /shop/[publicShopId] (call inside a <Suspense> boundary).
  * The shop comes from the address, never from a cookie. It must be a shop the person works in right
  * now, or the application they sent in and are still waiting on; anything else is "not found", so a
  * public id says nothing about shops that exist but are not theirs. Pages do not authorize anything
  * with this: every API route checks permissions itself.
  */
-export async function requireShopPage(publicId: string): Promise<ShopPage> {
+export async function requireShopPage(publicShopId: string): Promise<ShopPage> {
     await connection()
     const user = await requireRole([Role.PROVIDER])
 
     const shops = await loadMyShops(user.id)
-    const mine = shops.find((s) => s.publicId === publicId)
+    const mine = shops.find((s) => s.publicShopId === publicShopId)
     if (!mine) notFound()
-    const shop = await prisma.shop.findFirst({ where: { publicId, deletedAt: null }, select })
+    const shop = await prisma.shop.findFirst({ where: { publicShopId, deletedAt: null }, select })
     if (!shop) notFound()
     return shop
 }
@@ -40,11 +40,11 @@ export async function landingShopPublicId(userId: string): Promise<string | null
     const live = shops.filter((s) => s.status === "ACTIVE")
     const chosen = pickActiveShop(live.map((s) => s.id), await readActiveShopHint())
     const found = live.find((s) => s.id === chosen) ?? shops.find((s) => s.status === "PENDING")
-    return found?.publicId ?? null
+    return found?.publicShopId ?? null
 }
 
 /** Redirects to the dashboard of the landing shop, or to the application page when there is none. */
 export async function redirectToMyShop(userId: string, section = "dashboard"): Promise<never> {
-    const publicId = await landingShopPublicId(userId)
-    redirect(publicId ? shopPath(publicId, section) : "/become-provider")
+    const publicShopId = await landingShopPublicId(userId)
+    redirect(publicShopId ? shopPath(publicShopId, section) : "/become-provider")
 }

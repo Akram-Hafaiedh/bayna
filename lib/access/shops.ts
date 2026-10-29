@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma"
 
 export type MyShop = {
     id: string
-    /** the opaque id used in the shop's URLs (/shop/[publicId]/...) */
-    publicId: string
+    /** the opaque id used in the shop's URLs (/shop/[publicShopId]/...) */
+    publicShopId: string
     name: string
     city: string
     /** the business (company) this shop belongs to */
@@ -33,7 +33,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
             },
             select: {
                 role: { select: { name: true } },
-                provider: { select: { id: true, publicId: true, name: true, city: true, business: { select: { id: true, name: true } } } },
+                provider: { select: { id: true, publicShopId: true, name: true, city: true, business: { select: { id: true, name: true } } } },
             },
         }),
         prisma.accessAssignment.findMany({
@@ -52,7 +52,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
                         name: true,
                         shops: {
                             where: { deletedAt: null, status: "ACTIVE" },
-                            select: { id: true, publicId: true, name: true, city: true },
+                            select: { id: true, publicShopId: true, name: true, city: true },
                         },
                     },
                 },
@@ -60,12 +60,12 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         }),
         prisma.shop.findMany({
             where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
-            select: { id: true, publicId: true, name: true, city: true, business: { select: { id: true, name: true } } },
+            select: { id: true, publicShopId: true, name: true, city: true, business: { select: { id: true, name: true } } },
         }),
     ])
 
     const byShop = new Map<string, MyShop>()
-    const add = (shop: { id: string; publicId: string; name: string; city: string }, business: { id: string; name: string }, roleName: string) => {
+    const add = (shop: { id: string; publicShopId: string; name: string; city: string }, business: { id: string; name: string }, roleName: string) => {
         const existing = byShop.get(shop.id)
         if (existing) {
             if (!existing.roles.includes(roleName)) existing.roles.push(roleName)
@@ -73,7 +73,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         }
         byShop.set(shop.id, {
             id: shop.id,
-            publicId: shop.publicId,
+            publicShopId: shop.publicShopId,
             name: shop.name,
             city: shop.city,
             businessId: business.id,
@@ -96,7 +96,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         .filter((p) => !byShop.has(p.id))
         .map((p) => ({
             id: p.id,
-            publicId: p.publicId,
+            publicShopId: p.publicShopId,
             name: p.name,
             city: p.city,
             businessId: p.business.id,

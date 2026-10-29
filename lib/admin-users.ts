@@ -14,7 +14,7 @@ export async function listUsers(query: UserQuery): Promise<UserPage> {
     const rows = await prisma.user.findMany({
         where,
         select: {
-            id: true, email: true, name: true, phone: true, role: true, status: true, suspendedReason: true, createdAt: true,
+            id: true, publicUserId: true, email: true, name: true, phone: true, role: true, status: true, suspendedReason: true, createdAt: true,
             providers: { where: { deletedAt: null }, select: { id: true, name: true, status: true }, orderBy: { createdAt: "asc" } },
         },
         // id as tie-breaker keeps pages stable when several accounts share a date

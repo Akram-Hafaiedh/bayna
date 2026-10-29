@@ -5,7 +5,7 @@ import assert from "node:assert/strict"
 import { countByStatus, filterShops, NO_SHOP_FILTERS, type ShopRow } from "./shop-list"
 
 const row = (over: Partial<ShopRow>): ShopRow => ({
-    id: "1", publicId: "p1", name: "Shop", city: "Tunis", governorate: "Tunis", status: "ACTIVE",
+    id: "1", publicShopId: "p1", name: "Shop", city: "Tunis", governorate: "Tunis", status: "ACTIVE",
     products: 0, team: 1, setupDone: 5, setupTotal: 5, openable: true, ...over,
 })
 const rows = [

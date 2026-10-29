@@ -5,12 +5,12 @@ import { auth } from "@/auth"
 import { loadMyShops } from "@/lib/access/shops"
 import ShopSwitcher from "./ShopSwitcher"
 
-// publicId is the shop the page is about (from the address)
-export default async function ShopSwitcherLoader({ publicId }: { publicId: string }) {
+// publicShopId is the shop the page is about (from the address)
+export default async function ShopSwitcherLoader({ publicShopId }: { publicShopId: string }) {
     await connection()
     const session = await auth()
     if (!session?.user?.id) return null
 
     const shops = await loadMyShops(session.user.id)
-    return <ShopSwitcher shops={shops} activeId={shops.find((s) => s.publicId === publicId)?.id ?? null} />
+    return <ShopSwitcher shops={shops} activeId={shops.find((s) => s.publicShopId === publicShopId)?.id ?? null} />
 }

@@ -4,7 +4,7 @@
 //
 //   await withAudit(guard.actor, async (tx) => {
 //       await tx.shop.update({ where: { id }, data: { needsReview: false } })
-//       await notify(tx, provider.userId, notifications.profileReviewed({ shop: provider.publicId }))
+//       await notify(tx, provider.userId, notifications.profileReviewed({ shop: provider.publicShopId }))
 //   })
 import type { Tx } from "@/lib/audit/run"
 import { shopPath } from "@/lib/shop-paths"
@@ -26,7 +26,7 @@ export type NotificationInput = {
     type: string
     title: string
     body?: string | null
-    /** A path inside the app, for example "/shop/<publicId>/profile" */
+    /** A path inside the app, for example "/shop/<publicShopId>/profile" */
     href?: string | null
 }
 
@@ -36,8 +36,8 @@ export const BODY_MAX = 400
 /** Public ids (the ones in shop URLs) of some shops, by shop id: the messages below link to a shop's pages with them. */
 export async function shopPublicIds(tx: Tx, shopIds: string[]): Promise<Map<string, string>> {
     if (shopIds.length === 0) return new Map()
-    const rows = await tx.shop.findMany({ where: { id: { in: shopIds } }, select: { id: true, publicId: true } })
-    return new Map(rows.map((r) => [r.id, r.publicId]))
+    const rows = await tx.shop.findMany({ where: { id: { in: shopIds } }, select: { id: true, publicShopId: true } })
+    return new Map(rows.map((r) => [r.id, r.publicShopId]))
 }
 
 // `shop` below is the shop's public id. Where a message can also be about a business (a business-level

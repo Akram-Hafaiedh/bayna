@@ -4,11 +4,13 @@
 // force a password reset). The page loads the rows (search, filters and paging are in the address); what a menu
 // offers comes from lib/user-status.ts, and the routes check the permission and the rules again.
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import RowMenu, { type RowMenuItem } from "@/components/ui/RowMenu"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import type { UserRow } from "@/lib/user-list"
+import { userDetailPath } from "@/lib/user-detail"
 import { USER_STATUS_LABEL, userActions, REASON_MAX, type UserStatusValue } from "@/lib/user-status"
 
 const ROLE_BADGE: Record<string, string> = {
@@ -18,7 +20,7 @@ const ROLE_BADGE: Record<string, string> = {
 const STATUS_BADGE: Record<UserStatusValue, string> = {
     ACTIVE: "bg-emerald-50 text-emerald-700",
     SUSPENDED: "bg-red-50 text-red-700",
-        BANNED: "bg-red-50 text-red-700",
+    BANNED: "bg-red-50 text-red-700",
     PENDING_DELETION: "bg-amber-50 text-amber-700",
 }
 
@@ -130,7 +132,7 @@ export default function UsersList({ users, me }: { users: UserRow[]; me: string 
                         {users.map((u) => (
                             <tr key={u.id} className="align-middle">
                                 <td className="px-4 py-3">
-                                    <p className="font-medium text-zinc-900">{u.name || "—"}{u.id === me && <span className="ml-2 text-xs font-normal text-zinc-400">you</span>}</p>
+                                    <p className="font-medium text-zinc-900"><Link href={userDetailPath(u.publicUserId)} className="hover:underline">{u.name || "—"}</Link>{u.id === me && <span className="ml-2 text-xs font-normal text-zinc-400">you</span>}</p>
                                     <p className="text-xs text-zinc-400">{u.email}</p>
                                 </td>
                                 <td className="px-3 py-3">

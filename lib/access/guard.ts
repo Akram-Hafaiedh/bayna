@@ -132,7 +132,7 @@ export async function requireShop(
     } else {
         const asked = req?.headers.get(SHOP_HEADER)?.trim()
         if (asked) {
-            const named = await prisma.shop.findUnique({ where: { publicId: asked }, select: { id: true } })
+            const named = await prisma.shop.findUnique({ where: { publicShopId: asked }, select: { id: true } })
             if (!named || !shopIds.includes(named.id)) return fail("Forbidden", 403)
             providerId = named.id
         } else {

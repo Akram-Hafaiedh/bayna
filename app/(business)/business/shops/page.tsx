@@ -27,7 +27,7 @@ async function ShopsContent() {
             where: { businessId: business.id, deletedAt: null },
             orderBy: [{ name: "asc" }, { id: "asc" }],
             select: {
-                id: true, publicId: true, name: true, city: true, governorate: true, status: true,
+                id: true, publicShopId: true, name: true, city: true, governorate: true, status: true,
                 description: true, phone: true, whatsapp: true, address: true, latitude: true, longitude: true,
                 _count: {
                     select: {
@@ -47,7 +47,7 @@ async function ShopsContent() {
         const required = setup.items.filter((i) => !i.optional).length
         return {
             id: s.id,
-            publicId: s.publicId,
+            publicShopId: s.publicShopId,
             name: s.name,
             city: s.city,
             governorate: s.governorate,

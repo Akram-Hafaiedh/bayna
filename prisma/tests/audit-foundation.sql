@@ -29,12 +29,12 @@ $$;
 -- ---------------------------------------------------------------------------
 SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test Admin","actorRole":"ADMIN","source":"WEB","requestId":"req-1","ip":"203.0.113.9","userAgent":"UA"}', true);
 
-INSERT INTO "User" (id, email, name, password, role, "updatedAt")
-VALUES ('audit_test_owner', 'owner@audit.test', 'Owner', 'secret-hash', 'PROVIDER', now());
+INSERT INTO "User" (id, "publicUserId", email, name, password, role, "updatedAt")
+VALUES ('audit_test_owner', 'audit_test_owner_public', 'owner@audit.test', 'Owner', 'secret-hash', 'PROVIDER', now());
 INSERT INTO "Category" (id, name, slug, "updatedAt") VALUES ('audit_test_cat', 'Audit Cat', 'audit-cat', now());
-INSERT INTO "Business" (id, "publicId", name, "updatedAt")
+INSERT INTO "Business" (id, "publicBusinessId", name, "updatedAt")
 VALUES ('audit_test_biz', 'audit_test_biz_pub', 'Audit Business', now());
-INSERT INTO "Provider" (id, "publicId", "userId", "businessId", "businessName", city, "updatedAt")
+INSERT INTO "Provider" (id, "publicShopId", "userId", "businessId", "businessName", city, "updatedAt")
 VALUES ('audit_test_prov', 'audit_test_prov_pub', 'audit_test_owner', 'audit_test_biz', 'Audit Shop', 'Tunis', now());
 INSERT INTO "Product" (id, "providerId", name, price, images, "updatedAt")
 VALUES ('audit_test_p1', 'audit_test_prov', 'P1', 12.500, '{}', now()),

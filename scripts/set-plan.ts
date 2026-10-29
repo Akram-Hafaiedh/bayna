@@ -21,7 +21,7 @@ async function main() {
     if (!args.ok) throw new Error(args.error)
     const { businessPublicId, planKey, trialDays, months, note } = args.value
 
-    const business = await prisma.business.findFirst({ where: { publicId: businessPublicId, deletedAt: null }, select: { id: true, name: true } })
+    const business = await prisma.business.findFirst({ where: { publicBusinessId: businessPublicId, deletedAt: null }, select: { id: true, name: true } })
     if (!business) throw new Error(`No business with public id ${businessPublicId}`)
     const plan = await prisma.plan.findUnique({ where: { key: planKey }, select: { id: true, name: true } })
     if (!plan) throw new Error(`No plan ${planKey}. Run "npm run seed plans" first.`)

@@ -37,7 +37,7 @@ export function useShopActions() {
     const confirm = useConfirm()
     const [busy, setBusy] = useState<string | null>(null)
 
-    async function open(shop: { id: string; publicId: string; name: string }) {
+    async function open(shop: { id: string; publicShopId: string; name: string }) {
         setBusy(shop.id)
         try {
             const res = await fetch("/api/me/active-shop", {
@@ -51,7 +51,7 @@ export function useShopActions() {
                 return
             }
             toast.success(`Now working in ${shop.name}`)
-            router.push(shopPath(shop.publicId, "dashboard"))
+            router.push(shopPath(shop.publicShopId, "dashboard"))
             router.refresh()
         } catch {
             toast.error("Something went wrong")
@@ -60,7 +60,7 @@ export function useShopActions() {
         }
     }
 
-    async function move(shop: { id: string; publicId: string; name: string }, action: "submit" | "close" | "reopen") {
+    async function move(shop: { id: string; publicShopId: string; name: string }, action: "submit" | "close" | "reopen") {
         const copy = COPY[action]!
         const ok = await confirm({
             title: copy.title(shop.name),
@@ -71,7 +71,7 @@ export function useShopActions() {
         if (!ok) return
         setBusy(shop.id)
         try {
-            const res = await fetch(`/api/business/shops/${shop.publicId}/status`, {
+            const res = await fetch(`/api/business/shops/${shop.publicShopId}/status`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action }),

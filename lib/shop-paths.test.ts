@@ -11,9 +11,9 @@ test("shopPath builds the address of a shop page", () => {
 })
 
 test("parseShopPath finds the shop and the section", () => {
-    assert.deepEqual(parseShopPath("/shop/abc/products/new"), { publicId: "abc", section: "products/new" })
-    assert.deepEqual(parseShopPath("/shop/abc"), { publicId: "abc", section: "" })
-    assert.deepEqual(parseShopPath("/shop/abc/team/"), { publicId: "abc", section: "team" })
+    assert.deepEqual(parseShopPath("/shop/abc/products/new"), { publicShopId: "abc", section: "products/new" })
+    assert.deepEqual(parseShopPath("/shop/abc"), { publicShopId: "abc", section: "" })
+    assert.deepEqual(parseShopPath("/shop/abc/team/"), { publicShopId: "abc", section: "team" })
 })
 
 test("parseShopPath ignores everything that is not a shop page", () => {

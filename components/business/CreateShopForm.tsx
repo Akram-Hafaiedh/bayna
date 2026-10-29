@@ -20,7 +20,7 @@ export default function CreateShopForm({ businessId }: { businessId: string }) {
         const json = await res.json().catch(() => ({}))
         if (!res.ok) return json.error || "Could not create the shop"
         toast.success("Shop created", { description: "It goes live once an administrator approves it." })
-        router.push(json.publicId ? `/business/shops/${json.publicId}` : "/business/shops")
+        router.push(json.publicShopId ? `/business/shops/${json.publicShopId}` : "/business/shops")
         router.refresh()
         return null
     }

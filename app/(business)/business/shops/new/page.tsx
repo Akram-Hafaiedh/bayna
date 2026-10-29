@@ -25,7 +25,7 @@ async function NewShopContent() {
         // One application at a time (the same rule as the application route)
         prisma.shop.findFirst({
             where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
-            select: { name: true, publicId: true, businessId: true },
+            select: { name: true, publicShopId: true, businessId: true },
         }),
     ])
 
@@ -59,7 +59,7 @@ async function NewShopContent() {
                 <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     You already have a shop waiting for approval: <span className="font-medium">{waiting.name}</span>. You can add another once an administrator has decided.
                     {waiting.businessId === business.id && (
-                        <> <Link href={`/business/shops/${waiting.publicId}`} className="underline underline-offset-2">Open it</Link> to keep filling in its details.</>
+                        <> <Link href={`/business/shops/${waiting.publicShopId}`} className="underline underline-offset-2">Open it</Link> to keep filling in its details.</>
                     )}
                 </div>
             </>

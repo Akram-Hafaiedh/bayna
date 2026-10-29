@@ -7,9 +7,9 @@
 import Link from "next/link"
 import { useSelectedLayoutSegment } from "next/navigation"
 
-export default function ShopTabs({ publicId, live }: { publicId: string; live: boolean }) {
+export default function ShopTabs({ publicShopId, live }: { publicShopId: string; live: boolean }) {
     const segment = useSelectedLayoutSegment() // null = the details page, otherwise the folder name
-    const base = `/business/shops/${publicId}`
+    const base = `/business/shops/${publicShopId}`
     const tabs = [
         { key: "details", label: "Details", href: base, active: segment === null },
         ...(live

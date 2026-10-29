@@ -11,13 +11,13 @@ const req = (shopPublicId?: string) =>
     new Request("http://localhost/api/test", { headers: shopPublicId ? { [SHOP_HEADER]: shopPublicId } : {} })
 
 const shopId: Record<"tunis" | "marsa" | "sfax", string> = { tunis: "", marsa: "", sfax: "" }
-const publicId: Record<"tunis" | "marsa" | "sfax", string> = { tunis: "", marsa: "", sfax: "" }
+const publicShopId: Record<"tunis" | "marsa" | "sfax", string> = { tunis: "", marsa: "", sfax: "" }
 
 beforeAll(async () => {
     for (const key of ["tunis", "marsa", "sfax"] as const) {
-        const shop = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES[key] }, select: { id: true, publicId: true } })
+        const shop = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES[key] }, select: { id: true, publicShopId: true } })
         shopId[key] = shop.id
-        publicId[key] = shop.publicId
+        publicShopId[key] = shop.publicShopId
     }
 })
 
@@ -72,12 +72,12 @@ describe("requirePlatform", () => {
 describe("requireShop", () => {
     test("nobody signed in: 401", async () => {
         signOut()
-        expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({ ok: false, status: 401 })
+        expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({ ok: false, status: 401 })
     })
 
     test("a viewer can read products but cannot create, edit or change prices", async () => {
         await signInAs(demo("viewer"))
-        const r = req(publicId.tunis)
+        const r = req(publicShopId.tunis)
         expect(await requireShop("product.listing.view", r)).toMatchObject({ ok: true })
         expect(await requireShop("product.listing.create", r)).toMatchObject({ ok: false, status: 403 })
         expect(await requireShop("product.listing.edit", r)).toMatchObject({ ok: false, status: 403 })
@@ -86,16 +86,16 @@ describe("requireShop", () => {
 
     test("a viewer of two shops works in the one the header names", async () => {
         await signInAs(demo("viewer"))
-        const a = await requireShop("product.listing.view", req(publicId.tunis))
-        const b = await requireShop("product.listing.view", req(publicId.marsa))
+        const a = await requireShop("product.listing.view", req(publicShopId.tunis))
+        const b = await requireShop("product.listing.view", req(publicShopId.marsa))
         expect(a).toMatchObject({ ok: true, provider: { id: shopId.tunis } })
         expect(b).toMatchObject({ ok: true, provider: { id: shopId.marsa } })
     })
 
     test("naming a shop you do not work in is refused, even if you work in another one", async () => {
         await signInAs(demo("manager-tunis"))
-        expect(await requireShop("product.listing.view", req(publicId.marsa))).toMatchObject({ ok: false, status: 403 })
-        expect(await requireShop("product.listing.view", req(publicId.sfax))).toMatchObject({ ok: false, status: 403 })
+        expect(await requireShop("product.listing.view", req(publicShopId.marsa))).toMatchObject({ ok: false, status: 403 })
+        expect(await requireShop("product.listing.view", req(publicShopId.sfax))).toMatchObject({ ok: false, status: 403 })
         expect(await requireShop("product.listing.view", req("not-a-real-shop-id"))).toMatchObject({ ok: false, status: 403 })
     })
 
@@ -106,22 +106,22 @@ describe("requireShop", () => {
 
     test("a business-level role reaches every shop of its business", async () => {
         await signInAs(demo("operations"))
-        expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({ ok: true })
-        expect(await requireShop("product.listing.view", req(publicId.marsa))).toMatchObject({ ok: true })
+        expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({ ok: true })
+        expect(await requireShop("product.listing.view", req(publicShopId.marsa))).toMatchObject({ ok: true })
         // ...but not the shops of another business
-        expect(await requireShop("product.listing.view", req(publicId.sfax))).toMatchObject({ ok: false, status: 403 })
+        expect(await requireShop("product.listing.view", req(publicShopId.sfax))).toMatchObject({ ok: false, status: 403 })
     })
 
     test("a role that was suspended or has expired gives no access", async () => {
         await signInAs(demo("suspended"))
-        expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({ ok: false, status: 403 })
+        expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({ ok: false, status: 403 })
         await signInAs(demo("expired"))
-        expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({ ok: false, status: 403 })
+        expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({ ok: false, status: 403 })
     })
 
     test("an order handler works with orders but not with products", async () => {
         await signInAs(demo("orders"))
-        const r = req(publicId.tunis)
+        const r = req(publicShopId.tunis)
         expect(await requireShop("order.request.view_all", r)).toMatchObject({ ok: true })
         expect(await requireShop("product.listing.edit", r)).toMatchObject({ ok: false, status: 403 })
     })
@@ -130,7 +130,7 @@ describe("requireShop", () => {
         await prisma.shop.update({ where: { id: shopId.tunis }, data: { status: "CLOSED" } })
         try {
             await signInAs(demo("manager-tunis"))
-            expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({
+            expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({
                 ok: false, status: 403, error: "This shop is closed or suspended",
             })
         } finally {
@@ -159,7 +159,7 @@ describe("requireShop", () => {
         await prisma.user.update({ where: { id: target.id }, data: { status: "SUSPENDED" } })
         try {
             await signInAs(demo("manager-tunis"))
-            expect(await requireShop("product.listing.view", req(publicId.tunis))).toMatchObject({
+            expect(await requireShop("product.listing.view", req(publicShopId.tunis))).toMatchObject({
                 ok: false, status: 403, error: "Your account is suspended",
             })
         } finally {

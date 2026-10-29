@@ -7,6 +7,7 @@ import { USER_STATUSES, type UserStatusValue } from "./user-status"
 
 export type UserRow = {
     id: string
+    publicUserId: string
     email: string
     name: string | null
     phone: string | null

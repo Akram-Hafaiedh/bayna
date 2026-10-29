@@ -6,7 +6,7 @@ import { lastShopPath, shopPath } from "@/lib/shop-paths"
 
 /** shopHref("team") is "/shop/<this shop>/team". Outside a shop page it points at the landing instead. */
 export function useShopHref(): (section?: string) => string {
-    const params = useParams<{ publicId?: string }>()
-    const publicId = typeof params?.publicId === "string" ? params.publicId : null
-    return (section = "dashboard") => (publicId ? shopPath(publicId, section) : lastShopPath(section))
+    const params = useParams<{ publicShopId?: string }>()
+    const publicShopId = typeof params?.publicShopId === "string" ? params.publicShopId : null
+    return (section = "dashboard") => (publicShopId ? shopPath(publicShopId, section) : lastShopPath(section))
 }

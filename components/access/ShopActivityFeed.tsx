@@ -17,7 +17,7 @@ export default async function ShopActivityFeed({
     searchParams,
 }: {
     shopId: string
-    /** the shop's address, "/shop/<publicId>", so rows can link to what they are about */
+    /** the shop's address, "/shop/<publicShopId>", so rows can link to what they are about */
     shopBase: string
     /** this list's own address, for the filter and paging links */
     listPath: string

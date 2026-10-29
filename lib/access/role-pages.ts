@@ -138,15 +138,15 @@ export type ShopRolesContext =
     | {
         ready: true
         access: Access
-        shop: { id: string; name: string; /** the shop's address, "/shop/<publicId>" */ base: string }
+        shop: { id: string; name: string; /** the shop's address, "/shop/<publicShopId>" */ base: string }
         /** the shop's own roles first, then (when this person may look at them) the business's */
         owners: OwnerOption[]
         via: ViaShop
     }
 
 /** Everything the shop-area role pages need: the active shop, who this is, and the places that own roles. */
-export async function loadShopRolesContext(publicId: string): Promise<ShopRolesContext> {
-    const shop = await requireShopPage(publicId)
+export async function loadShopRolesContext(publicShopId: string): Promise<ShopRolesContext> {
+    const shop = await requireShopPage(publicShopId)
     const session = await auth()
     const access = session?.user?.id ? await loadAccess(session.user.id) : null
     if (shop?.status !== "ACTIVE" || !access) return { ready: false, reason: "not-approved" }
@@ -160,7 +160,7 @@ export async function loadShopRolesContext(publicId: string): Promise<ShopRolesC
     const shopOpt = shopOwner(access, { id: shop.id, name: found?.name ?? shop.name }, business?.id ?? null)
     const owners = [shopOpt, ...(business ? [businessOwner(access, business, via)] : [])]
     if (!owners.some((o) => o.canView)) return { ready: false, reason: "no-access" }
-    return { ready: true, access, shop: { id: shop.id, name: found?.name ?? shop.name, base: shopPath(shop.publicId, "") }, owners, via }
+    return { ready: true, access, shop: { id: shop.id, name: found?.name ?? shop.name, base: shopPath(shop.publicShopId, "") }, owners, via }
 }
 
 /** Everything the Business-area role pages need: the business, who this is, and the business plus each of its shops as owners. */

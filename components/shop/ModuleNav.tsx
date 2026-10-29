@@ -28,14 +28,14 @@ export const SHOP_MODULES: Module[] = [
 
 export default function ModuleNav() {
     const pathname = usePathname()
-    const params = useParams<{ publicId?: string }>()
-    const publicId = typeof params?.publicId === "string" ? params.publicId : null
+    const params = useParams<{ publicShopId?: string }>()
+    const publicShopId = typeof params?.publicShopId === "string" ? params.publicShopId : null
     return (
         <nav aria-label="Shop modules" className="flex items-center gap-0.5">
             {SHOP_MODULES.map((m) => {
                 // Inside a shop the icons stay in that shop; elsewhere they open the shop you used last
-                const href = publicId ? shopPath(publicId, m.href) : lastShopPath(m.href)
-                const active = publicId ? isActiveLink(pathname, href) : false
+                const href = publicShopId ? shopPath(publicShopId, m.href) : lastShopPath(m.href)
+                const active = publicShopId ? isActiveLink(pathname, href) : false
                 return (
                     <Link
                         key={m.href}

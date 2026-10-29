@@ -23,7 +23,7 @@ export default function ShopActionsMenu({
     moves: Move[]
 }) {
     const { busy, open, move } = useShopActions()
-    const shop = { id: shopId, publicId: shopPublicId, name: shopName }
+    const shop = { id: shopId, publicShopId: shopPublicId, name: shopName }
     const items: RowMenuItem[] = [
         ...(canOpen ? [{ label: "Open shop", onClick: () => void open(shop) }] : []),
         ...moves.map((m) => ({ label: LABEL[m], onClick: () => void move(shop, m), danger: m === "close" })),

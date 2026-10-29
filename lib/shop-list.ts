@@ -4,7 +4,7 @@ import type { ShopStatusValue } from "./shop-status"
 
 export type ShopRow = {
     id: string
-    publicId: string
+    publicShopId: string
     name: string
     city: string
     governorate: string | null

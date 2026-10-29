@@ -77,6 +77,8 @@ enum InviteStatus {
 
 model User {
   id                String    @id @default(cuid())
+  // Opaque id for URLs (/admin/users/[publicUserId]), like Shop.publicShopId, so an address never shows the real id.
+  publicUserId      String    @unique @default(cuid())
   email             String    @unique
   name              String?
   phone             String?
@@ -88,19 +90,19 @@ model User {
 
   // Account state and preferences, added now so User does not change again.
   // status is not enforced yet; the permission guard will refuse non-ACTIVE users.
-  status          UserStatus @default(ACTIVE)
-  suspendedReason String?
-  lastLoginAt     DateTime?
+  status              UserStatus @default(ACTIVE)
+  suspendedReason     String?
+  lastLoginAt         DateTime?
   // Set when the person asked to delete their account (status PENDING_DELETION); the account is anonymised
   // GRACE_DAYS later (lib/account-deletion.ts) unless they sign in before that, which cancels it.
   deletionRequestedAt DateTime?
   // The Terms and Privacy policy accepted at sign-up: when, and which version (LEGAL_VERSION in lib/site.ts).
   // Empty for accounts created before the acceptance existed.
-  termsAcceptedAt DateTime?
-  termsVersion    String?
-  locale          String?
-  timezone        String?
-  preferences     Json?
+  termsAcceptedAt     DateTime?
+  termsVersion        String?
+  locale              String?
+  timezone            String?
+  preferences         Json?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -125,12 +127,12 @@ model User {
 // One outlet: what customers see, find and buy from. It always belongs to one Business (the company).
 // The table keeps its old name "Provider" (@@map), so no data moves.
 model Shop {
-  id       String @id @default(cuid())
-  // Opaque id for URLs (for example /shop/[publicId]); never guessable, unlike a counter.
-  publicId String @unique @default(cuid())
+  id           String @id @default(cuid())
+  // Opaque id for URLs (for example /shop/[publicShopId]); never guessable, unlike a counter.
+  publicShopId String @unique @default(cuid())
   // The applicant. Who works in the shop, and as what, is AccessAssignment (the applicant becomes OWNER on approval).
-  userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // The name of the shop itself, not of the company (that is Business.name). Column keeps its old name.
   name           String          @map("businessName")
@@ -185,16 +187,16 @@ enum ShopStatus {
 // assignments, which apply to every shop) and, later, its plan. Address, map pin, hours, stock and
 // orders belong to the shop.
 model Business {
-  id             String  @id @default(cuid())
-  // Opaque id for URLs, like Shop.publicId
-  publicId       String  @unique @default(cuid())
-  name           String // trade name, shown to staff
-  legalName      String? // official company name
-  taxId          String? // matricule fiscal
-  registryNumber String? // trade registry number (RNE)
-  billingEmail   String?
-  billingPhone   String?
-  billingAddress String?
+  id               String  @id @default(cuid())
+  // Opaque id for URLs, like Shop.publicShopId
+  publicBusinessId String  @unique @default(cuid())
+  name             String // trade name, shown to staff
+  legalName        String? // official company name
+  taxId            String? // matricule fiscal
+  registryNumber   String? // trade registry number (RNE)
+  billingEmail     String?
+  billingPhone     String?
+  billingAddress   String?
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -698,19 +700,19 @@ enum ContactStatus {
 }
 
 model ContactMessage {
-  id        String        @id @default(cuid())
-  name      String
-  email     String
-  topic     ContactTopic
-  message   String
-  status    ContactStatus @default(NEW)
+  id          String        @id @default(cuid())
+  name        String
+  email       String
+  topic       ContactTopic
+  message     String
+  status      ContactStatus @default(NEW)
   // Set when the sender was signed in
-  userId    String?
-  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
   // Kept to limit abuse (a few messages per hour); not shown outside the admin area
-  ip        String?
-  userAgent String?
-  handledAt DateTime?
+  ip          String?
+  userAgent   String?
+  handledAt   DateTime?
   handledById String?
 
   createdAt   DateTime @default(now())

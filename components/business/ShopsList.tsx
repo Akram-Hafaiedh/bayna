@@ -31,9 +31,9 @@ export default function ShopsList({ shops, canChangeStatus }: { shops: ShopRow[]
     }
 
     function menuFor(s: ShopRow): RowMenuItem[] {
-        const items: RowMenuItem[] = [{ label: "Edit", href: `/business/shops/${s.publicId}` }]
+        const items: RowMenuItem[] = [{ label: "Edit", href: `/business/shops/${s.publicShopId}` }]
         // Teams are managed for live shops, from the Business area
-        if (s.status === "ACTIVE") items.push({ label: "Team", href: `/business/shops/${s.publicId}/team` })
+        if (s.status === "ACTIVE") items.push({ label: "Team", href: `/business/shops/${s.publicShopId}/team` })
         if (s.openable) items.push({ label: "Open shop", onClick: () => void open(s) })
         if (canChangeStatus) {
             if (s.status === "DRAFT") items.push({ label: "Send for approval", onClick: () => void move(s, "submit") })
@@ -94,7 +94,7 @@ export default function ShopsList({ shops, canChangeStatus }: { shops: ShopRow[]
                             return (
                                 <tr key={s.id} className="align-middle">
                                     <td className="px-4 py-3">
-                                        <Link href={`/business/shops/${s.publicId}`} className="block max-w-[18rem] truncate font-medium text-zinc-900 hover:underline">
+                                        <Link href={`/business/shops/${s.publicShopId}`} className="block max-w-[18rem] truncate font-medium text-zinc-900 hover:underline">
                                             {s.name}
                                         </Link>
                                         <p className="text-xs text-zinc-500">{[s.city, s.governorate].filter(Boolean).join(", ")}</p>

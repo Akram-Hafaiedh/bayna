@@ -70,7 +70,7 @@ app/
 ├── (public)/            # Landing, search, product pages
 ├── (account)/           # Profile, Become a Provider
 ├── (client)/            # CLIENT dashboard (/dashboard)
-├── (shop)/              # shop area (/shop/[publicId]/...)
+├── (shop)/              # shop area (/shop/[publicShopId]/...)
 ├── (admin)/             # ADMIN dashboard (/admin/...)
 ├── api/                 # API routes
 └── generated/           # Prisma client

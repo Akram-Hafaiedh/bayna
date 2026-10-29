@@ -8,6 +8,6 @@ export function shopFetch(input: string, init: RequestInit = {}): Promise<Respon
     const shop = typeof window === "undefined" ? null : parseShopPath(window.location.pathname)
     if (!shop) return fetch(input, init)
     const headers = new Headers(init.headers)
-    headers.set(SHOP_HEADER, shop.publicId)
+    headers.set(SHOP_HEADER, shop.publicShopId)
     return fetch(input, { ...init, headers })
 }

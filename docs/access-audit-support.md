@@ -433,7 +433,7 @@ audit columns from the start.
 
 | Piece | Detail |
 |---|---|
-| Page | `/shop/<publicId>/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
+| Page | `/shop/<publicShopId>/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
 | API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/provider-input.ts` in the style of `lib/product-input.ts` |
 | Pending applicants | `PATCH` and `DELETE` on `/api/shop/apply` to edit or withdraw while pending, plus the matching UI in `/become-provider` |
 | Fields | businessName, description, phone, address, city, governorate, latitude, longitude, plus new columns `whatsapp`, `locationSource`, `needsReview` |

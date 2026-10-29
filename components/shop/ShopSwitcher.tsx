@@ -68,7 +68,7 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
             // The address decides the shop; the cookie above only remembers it as "the one I used last".
             const here = parseShopPath(window.location.pathname)
             const section = here?.section.split("/")[0] || "dashboard"
-            router.push(shopPath(shop.publicId, section))
+            router.push(shopPath(shop.publicShopId, section))
         } catch {
             toast.error("Something went wrong", { description: "The shop was not switched." })
         } finally {

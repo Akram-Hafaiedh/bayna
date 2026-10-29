@@ -52,7 +52,7 @@ export default function ProductsTable({
     canEditStock,
     shopBase,
 }: {
-    /** the shop's address, "/shop/<publicId>" */
+    /** the shop's address, "/shop/<publicShopId>" */
     shopBase: string
     items: ProductRow[]
     filters: ProductFilters

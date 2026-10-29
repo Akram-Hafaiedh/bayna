@@ -53,6 +53,7 @@ export function kindFilter(kind: ActivityKind): Record<string, unknown> {
 }
 
 const ENTITY: Record<string, string> = {
+    User: "the account",
     Product: "a product",
     Provider: "the shop profile",
     Business: "the business details",
@@ -89,7 +90,7 @@ function readChanges(raw: unknown): Change[] {
 }
 
 /**
- * One readable line for an activity row. `shopBase` is the shop's address ("/shop/<publicId>") when the line is
+ * One readable line for an activity row. `shopBase` is the shop's address ("/shop/<publicShopId>") when the line is
  * shown inside that shop; the links to its pages need it. Without it (the Business page lists several
  * shops) those links are left out.
  */
