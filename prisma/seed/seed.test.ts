@@ -2,7 +2,7 @@
 // Checks the seed data (it lives in the seeder files) and the run plan without a database. Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { templatesFor } from "../../lib/access/role-templates"
+import { templatesFor } from "@/lib/access/role-templates"
 import { COMPANIES } from "./seeders/businesses"
 import { ROOTS } from "./seeders/catalogue"
 import { SHOPS } from "./seeders/shops"

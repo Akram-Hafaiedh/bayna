@@ -263,7 +263,7 @@ Tests (all run, see the verification note in `TODO.md`):
 - `prisma/tests/audit-foundation.sql`: 36 checks on a real database (stamping, exact diffs, no-op
   updates, `updateMany`, redaction, soft delete, cascades, append-only guard, UTC timestamps, a
   malformed context, and that every table has the columns and triggers). Rolls back; leaves no data.
-- `lib/audit/actor.test.ts`: unit tests, including one that checks the JSON keys the app writes are
+- `tests/unit/audit/actor.test.ts`: unit tests, including one that checks the JSON keys the app writes are
   the keys the trigger reads.
 - `scripts/check-audit-schema.ts`: fails when a model in `schema.prisma` lacks the four columns.
 
