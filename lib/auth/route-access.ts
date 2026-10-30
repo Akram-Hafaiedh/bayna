@@ -1,4 +1,4 @@
-// lib/route-access.ts
+// lib/auth/route-access.ts
 // Which pages a signed-in person may open, by the dashboard they belong to (User.role). Pure (unit tested); proxy.ts
 // asks it for every page request. It is only the first gate: pages and routes still check permissions on the server.
 // The proxy cannot read the database, so it works from the role in the sign-in cookie.

@@ -1,4 +1,4 @@
-// lib/reset-token.ts
+// lib/auth/reset-token.ts
 // The secret in a password reset link. Only its hash is stored in `PasswordResetToken.token`, like the
 // secret of an invite link, so a copy of the database cannot be used to take over an account.
 // Pure apart from the random generator (unit tested).

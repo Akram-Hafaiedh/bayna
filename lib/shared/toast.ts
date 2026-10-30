@@ -1,4 +1,4 @@
-// lib/toast.ts
+// lib/sharedtoast.ts
 // The pure part of the toast system (queue rules and timing). The UI lives in components/ui/Toast.tsx.
 
 export type ToastTone = "success" | "error" | "info"

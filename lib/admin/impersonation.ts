@@ -1,6 +1,6 @@
-// lib/impersonation.ts
+// lib/admin/impersonation.ts
 // "View as": a platform staff member sees the app as another person. Pure (unit tested). The database side is
-// lib/impersonation-session.ts; the routes are /api/admin/impersonation/start and /end.
+// lib/admin/impersonation-session.ts; the routes are /api/admin/impersonation/start and /end.
 //
 //   - Read-only for now: while a session is open every request that could change something is refused, in the
 //     proxy (the method check below), in the guards and in withAudit. Write mode is reserved, not built.

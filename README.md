@@ -76,9 +76,25 @@ app/
 └── generated/           # Prisma client
 
 components/
-lib/
-  ├── prisma.ts
-  └── session.ts         # getCurrentUser, requireAuth, requireRole
+lib/                     # grouped by domain; the folder says where a rule lives
+  ├── prisma.ts          # the database client
+  ├── access/            # permissions, roles, teams, guards (requirePlatform / requireShop / requireBusiness)
+  ├── audit/             # who did what: actor, withAudit, activity log formatting
+  ├── auth/              # sign-in rules, session (getCurrentUser, requireRole), route access, reset tokens
+  ├── admin/             # staff, user detail, view-as (impersonation)
+  ├── users/             # account status, deletion and erasure, user list and detail
+  ├── shops/             # shop input, status, list, paths, products
+  ├── businesses/        # business (company) input and choice
+  ├── products/          # product input, status, filters, restore, price review
+  ├── catalogue/         # catalogue and category input, units
+  ├── plans/             # plans, limits, assignment, prices
+  ├── notifications/     # notify() and the notification kinds
+  ├── contact/           # the contact form
+  ├── rate-limit/        # the rate limiter
+  └── shared/            # parsing, geo, slug, time-ago, site facts, legal text, toast
+tests/
+  ├── unit/              # fast tests, mirror the folders of lib/ (npm run test:unit)
+  └── api/               # tests with a real database (npm run test:api)
 proxy.ts                 # Route protection (auth + role gates)
 prisma/
   ├── schema.prisma

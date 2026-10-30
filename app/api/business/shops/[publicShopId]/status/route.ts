@@ -1,5 +1,5 @@
 // app/api/business/shops/[publicShopId]/status/route.ts
-// POST { action: "submit" | "close" | "reopen" }: the owners' moves in a shop's life (see lib/shop-status.ts).
+// POST { action: "submit" | "close" | "reopen" }: the owners' moves in a shop's life (see lib/shops/shop-status.ts).
 // Approving, suspending and reinstating belong to the platform team (/api/admin/shops/[id]/...).
 // Needs business.shop.change_status in the shop's business. Written to the activity log by withAudit.
 import { NextResponse } from "next/server"

@@ -33,7 +33,7 @@ type SessionLike =
             email?: string | null
             role?: string | null
         } | null
-        /** Set by auth.ts while a platform staff member is viewing as `user` (lib/impersonation.ts). */
+        /** Set by auth.ts while a platform staff member is viewing as `user` (lib/admin/impersonation.ts). */
         impersonation?: { id: string; mode: string; adminId: string; adminName: string } | null
     }
     | null

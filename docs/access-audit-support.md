@@ -434,10 +434,10 @@ audit columns from the start.
 | Piece | Detail |
 |---|---|
 | Page | `/shop/<publicShopId>/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
-| API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/shop-input.ts` in the style of `lib/product-input.ts` |
+| API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/shops/shop-input.ts` in the style of `lib/products/product-input.ts` |
 | Pending applicants | `PATCH` and `DELETE` on `/api/shop/apply` to edit or withdraw while pending, plus the matching UI in `/become-shop` |
 | Fields | businessName, description, phone, address, city, governorate, latitude, longitude, plus new columns `whatsapp`, `locationSource`, `needsReview` |
-| Location | Decided 16 Oct 2026: the shop sets his own location with a map pin (click or drag), starting from the governorate centre or an address search. `locationSource` (LOOKUP, PIN, GEOCODED) records how it was set, so a pin the shop placed is trusted over a guess. The 24 governorates are a TypeScript constant (`lib/governorates.ts`, not a database table) with coordinates from a cited source. A pin must lie inside Tunisia and within 250 km of its governorate centre; shops saved before the map existed (coordinates, no `locationSource`) are shown as IMPORTED. The same map component later shows all shops on the public pages (Phase 4) |
+| Location | Decided 16 Oct 2026: the shop sets his own location with a map pin (click or drag), starting from the governorate centre or an address search. `locationSource` (LOOKUP, PIN, GEOCODED) records how it was set, so a pin the shop placed is trusted over a guess. The 24 governorates are a TypeScript constant (`lib/shared/governorates.ts`, not a database table) with coordinates from a cited source. A pin must lie inside Tunisia and within 250 km of its governorate centre; shops saved before the map existed (coordinates, no `locationSource`) are shown as IMPORTED. The same map component later shows all shops on the public pages (Phase 4) |
 | Audit | Uses the Phase 7 audit columns and `ActivityLog`; writes a before / after entry in the same transaction |
 | Guard | `requirePermission("shop.profile.edit")` |
 
@@ -467,4 +467,4 @@ per shop. They stay in 3a "optional later" and 3e.
 ### 5.5 Tests
 
 Unit tests run on Vitest (adopted 16 Oct 2026, replacing Node's built-in runner): `npm run test:unit`.
-This task adds unit tests for `lib/shop-input.ts` and the governorate lookup.
+This task adds unit tests for `lib/shops/shop-input.ts` and the governorate lookup.

@@ -1,5 +1,5 @@
 // scripts/purge-accounts.ts
-// Anonymises the accounts whose 14-day deletion grace period is over (see lib/account-erasure.ts).
+// Anonymises the accounts whose 14-day deletion grace period is over (see lib/users/account-erasure.ts).
 // Safe to run as often as you like. Put it on a daily schedule once there is somewhere to run one.
 //
 //   npm run db:purge-accounts

@@ -1,4 +1,4 @@
-// lib/admin-impersonation.ts
+// lib/admin/admin-impersonation.ts
 // Reads one page of "View as" sessions for the admin list (Server Components only).
 import { prisma } from "@/lib/prisma"
 import { sessionWhere, type SessionQuery } from "@/lib/admin/impersonation-list"

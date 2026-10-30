@@ -1,4 +1,4 @@
-// lib/product-restore.ts
+// lib/products/product-restore.ts
 // What has to change when a product comes back from the trash. Pure (unit tested).
 //
 // A trashed product keeps its price and stock. But the shared catalogue may have moved on while it

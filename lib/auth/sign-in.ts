@@ -1,4 +1,4 @@
-// lib/sign-in.ts
+// lib/auth/sign-in.ts
 // The rules for signing in with an email and a password (the Credentials provider in auth.ts calls this). Kept out of
 // auth.ts so the tests can call it directly. Server only.
 //
@@ -18,7 +18,7 @@ import { notify, notifications } from "@/lib/notifications"
 import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"
 import type { Role } from "@/app/generated/prisma/enums"
 
-/** A sign-in refused on purpose. `code` is what the login page turns into a message (lib/user-status.ts, lib/rate-limit). */
+/** A sign-in refused on purpose. `code` is what the login page turns into a message (lib/users/user-status.ts, lib/rate-limit). */
 export class SignInRefused extends Error {
     constructor(public readonly code: string) {
         super(code)

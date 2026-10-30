@@ -1,4 +1,4 @@
-// lib/shop-status.ts
+// lib/shops/shop-status.ts
 // The life of a shop. Pure (unit tested); the routes and pages ask this file what is allowed.
 //
 //   DRAFT      started, not sent for approval yet

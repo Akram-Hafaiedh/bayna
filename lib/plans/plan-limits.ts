@@ -1,5 +1,5 @@
-// lib/plan-limits.ts
-// The database side of plans (the rules are in lib/plans.ts): which plan a business is on, how much of
+// lib/plans/plan-limits.ts
+// The database side of plans (the rules are in lib/plans/plans.ts): which plan a business is on, how much of
 // each limit it has used, and the one helper every feature with a limit calls.
 //
 //   const blocked = await limitBlock(businessId, "products")

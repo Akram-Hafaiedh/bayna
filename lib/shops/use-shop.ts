@@ -1,5 +1,5 @@
 "use client"
-// lib/use-shop.ts
+// lib/shops/use-shop.ts
 // For client components on the shop pages: the address of a page of the shop you are on.
 import { useParams } from "next/navigation"
 import { lastShopPath, shopPath } from "@/lib/shops/shop-paths"

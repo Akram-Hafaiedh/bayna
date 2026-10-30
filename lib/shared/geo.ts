@@ -1,4 +1,4 @@
-// lib/geo.ts
+// lib/shared/geo.ts
 // Small geography helpers. Pure and dependency-free. Also used by the price comparison and travel
 // cost features (Phase 4).
 

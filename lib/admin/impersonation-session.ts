@@ -1,5 +1,5 @@
-// lib/impersonation-session.ts
-// The database side of "view as" (rules and wording: lib/impersonation.ts). Server only.
+// lib/admin/impersonation-session.ts
+// The database side of "view as" (rules and wording: lib/admin/impersonation.ts). Server only.
 import { prisma } from "@/lib/prisma"
 import type { ViewAs } from "@/lib/admin/impersonation"
 

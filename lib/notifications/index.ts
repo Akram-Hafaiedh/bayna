@@ -1,4 +1,4 @@
-// lib/notifications.ts
+// lib/notifications/index.ts
 // Create notifications. Call notify() with the transaction client from withAudit, so the
 // notification is saved with the event it reports and never exists for a change that was rolled back.
 //

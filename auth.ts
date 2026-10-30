@@ -30,7 +30,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials, request) {
-                // The rules live in lib/sign-in.ts (tested there); here a refusal becomes the code the login page reads
+                // The rules live in lib/auth/sign-in.ts (tested there); here a refusal becomes the code the login page reads
                 try {
                     return await authorizeCredentials(credentials, request)
                 } catch (e) {

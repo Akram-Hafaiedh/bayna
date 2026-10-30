@@ -1,4 +1,4 @@
-// lib/product-status.ts
+// lib/products/product-status.ts
 // The life of a product listing. Pure (unit tested); the routes and forms ask this file what is allowed.
 //
 //   DRAFT    not finished; only the shop sees it

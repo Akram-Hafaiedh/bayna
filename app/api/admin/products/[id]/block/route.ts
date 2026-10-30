@@ -1,5 +1,5 @@
 // app/api/admin/products/[id]/block/route.ts
-// The platform team blocks a product listing (see lib/product-status.ts). Needs product.listing.hide.
+// The platform team blocks a product listing (see lib/products/product-status.ts). Needs product.listing.hide.
 // A blocked product is out of sale and the shop cannot list it again; unblocking returns it as a draft.
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"

@@ -1,4 +1,4 @@
-// lib/shop-products.ts
+// lib/shops/shop-products.ts
 // Server-side querying for the shop's product list: search, filters, sort, pagination.
 // Used by the API route today and by the products page (Server Component) next.
 import type { Prisma } from "@/app/generated/prisma/client"

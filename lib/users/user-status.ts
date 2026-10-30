@@ -1,4 +1,4 @@
-// lib/user-status.ts
+// lib/users/user-status.ts
 // What the platform team may do to a user account. Pure (unit tested); the admin routes and the users
 // list both ask this file, so a button never shows for something the server would refuse.
 //

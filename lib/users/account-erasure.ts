@@ -1,4 +1,4 @@
-// lib/account-erasure.ts
+// lib/users/account-erasure.ts
 // Anonymises accounts whose grace period is over. Run by `npm run db:purge-accounts` (put it on a daily
 // schedule once there is a place to run one). Relative imports only, so the script can use it.
 //

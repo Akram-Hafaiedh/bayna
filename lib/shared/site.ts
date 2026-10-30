@@ -1,4 +1,4 @@
-// lib/site.ts
+// lib/shared/site.ts
 // Facts about the site that the public pages (Terms, Privacy, Contact) print. They come from environment
 // variables so the real company details are never typed into code; when one is missing the pages still
 // read correctly and point people to the Contact page.

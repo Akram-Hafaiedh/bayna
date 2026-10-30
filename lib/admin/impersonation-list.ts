@@ -1,6 +1,6 @@
-// lib/impersonation-list.ts
+// lib/admin/impersonation-list.ts
 // The "View as" sessions list of the admin area: reading the address, the open / ended rule, and the wording.
-// Pure (unit tested). The database read is lib/admin-impersonation.ts.
+// Pure (unit tested). The database read is lib/admin/admin-impersonation.ts.
 import type { Prisma } from "@/app/generated/prisma/client"
 
 export const SESSION_STATES = ["all", "open", "ended"] as const

@@ -1,4 +1,4 @@
-// lib/audit/actor.test.ts
+// tests/unit/audit/actor.test.ts
 // Run: npm run test:unit   (Vitest)
 import { test } from "vitest"
 import assert from "node:assert/strict"

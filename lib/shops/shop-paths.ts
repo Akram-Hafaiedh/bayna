@@ -1,4 +1,4 @@
-// lib/shop-paths.ts
+// lib/shops/shop-paths.ts
 // URLs of the shop area. A shop's pages live under /shop/[publicShopId]/..., so the address says which
 // shop you are working in (bookmarkable, and two tabs can show two shops). "/shop" alone is the
 // landing: it opens the shop you used last. Pure, no server code, so pages, components and tests can share it.

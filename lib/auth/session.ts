@@ -1,4 +1,4 @@
-// lib/session.ts
+// lib/auth/session.ts
 // Helper functions for authentication & authorization
 
 import { auth } from "@/auth"

@@ -1,4 +1,4 @@
-// vitest.config.ts
+// vitest.config.mts
 // Unit tests: tests/unit/**/*.test.ts (they mirror the folders of lib/) and prisma/seed/**/*.test.ts, run with `npm run test:unit` (once) or `npm run test:watch`.
 // Database checks are separate: `npm run test:audit-db`.
 import { defineConfig } from "vitest/config"

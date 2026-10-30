@@ -1,4 +1,4 @@
-// lib/admin-user-detail.ts
+// lib/admin/admin-user-detail.ts
 // Reads everything the admin user detail page shows (Server Components only). Read-only.
 import { prisma } from "@/lib/prisma"
 

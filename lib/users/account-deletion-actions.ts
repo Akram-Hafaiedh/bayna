@@ -1,4 +1,4 @@
-// lib/account-deletion-actions.ts
+// lib/users/account-deletion-actions.ts
 // The database side of deleting an account: what stops it (blockers). Server only. Imports are relative so the
 // purge script can use it too. The rules and wording are in account-deletion.ts.
 import type { Tx } from "../audit/run"

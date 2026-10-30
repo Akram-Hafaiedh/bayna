@@ -1,4 +1,4 @@
-// lib/activity-format.ts
+// lib/audit/activity-format.ts
 // Turns an ActivityLog row into a readable line for the shop activity page. Pure (unit tested).
 // Rows written by the audit triggers say "UPDATE Product [{ field, from, to }]"; rows written by
 // logActivity() with a note (team changes) already read like a sentence.

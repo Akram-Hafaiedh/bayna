@@ -1,4 +1,4 @@
-// lib/account-deletion.ts
+// lib/users/account-deletion.ts
 // Deleting your own account. Pure (unit tested); the database side is lib/account-deletion-actions.ts and
 // lib/account-erasure.ts.
 //

@@ -1,4 +1,4 @@
-// lib/access/active-business.test.ts
+// tests/unit/access/active-business.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

@@ -2,7 +2,7 @@
 // components/admin/UsersList.tsx
 // One page of the platform's accounts, with one "..." menu per row (suspend, reinstate, sign out everywhere,
 // force a password reset). The page loads the rows (search, filters and paging are in the address); what a menu
-// offers comes from lib/user-status.ts, and the routes check the permission and the rules again.
+// offers comes from lib/users/user-status.ts, and the routes check the permission and the rules again.
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -106,7 +106,7 @@ export default function UsersList({ users, me, canViewAs = false }: { users: Use
     }
 
     function menuFor(u: UserRow): RowMenuItem[] {
-        // Staff and accounts that are not active cannot be viewed as (the route says so too: lib/impersonation.ts)
+        // Staff and accounts that are not active cannot be viewed as (the route says so too: lib/admin/impersonation.ts)
         const viewAs: RowMenuItem[] = canViewAs && u.id !== me && u.status === "ACTIVE" && u.role !== "ADMIN"
             ? [{ label: "View as", onClick: () => setDialog({ kind: "viewas", user: u }) }]
             : []

@@ -1,4 +1,4 @@
-// lib/access/role-rules.test.ts
+// tests/unit/access/role-rules.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

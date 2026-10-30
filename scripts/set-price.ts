@@ -1,6 +1,6 @@
 // scripts/set-price.ts
 // Changes the prices of a plan (monthly, yearly or both). The change is written to the activity log.
-// The arguments are checked in lib/plan-price.ts.
+// The arguments are checked in lib/plans/plan-price.ts.
 //
 //   npm run db:set-price -- PRO --monthly 45 --yearly 450
 //   npm run db:set-price -- PRO --yearly 420

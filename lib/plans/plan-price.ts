@@ -1,4 +1,4 @@
-// lib/plan-price.ts
+// lib/plans/plan-price.ts
 // Changing a plan's prices (`npm run db:set-price`) until the admin area has a plans page. The arguments
 // are checked here (pure, unit tested); scripts/set-price.ts does the database part. A price change only
 // changes what is shown and charged from now on; it does not touch the plan's limits.

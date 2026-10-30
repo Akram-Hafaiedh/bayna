@@ -1,6 +1,6 @@
-// lib/plans.ts
+// lib/plans/plans.ts
 // Plans and limits: what a business gets and where it stops. Pure (unit tested); the database side is
-// lib/plan-limits.ts. Decision 4 of 16 Oct 2026: a free plan with limits, paid plans that raise them.
+// lib/plans/plan-limits.ts. Decision 4 of 16 Oct 2026: a free plan with limits, paid plans that raise them.
 //
 //   - The plan belongs to the BUSINESS. Limits count across all of its shops.
 //   - A business with no subscription is on FREE.

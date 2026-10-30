@@ -1,4 +1,4 @@
-// lib/access/access.test.ts
+// tests/unit/access/access.test.ts
 // Run: npm run test:unit   (Vitest)
 import { test } from "vitest"
 import assert from "node:assert/strict"

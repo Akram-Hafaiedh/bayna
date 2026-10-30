@@ -1,4 +1,4 @@
-// lib/email-input.ts
+// lib/auth/email-input.ts
 // One way to write an email address everywhere (register, sign in, forgot and reset password), so
 // "Sami@Mail.com " and "sami@mail.com" can never be two accounts.
 import { fail, ok, type Parsed } from "@/lib/shared/parse"

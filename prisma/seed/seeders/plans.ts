@@ -1,5 +1,5 @@
 // prisma/seed/seeders/plans.ts
-// The plans (Free, Pro, Business) and their limits, copied from DEFAULT_PLANS in lib/plans.ts. Creates
+// The plans (Free, Pro, Business) and their limits, copied from DEFAULT_PLANS in lib/plans/plans.ts. Creates
 // only the plans that are missing: a plan an admin edited is never overwritten. The one exception: a
 // plan that has no price at all gets the default prices (it was created before prices existed).
 import type { Seeder } from "../core"

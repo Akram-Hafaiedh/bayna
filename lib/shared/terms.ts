@@ -1,4 +1,4 @@
-// lib/terms.ts
+// lib/shared/terms.ts
 // Accepting the Terms and the Privacy policy when an account is created. Pure (unit tested).
 import { LEGAL_VERSION } from "./site"
 

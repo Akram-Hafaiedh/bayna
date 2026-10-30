@@ -1,6 +1,6 @@
 // scripts/set-plan.ts
 // Puts a business on a plan by hand (until a payment method exists). The change is written to the
-// activity log. The arguments are checked in lib/plan-assign.ts.
+// activity log. The arguments are checked in lib/plans/plan-assign.ts.
 //
 //   npm run db:set-plan -- <business public id> PRO --months 12 --note "paid by bank transfer"
 //   npm run db:set-plan -- <business public id> PRO --trial-days 14

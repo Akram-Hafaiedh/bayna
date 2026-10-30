@@ -1,4 +1,4 @@
-// lib/session-activity.ts
+// lib/users/session-activity.ts
 // "Last active" only has to be roughly right, so it is written at most once per interval instead of on every
 // request (the JWT callback runs on every auth() call).
 export const ACTIVITY_TOUCH_MS = 5 * 60 * 1000

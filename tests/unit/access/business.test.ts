@@ -1,4 +1,4 @@
-// lib/access/business.test.ts
+// tests/unit/access/business.test.ts
 // Run: npm run test:unit
 // The business level: a business-level role reaches every shop of its business and nothing else.
 import { test } from "vitest"

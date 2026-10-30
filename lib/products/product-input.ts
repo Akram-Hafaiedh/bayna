@@ -1,4 +1,4 @@
-// lib/product-input.ts
+// lib/products/product-input.ts
 // Validation of product fields coming from API request bodies.
 import { Unit } from "@/app/generated/prisma/enums"
 import { fail, isBlank, ok, parseText, type Parsed } from "@/lib/shared/parse"

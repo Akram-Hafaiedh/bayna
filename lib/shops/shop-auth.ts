@@ -1,4 +1,4 @@
-// lib/shop-auth.ts
+// lib/shops/shop-auth.ts
 // Helpers for the shop pages (Server Components). API routes use requireShop() from lib/access/guard.
 import { notFound, redirect } from "next/navigation"
 import { connection } from "next/server"

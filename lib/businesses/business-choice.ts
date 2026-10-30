@@ -1,4 +1,4 @@
-// lib/business-choice.ts
+// lib/businesses/business-choice.ts
 // Which business does a new shop go into? Pure (unit tested).
 //
 // `allowed` are the businesses the person may add a shop to (they hold business.shop.create there).

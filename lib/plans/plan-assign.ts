@@ -1,4 +1,4 @@
-// lib/plan-assign.ts
+// lib/plans/plan-assign.ts
 // Setting a business's plan by hand (`npm run db:set-plan`), until a payment method exists. The arguments
 // and the dates are worked out here (pure, unit tested); scripts/set-plan.ts does the database part.
 //

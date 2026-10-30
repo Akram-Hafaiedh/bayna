@@ -1,4 +1,4 @@
-// lib/access/people.test.ts
+// tests/unit/access/people.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

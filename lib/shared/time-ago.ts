@@ -1,4 +1,4 @@
-// lib/time-ago.ts
+// lib/shared/time-ago.ts
 // "just now", "5 min ago", "3 h ago", "2 d ago", then the date.
 export function timeAgo(from: Date | string, now: Date = new Date()): string {
     const then = typeof from === "string" ? new Date(from) : from

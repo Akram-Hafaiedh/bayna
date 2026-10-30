@@ -1,5 +1,5 @@
 
-// lib/user-list.ts
+// lib/users/user-list.ts
 // The users list of the admin area: the row shape, the search / filter / page query that lives in the URL,
 // and the database filter built from it. Pure (unit tested); lib/admin-users.ts runs the query.
 import type { Prisma } from "@/app/generated/prisma/client"

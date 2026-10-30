@@ -1,5 +1,5 @@
 // tests/api/sign-in.test.ts
-// Signing in with an email and a password (lib/sign-in.ts, which auth.ts calls): who gets in, who is refused and why,
+// Signing in with an email and a password (lib/auth/sign-in.ts, which auth.ts calls): who gets in, who is refused and why,
 // and the limit on failed tries.
 // Run: npm run test:api
 import { afterAll, describe, expect, test } from "vitest"

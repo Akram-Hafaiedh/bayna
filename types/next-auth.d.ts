@@ -8,7 +8,7 @@ declare module "next-auth" {
             role: Role
         } & DefaultSession["user"]
         loginSessionId?: string
-        /** Set while a platform staff member is viewing as `user` (lib/impersonation.ts). `user` is then the viewed person. */
+        /** Set while a platform staff member is viewing as `user` (lib/admin/impersonation.ts). `user` is then the viewed person. */
         impersonation?: import("@/lib/admin/impersonation").ViewAs
     }
 

@@ -1,4 +1,4 @@
-// lib/shop-list.ts
+// lib/shops/shop-list.ts
 // Search and status filter of the shops list in the Business area. Pure (unit tested).
 import type { ShopStatusValue } from "./shop-status"
 

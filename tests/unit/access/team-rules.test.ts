@@ -1,4 +1,4 @@
-// lib/access/team-rules.test.ts
+// tests/unit/access/team-rules.test.ts
 // Run: npm run test:unit
 // Who may invite, change, suspend or remove whom, and which roles a person may hand out.
 import { test } from "vitest"

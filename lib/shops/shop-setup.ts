@@ -1,4 +1,4 @@
-// lib/shop-setup.ts
+// lib/shops/shop-setup.ts
 // What is still missing from a shop's details, for the setup checklist on the shop's page in the Business
 // area. A shop can be created with the essentials; the rest is filled in over time. Pure (unit tested).
 

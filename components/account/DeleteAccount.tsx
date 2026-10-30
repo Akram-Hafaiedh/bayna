@@ -1,7 +1,7 @@
 "use client"
 // components/account/DeleteAccount.tsx
 // "Delete my account" on the profile page. Asks for the password, lists what must be handed over first, and signs
-// the person out when the request is accepted. Rules and wording: lib/account-deletion.ts.
+// the person out when the request is accepted. Rules and wording: lib/users/account-deletion.ts.
 import { useState } from "react"
 import { signOut } from "next-auth/react"
 import { GRACE_DAYS } from "@/lib/users/account-deletion"

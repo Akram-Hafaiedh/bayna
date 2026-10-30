@@ -1,4 +1,4 @@
-// lib/price-review.ts
+// lib/products/price-review.ts
 // Pure helpers for "the price of this product may be wrong now" (decision 7 of 16 Oct 2026).
 // When the catalogue unit of an item changes, every product linked to it keeps its old price but sells
 // a different thing (a price per piece is not a price per box), so it is flagged until the shop

@@ -1,5 +1,5 @@
 // app/api/admin/shops/[id]/reinstate/route.ts
-// The platform team reinstates a shop (see lib/shop-status.ts). Needs shop.record.reinstate.
+// The platform team reinstates a shop (see lib/shops/shop-status.ts). Needs shop.record.reinstate.
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"

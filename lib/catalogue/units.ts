@@ -1,4 +1,4 @@
-// lib/units.ts
+// lib/catalogue/units.ts
 import { Unit } from "@/app/generated/prisma/enums"
 
 /** Short label shown next to prices and quantities. */

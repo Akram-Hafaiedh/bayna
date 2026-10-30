@@ -1,4 +1,4 @@
-// lib/catalog-input.ts
+// lib/catalogue/catalog-input.ts
 // Validation of catalogue item fields coming from admin API request bodies.
 import { prisma } from "@/lib/prisma"
 import type { Unit } from "@/app/generated/prisma/enums"

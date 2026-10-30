@@ -1,4 +1,4 @@
-// lib/contact.ts
+// lib/contact/index.ts
 // The Contact page: what a visitor may send, how much of it, and the statuses the team moves it through.
 // Pure (unit tested); app/api/contact/route.ts does the database part.
 import { parseEmail } from "../auth/email-input"

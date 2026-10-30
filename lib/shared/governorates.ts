@@ -1,4 +1,4 @@
-// lib/governorates.ts
+// lib/shared/governorates.ts
 // The 24 governorates of Tunisia: the values the profile and application forms accept, and the
 // starting point of the location map.
 //

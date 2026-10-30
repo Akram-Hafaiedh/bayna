@@ -1,7 +1,7 @@
 // app/api/admin/impersonation/start/route.ts
 // POST { userId (the public user id), reason, password }: a platform staff member starts viewing the app as another
 // person, read-only. Needs impersonation.session.start_readonly, a written reason (kept in the log) and the staff
-// member's own password again. The viewed person is told that support looked at their account. Rules: lib/impersonation.ts.
+// member's own password again. The viewed person is told that support looked at their account. Rules: lib/admin/impersonation.ts.
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { requirePlatform } from "@/lib/access/guard"

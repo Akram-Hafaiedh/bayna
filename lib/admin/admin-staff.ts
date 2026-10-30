@@ -1,4 +1,4 @@
-// lib/admin-staff.ts
+// lib/admin/admin-staff.ts
 // What the Staff page shows: the people who work for Bayna, their invitations, and the platform roles the
 // signed-in person may hand out. Server only. The rules are in lib/access/staff-rules.ts.
 import { prisma } from "@/lib/prisma"

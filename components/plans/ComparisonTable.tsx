@@ -1,6 +1,6 @@
 "use client"
 
-// The plan comparison: prices on top, then the rows of COMPARISON_GROUPS (lib/plans.ts). Used on the public
+// The plan comparison: prices on top, then the rows of COMPARISON_GROUPS (lib/plans/plans.ts). Used on the public
 // plans page (roomy) and on Business > Subscription (compact). Text colours are set on purpose: the app's
 // default text turns light in dark mode and these cards are white.
 import { COMPARISON_GROUPS, cellFor, isSoon, priceDisplay, rowLabel, type BillingPeriod } from "@/lib/plans/plans"

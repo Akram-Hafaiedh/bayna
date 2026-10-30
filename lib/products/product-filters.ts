@@ -1,4 +1,4 @@
-// lib/product-filters.ts
+// lib/products/product-filters.ts
 // Pure (no database) helpers for the shop product list: filter types,
 // URL parsing and URL building. Safe to import from server AND client components.
 import { Unit } from "@/app/generated/prisma/enums"

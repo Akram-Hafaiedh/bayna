@@ -1,4 +1,4 @@
-// lib/business-input.ts
+// lib/businesses/business-input.ts
 // Checks what a business owner sends for the business page (name, legal and billing details).
 // Pure (unit tested). Only the fields present in the request are looked at, so a form can send just
 // what changed. Legal details (legal name, tax number, registry number) are separate from the rest

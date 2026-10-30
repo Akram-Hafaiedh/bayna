@@ -1,4 +1,4 @@
-// lib/access/invite-token.test.ts
+// tests/unit/access/invite-token.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

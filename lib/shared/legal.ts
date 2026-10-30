@@ -1,4 +1,4 @@
-// lib/legal.ts
+// lib/shared/legal.ts
 // The text of the Privacy policy and the Terms of use, as data (so it can be translated later and tested).
 // It describes what Bayna does today; when a feature changes what is collected or promised, change the text
 // here AND bump LEGAL_VERSION in lib/site.ts. A DRAFT: have a lawyer read it before launch.

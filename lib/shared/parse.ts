@@ -1,5 +1,5 @@
-// lib/parse.ts
-// Small helpers shared by the input validators (lib/product-input.ts, lib/shop-input.ts).
+// lib/shared/parse.ts
+// Small helpers shared by the input validators (lib/products/product-input.ts, lib/shops/shop-input.ts).
 // Pure and dependency-free.
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string }
