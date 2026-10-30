@@ -11,7 +11,7 @@ import { notify, notifications } from "@/lib/notifications"
 import { RATE, checkRateLimits, clearRateLimit, recordRateLimits, tooManyRequests } from "@/lib/rate-limit"
 import {
     DEFAULT_MINUTES, VIEW_AS_COOKIE, checkTarget, expiryFor, homeForViewedRole, parseStart, viewAsCookieValue,
-} from "@/lib/impersonation"
+} from "@/lib/admin/impersonation"
 
 export async function POST(req: Request) {
     try {

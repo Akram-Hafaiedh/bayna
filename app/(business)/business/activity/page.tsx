@@ -1,11 +1,11 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { businessCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
-import { describeActivity } from "@/lib/activity-format"
-import { timeAgo } from "@/lib/time-ago"
+import { describeActivity } from "@/lib/audit/activity-format"
+import { timeAgo } from "@/lib/shared/time-ago"
 
 export const metadata: Metadata = { title: "Activity" }
 

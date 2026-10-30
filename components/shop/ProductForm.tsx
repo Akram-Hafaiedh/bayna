@@ -4,8 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useToast } from "@/components/ui/Toast"
-import type { CategoryTree, ProductDetail } from "@/lib/shop-products"
-import { UNIT_NAMES } from "@/lib/units"
+import type { CategoryTree, ProductDetail } from "@/lib/shops/shop-products"
+import { UNIT_NAMES } from "@/lib/catalogue/units"
 import CatalogPicker, { type CatalogResult } from "./CatalogPicker"
 import {
     CustomFields,
@@ -16,8 +16,8 @@ import {
     type FormValues,
     type SetField,
 } from "./ProductFormParts"
-import { shopFetch } from "@/lib/shop-fetch"
-import { useShopHref } from "@/lib/use-shop"
+import { shopFetch } from "@/lib/shops/shop-fetch"
+import { useShopHref } from "@/lib/shops/use-shop"
 
 const EMPTY: FormValues = {
     name: "",

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { connection } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { normalizeEmail } from "@/lib/email-input"
+import { normalizeEmail } from "@/lib/auth/email-input"
 import { hashInviteToken, inviteState, isPlausibleToken } from "@/lib/access/invite-token"
 import InviteAccept from "@/components/InviteAccept"
 

@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/Toast"
 import { PRICE_CHECK_NOTE, restoreProduct } from "./restore-product"
 import type { Unit } from "@/app/generated/prisma/enums"
-import { UNIT_LABELS } from "@/lib/units"
-import { shopFetch } from "@/lib/shop-fetch"
-import { useShopHref } from "@/lib/use-shop"
+import { UNIT_LABELS } from "@/lib/catalogue/units"
+import { shopFetch } from "@/lib/shops/shop-fetch"
+import { useShopHref } from "@/lib/shops/use-shop"
 
 export type CatalogResult = {
     id: string

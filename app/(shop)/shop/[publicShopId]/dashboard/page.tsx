@@ -1,8 +1,8 @@
 import { Suspense } from "react"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { requireShopPage } from "@/lib/shop-auth"
-import { shopPath } from "@/lib/shop-paths"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { shopPath } from "@/lib/shops/shop-paths"
 
 export default function ShopDashboardPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (

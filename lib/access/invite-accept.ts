@@ -1,7 +1,7 @@
 // lib/access/invite-accept.ts
 // May this signed-in person accept this invitation? The checks of POST /api/invites/accept, kept
 // pure so every refusal is unit tested. The route runs them, then claims the invitation atomically.
-import { normalizeEmail } from "@/lib/email-input"
+import { normalizeEmail } from "@/lib/auth/email-input"
 import type { InviteState } from "./invite-token"
 
 export type AcceptCheck = { ok: true } | { ok: false; error: string; status: 403 | 410 }

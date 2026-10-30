@@ -4,7 +4,7 @@
 // a different thing (a price per piece is not a price per box), so it is flagged until the shop
 // confirms the price.
 import type { Unit } from "@/app/generated/prisma/enums"
-import { UNIT_NAMES } from "@/lib/units"
+import { UNIT_NAMES } from "@/lib/catalogue/units"
 
 /** Short unit name for sentences: "Piece", "Bag", "Meter (m)". */
 export function unitName(unit: Unit): string {

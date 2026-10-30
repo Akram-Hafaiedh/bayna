@@ -1,12 +1,12 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { requireShopPage } from "@/lib/shop-auth"
-import { shopPath } from "@/lib/shop-paths"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { shopPath } from "@/lib/shops/shop-paths"
 import { shopCan } from "@/lib/access/page"
-import { listTrash, TRASH_LIMIT } from "@/lib/shop-products"
-import { UNIT_LABELS } from "@/lib/units"
-import { timeAgo } from "@/lib/time-ago"
+import { listTrash, TRASH_LIMIT } from "@/lib/shops/shop-products"
+import { UNIT_LABELS } from "@/lib/catalogue/units"
+import { timeAgo } from "@/lib/shared/time-ago"
 import RestoreButton from "@/components/shop/RestoreButton"
 
 export const metadata: Metadata = { title: "Trash" }

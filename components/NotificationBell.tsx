@@ -6,7 +6,7 @@
 // shows the same information (for example the shop profile) can refresh itself.
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { timeAgo } from "@/lib/time-ago"
+import { timeAgo } from "@/lib/shared/time-ago"
 
 type Item = {
     id: string

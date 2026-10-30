@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { shopSetup, type ShopSetupInput } from "@/lib/shop-setup"
+import { shopSetup, type ShopSetupInput } from "@/lib/shops/shop-setup"
 
 const full: ShopSetupInput = {
     description: "Cement and steel",

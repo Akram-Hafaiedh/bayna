@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { decideRoute, homeFor } from "@/lib/route-access"
+import { decideRoute, homeFor } from "@/lib/auth/route-access"
 
 const as = (role: string) => ({ id: "u1", role })
 const go = (pathname: string, user: { id?: string | null; role?: string | null } | null, viewAsRole?: string) =>

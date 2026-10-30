@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
-import { shopPath } from "@/lib/shop-paths"
+import { shopPath } from "@/lib/shops/shop-paths"
 
 // /shop/<publicShopId> on its own opens the shop's dashboard.
 export default function ShopRootPage({ params }: { params: Promise<{ publicShopId: string }> }) {

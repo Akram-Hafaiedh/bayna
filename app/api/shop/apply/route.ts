@@ -11,12 +11,12 @@ import { prisma } from "@/lib/prisma"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
-import { parsePhone, parseProfileFields } from "@/lib/shop-input"
-import { parseText } from "@/lib/parse"
+import { parsePhone, parseProfileFields } from "@/lib/shops/shop-input"
+import { parseText } from "@/lib/shared/parse"
 import { businessesForNewShop } from "@/lib/access/business-options"
-import { resolveBusinessChoice } from "@/lib/business-choice"
+import { resolveBusinessChoice } from "@/lib/businesses/business-choice"
 import { seedBusinessRoles, seedShopRoles } from "@/lib/access/role-seed"
-import { limitBlock } from "@/lib/plan-limits"
+import { limitBlock } from "@/lib/plans/plan-limits"
 
 const unauthorized = () => NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 const failed = () => NextResponse.json({ error: "Something went wrong" }, { status: 500 })

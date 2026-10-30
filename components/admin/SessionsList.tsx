@@ -7,9 +7,9 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
-import type { SessionRow } from "@/lib/admin-impersonation"
-import { endedLabel, isSessionOpen } from "@/lib/impersonation-list"
-import { userDetailPath } from "@/lib/user-detail"
+import type { SessionRow } from "@/lib/admin/admin-impersonation"
+import { endedLabel, isSessionOpen } from "@/lib/admin/impersonation-list"
+import { userDetailPath } from "@/lib/users/user-detail"
 
 const when = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
 

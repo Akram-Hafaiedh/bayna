@@ -1,9 +1,9 @@
 // lib/account-deletion-actions.ts
 // The database side of deleting an account: what stops it (blockers). Server only. Imports are relative so the
 // purge script can use it too. The rules and wording are in account-deletion.ts.
-import type { Tx } from "./audit/run"
-import { assertKeepsAnOwner, assertPlatformKeepsAnOwner } from "./access/owners"
-import { blocker } from "./account-deletion"
+import type { Tx } from "../audit/run"
+import { assertKeepsAnOwner, assertPlatformKeepsAnOwner } from "../access/owners"
+import { blocker } from "@/lib/users/account-deletion"
 
 /** What this person must hand over or finish before the account can go. Empty = free to go. */
 export async function deletionBlockers(tx: Tx, userId: string, now: Date = new Date()): Promise<string[]> {

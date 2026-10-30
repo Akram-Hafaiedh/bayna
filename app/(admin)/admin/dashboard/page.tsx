@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { connection } from "next/server"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { Role } from "@/app/generated/prisma/enums"
 
 export default function AdminDashboardPage() {

@@ -5,15 +5,15 @@ import type { Prisma } from "@/app/generated/prisma/client"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import type { ShopPermission } from "@/lib/access/catalogue"
-import { priceEffect } from "@/lib/price-review"
+import { priceEffect } from "@/lib/products/price-review"
 import {
     parseMinOrderQty,
     parsePrice,
     parseStock,
     parseText,
     parseUnit,
-} from "@/lib/product-input"
-import { isProductStatus, shopMayChange } from "@/lib/product-status"
+} from "@/lib/products/product-input"
+import { isProductStatus, shopMayChange } from "@/lib/products/product-status"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 

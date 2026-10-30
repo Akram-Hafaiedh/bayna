@@ -2,7 +2,7 @@
 
 // The Monthly / Yearly switch. `saving` is the biggest yearly saving on offer (a percent), shown on the
 // Yearly button so the reason to switch is visible.
-import type { BillingPeriod } from "@/lib/plans"
+import type { BillingPeriod } from "@/lib/plans/plans"
 
 const PERIODS: { value: BillingPeriod; label: string }[] = [
     { value: "monthly", label: "Monthly" },

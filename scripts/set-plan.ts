@@ -9,8 +9,8 @@ import "dotenv/config"
 import { PrismaClient } from "../app/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
-import { parseAssignArgs, subscriptionDates } from "../lib/plan-assign"
-import { FREE_PLAN_KEY } from "../lib/plans"
+import { parseAssignArgs, subscriptionDates } from "@/lib/plans/plan-assign"
+import { FREE_PLAN_KEY } from "@/lib/plans/plans"
 import { serializeActor, systemActor } from "../lib/audit/actor"
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })

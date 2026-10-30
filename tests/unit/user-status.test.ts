@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { checkTarget, messageForSignInCode, parseReason, signInBlockFor, userActions, userMove } from "@/lib/user-status"
+import { checkTarget, messageForSignInCode, parseReason, signInBlockFor, userActions, userMove } from "@/lib/users/user-status"
 
 test("only an active account can be suspended, and only a suspended one reinstated", () => {
     assert.equal(userMove("suspend", "ACTIVE"), "SUSPENDED")

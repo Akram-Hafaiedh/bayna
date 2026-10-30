@@ -7,9 +7,9 @@
 // account row itself (shops, products and records still point at it) with the address
 // deleted-<id>@deleted.invalid and the name "Deleted user", and the activity log, with the person's name,
 // address and browser removed from it. Names written inside other people's log notes are not rewritten.
-import type { PrismaClient } from "../app/generated/prisma/client"
-import type { Tx } from "./audit/run"
-import { serializeActor, systemActor } from "./audit/actor"
+import type { PrismaClient } from "../../app/generated/prisma/client"
+import type { Tx } from "../audit/run"
+import { serializeActor, systemActor } from "../audit/actor"
 import { ANONYMISED_NAME, anonymisedEmail, isDue } from "./account-deletion"
 import { deletionBlockers } from "./account-deletion-actions"
 

@@ -1,7 +1,7 @@
 // lib/impersonation-session.ts
 // The database side of "view as" (rules and wording: lib/impersonation.ts). Server only.
 import { prisma } from "@/lib/prisma"
-import type { ViewAs } from "@/lib/impersonation"
+import type { ViewAs } from "@/lib/admin/impersonation"
 
 /** Signing out ends a view the staff member left open (auth.ts calls this from its sign-out event). */
 export async function endViewsOnSignOut(adminId: string, now: Date = new Date()): Promise<number> {

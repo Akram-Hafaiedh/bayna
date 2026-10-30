@@ -4,7 +4,7 @@ import { test } from "vitest"
 import assert from "node:assert/strict"
 import {
     DEFAULT_SESSION_PAGE_SIZE, NO_SESSION_QUERY, buildSessionsHref, endedLabel, isSessionOpen, parseSessionQuery, sessionWhere,
-} from "@/lib/impersonation-list"
+} from "@/lib/admin/impersonation-list"
 
 const NOW = new Date("2026-10-29T10:00:00Z")
 const later = new Date("2026-10-29T10:30:00Z")

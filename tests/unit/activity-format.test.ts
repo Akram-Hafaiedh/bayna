@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { ACTIVITY_KINDS, describeActivity, kindFilter, parseKind } from "@/lib/activity-format"
+import { ACTIVITY_KINDS, describeActivity, kindFilter, parseKind } from "@/lib/audit/activity-format"
 
 const BASE = "/shop/abc"
 const row = (over: Partial<Parameters<typeof describeActivity>[0]>) => ({

@@ -5,7 +5,7 @@
 // time runs out it closes the session and goes back to the admin area.
 import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
-import { VIEW_AS_COOKIE, timeLeft } from "@/lib/impersonation"
+import { VIEW_AS_COOKIE, timeLeft } from "@/lib/admin/impersonation"
 
 export default function ViewAsBanner() {
     const { data: session, status } = useSession()

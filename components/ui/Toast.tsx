@@ -6,7 +6,7 @@
 //   toast.error("Could not save")
 // Use a toast for the RESULT of an action. Use useConfirm() to ASK before one.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { pushToast, removeToast, toastDuration, type ToastItem, type ToastTone } from "@/lib/toast"
+import { pushToast, removeToast, toastDuration, type ToastItem, type ToastTone } from "@/lib/shared/toast"
 
 type Options = { description?: string; action?: ToastItem["action"]; duration?: number }
 type Api = {

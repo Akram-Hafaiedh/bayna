@@ -4,9 +4,9 @@
 // editor. Server only. The routes check everything again; this only decides what to show.
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
-import { requireShopPage } from "@/lib/shop-auth"
-import { shopPath } from "@/lib/shop-paths"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { shopPath } from "@/lib/shops/shop-paths"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { loadAccess, type Access } from "./load"
 import { ALL_BUSINESS_KEYS, ALL_SHOP_KEYS } from "./catalogue"
 import { effective, has } from "./evaluate"

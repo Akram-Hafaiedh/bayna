@@ -6,7 +6,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { logActivity, withAudit } from "@/lib/audit/run"
 import { requestMeta } from "@/lib/audit/actor"
-import { VIEW_AS_COOKIE } from "@/lib/impersonation"
+import { VIEW_AS_COOKIE } from "@/lib/admin/impersonation"
 
 export async function POST(req: Request) {
     try {

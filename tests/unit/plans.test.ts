@@ -6,7 +6,7 @@ import {
     COMPARISON_GROUPS, DEFAULT_PLANS, FEATURE_KEYS, FREE_PLAN_KEY, LIMIT_KEYS, SOON_KEYS, cellFor, evaluateLimit,
     formatAmount, limitMessage, limitOf, limitPhrase, limitsEnforced, parseFeatures, parseLimits, planHighlights,
     planInForce, priceDisplay, rowLabel, yearlySaving, type SubscriptionInput,
-} from "@/lib/plans"
+} from "@/lib/plans/plans"
 
 const NOW = new Date("2026-10-26T12:00:00Z")
 const day = (n: number) => new Date(NOW.getTime() + n * 24 * 60 * 60 * 1000)

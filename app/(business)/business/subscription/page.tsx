@@ -1,10 +1,10 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { businessCan } from "@/lib/access/page"
 import PlansTable from "@/components/business/PlansTable"
-import { listPlans, planForBusiness, usageAll } from "@/lib/plan-limits"
-import { LIMIT_LABEL, SUBSCRIPTION_STATUS_LABEL, limitOf, limitsEnforced, type LimitKey, type PlanInForce } from "@/lib/plans"
+import { listPlans, planForBusiness, usageAll } from "@/lib/plans/plan-limits"
+import { LIMIT_LABEL, SUBSCRIPTION_STATUS_LABEL, limitOf, limitsEnforced, type LimitKey, type PlanInForce } from "@/lib/plans/plans"
 
 export const metadata: Metadata = { title: "Subscription" }
 

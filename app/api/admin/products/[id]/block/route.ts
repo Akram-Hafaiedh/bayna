@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { platformMove } from "@/lib/product-status"
+import { platformMove } from "@/lib/products/product-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {

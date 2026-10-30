@@ -1,18 +1,18 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { requireShopPage } from "@/lib/shop-auth"
-import { shopPath } from "@/lib/shop-paths"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { shopPath } from "@/lib/shops/shop-paths"
 import { shopCan } from "@/lib/access/page"
 import {
     getFilterCategories,
     getProductStats,
     listProducts,
-} from "@/lib/shop-products"
+} from "@/lib/shops/shop-products"
 import {
     buildProductsHref,
     hasActiveFilters,
     parseProductFilters,
-} from "@/lib/product-filters"
+} from "@/lib/products/product-filters"
 import ProductsToolbar from "@/components/shop/ProductsToolbar"
 import ProductsTable from "@/components/shop/ProductsTable"
 import Pagination from "@/components/shop/Pagination"

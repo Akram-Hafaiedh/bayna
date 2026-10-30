@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { normalizeEmail, parseEmail } from "@/lib/email-input"
+import { normalizeEmail, parseEmail } from "@/lib/auth/email-input"
 
 test("normalizeEmail trims and lowercases", () => {
     assert.equal(normalizeEmail("  Sami@Mail.COM "), "sami@mail.com")

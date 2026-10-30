@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { countAffected, describeCounts, priceEffect, unitChangeReason } from "@/lib/price-review"
+import { countAffected, describeCounts, priceEffect, unitChangeReason } from "@/lib/products/price-review"
 
 test("the reason names both units", () => {
     assert.equal(unitChangeReason("PIECE", "BAG"), "Unit changed from Piece to Bag")

@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { connection } from "next/server"
 import { auth } from "@/auth"
-import { SITE } from "@/lib/site"
+import { SITE } from "@/lib/shared/site"
 import ContactForm from "@/components/contact/ContactForm"
 import { INVITE_TTL_DAYS } from "@/lib/access/invite-token"
 

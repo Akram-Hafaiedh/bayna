@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { parsePriceArgs, priceWarnings } from "@/lib/plan-price"
+import { parsePriceArgs, priceWarnings } from "@/lib/plans/plan-price"
 
 test("a plan key and at least one price are required", () => {
     assert.equal(parsePriceArgs([]).ok, false)

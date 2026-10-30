@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import LegalDoc from "@/components/legal/LegalDoc"
-import { TERMS_SECTIONS } from "@/lib/legal"
+import { TERMS_SECTIONS } from "@/lib/shared/legal"
 
 export const metadata: Metadata = {
     title: "Terms of use",

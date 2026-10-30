@@ -2,8 +2,8 @@
 import NextAuth from "next-auth"
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server"
 import type { Role } from "@/app/generated/prisma/enums"
-import { decideRoute } from "@/lib/route-access"
-import { VIEW_AS_COOKIE, parseViewAsCookie, viewAsBlock } from "@/lib/impersonation"
+import { decideRoute } from "@/lib/auth/route-access"
+import { VIEW_AS_COOKIE, parseViewAsCookie, viewAsBlock } from "@/lib/admin/impersonation"
 
 // Lightweight instance: same AUTH_SECRET and JWT cookie as auth.ts,
 // but no adapter, no providers and no DB callbacks.

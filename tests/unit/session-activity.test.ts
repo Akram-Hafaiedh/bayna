@@ -1,5 +1,5 @@
 import { expect, test } from "vitest"
-import { ACTIVITY_TOUCH_MS, shouldTouchActivity } from "@/lib/session-activity"
+import { ACTIVITY_TOUCH_MS, shouldTouchActivity } from "@/lib/users/session-activity"
 
 const now = Date.UTC(2026, 9, 26, 12, 0, 0)
 

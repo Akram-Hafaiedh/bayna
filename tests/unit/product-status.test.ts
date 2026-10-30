@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { isListed, isProductStatus, platformMove, PRODUCT_STATUSES, shopMayChange, SHOP_CHOICES } from "@/lib/product-status"
+import { isListed, isProductStatus, platformMove, PRODUCT_STATUSES, shopMayChange, SHOP_CHOICES } from "@/lib/products/product-status"
 
 test("only ACTIVE products are listed for customers", () => {
     assert.deepEqual(PRODUCT_STATUSES.filter(isListed), ["ACTIVE"])

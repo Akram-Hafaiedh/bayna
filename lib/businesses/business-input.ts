@@ -3,9 +3,9 @@
 // Pure (unit tested). Only the fields present in the request are looked at, so a form can send just
 // what changed. Legal details (legal name, tax number, registry number) are separate from the rest
 // because changing them needs a stronger permission (business.profile.edit_legal).
-import { fail, ok, parseText, type Parsed } from "@/lib/parse"
-import { parseEmail } from "@/lib/email-input"
-import { parsePhone } from "@/lib/shop-input"
+import { fail, ok, parseText, type Parsed } from "@/lib/shared/parse"
+import { parseEmail } from "@/lib/auth/email-input"
+import { parsePhone } from "@/lib/shops/shop-input"
 
 export type BusinessSnapshot = {
     name: string

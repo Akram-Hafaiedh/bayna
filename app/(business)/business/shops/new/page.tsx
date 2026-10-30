@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { businessCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
 import CreateShopForm from "@/components/business/CreateShopForm"

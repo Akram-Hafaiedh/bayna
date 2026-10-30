@@ -7,7 +7,7 @@
 //       await notify(tx, shop.applicantId, notifications.profileReviewed({ shop: shop.publicShopId }))
 //   })
 import type { Tx } from "@/lib/audit/run"
-import { shopPath } from "@/lib/shop-paths"
+import { shopPath } from "@/lib/shops/shop-paths"
 
 export const NOTIFICATION_TYPES = {
     applicationApproved: "shop.application.approved",

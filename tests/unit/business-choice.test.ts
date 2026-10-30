@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { resolveBusinessChoice } from "@/lib/business-choice"
+import { resolveBusinessChoice } from "@/lib/businesses/business-choice"
 
 test("a first application starts a business", () => {
     assert.deepEqual(resolveBusinessChoice([], undefined), { ok: true, kind: "new" })

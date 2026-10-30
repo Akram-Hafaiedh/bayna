@@ -10,7 +10,7 @@ import { POST as ban } from "@/app/api/admin/users/[id]/ban/route"
 import { POST as unban } from "@/app/api/admin/users/[id]/unban/route"
 import { POST as register } from "@/app/api/register/route"
 import { requirePlatform } from "@/lib/access/guard"
-import { hashResetToken } from "@/lib/reset-token"
+import { hashResetToken } from "@/lib/auth/reset-token"
 import { call, cleanUp, createStaff, createTarget, demo, freshEmail, freshIp, prisma, signInAs, signOut } from "./helpers"
 
 afterEach(() => signOut())

@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { slugify } from "@/lib/slug"
-import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalog-input"
+import { slugify } from "@/lib/shared/slug"
+import { parseCatalogFields, uniqueCatalogSlug } from "@/lib/catalogue/catalog-input"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 

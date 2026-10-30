@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { parseProfileFields } from "@/lib/shop-input"
+import { parseProfileFields } from "@/lib/shops/shop-input"
 
 const SELECT = {
     id: true,

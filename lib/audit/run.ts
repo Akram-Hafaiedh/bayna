@@ -11,7 +11,7 @@
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
 import { serializeActor, type AuditActor } from "./actor"
-import { READ_ONLY_MESSAGE } from "@/lib/impersonation"
+import { READ_ONLY_MESSAGE } from "@/lib/admin/impersonation"
 
 export type Tx = Prisma.TransactionClient
 

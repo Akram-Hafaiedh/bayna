@@ -5,8 +5,8 @@
 import Link from "next/link"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
-import { ACTIVITY_KINDS, describeActivity, kindFilter, parseKind } from "@/lib/activity-format"
-import { timeAgo } from "@/lib/time-ago"
+import { ACTIVITY_KINDS, describeActivity, kindFilter, parseKind } from "@/lib/audit/activity-format"
+import { timeAgo } from "@/lib/shared/time-ago"
 
 const PAGE_SIZE = 40
 

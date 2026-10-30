@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { assignmentPlace, assignmentState, sessionState, userDetailPath } from "@/lib/user-detail"
+import { assignmentPlace, assignmentState, sessionState, userDetailPath } from "@/lib/users/user-detail"
 
 test("the detail address uses the public id", () => {
     assert.equal(userDetailPath("abc123"), "/admin/users/abc123")

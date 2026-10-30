@@ -7,7 +7,7 @@ import Link from "next/link"
 import BillingToggle from "./BillingToggle"
 import ComparisonTable from "./ComparisonTable"
 import type { PlanRow } from "./types"
-import { POPULAR_PLAN_KEY, FREE_PLAN_KEY, planHighlights, priceDisplay, yearlySaving, type BillingPeriod } from "@/lib/plans"
+import { POPULAR_PLAN_KEY, FREE_PLAN_KEY, planHighlights, priceDisplay, yearlySaving, type BillingPeriod } from "@/lib/plans/plans"
 
 const Check = () => (
     <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600">

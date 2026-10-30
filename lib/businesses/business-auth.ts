@@ -6,7 +6,7 @@
 import { connection } from "next/server"
 import { redirect } from "next/navigation"
 import { Role } from "@/app/generated/prisma/enums"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { loadMyBusinesses, type MyBusiness } from "@/lib/access/my-businesses"
 import type { Access } from "@/lib/access/load"
 

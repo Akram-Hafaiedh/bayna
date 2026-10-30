@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import type { Unit } from "@/app/generated/prisma/enums"
-import { UNIT_LABELS } from "@/lib/units"
+import { UNIT_LABELS } from "@/lib/catalogue/units"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import {

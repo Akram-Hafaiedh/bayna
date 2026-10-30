@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { actionsFor, isLive, isShopStatus, isWaiting, moveFor, SHOP_STATUSES, SHOP_STATUS_LABEL, SHOP_STATUS_TONE } from "@/lib/shop-status"
+import { actionsFor, isLive, isShopStatus, isWaiting, moveFor, SHOP_STATUSES, SHOP_STATUS_LABEL, SHOP_STATUS_TONE } from "@/lib/shops/shop-status"
 
 test("every status has a label and a tone", () => {
     for (const s of SHOP_STATUSES) {

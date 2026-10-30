@@ -1,7 +1,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { cleanSection, lastShopPath, parseShopPath, shopPath } from "@/lib/shop-paths"
+import { cleanSection, lastShopPath, parseShopPath, shopPath } from "@/lib/shops/shop-paths"
 
 test("shopPath builds the address of a shop page", () => {
     assert.equal(shopPath("abc"), "/shop/abc/dashboard")

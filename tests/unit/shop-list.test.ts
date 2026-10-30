@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { countByStatus, filterShops, NO_SHOP_FILTERS, type ShopRow } from "@/lib/shop-list"
+import { countByStatus, filterShops, NO_SHOP_FILTERS, type ShopRow } from "@/lib/shops/shop-list"
 
 const row = (over: Partial<ShopRow>): ShopRow => ({
     id: "1", publicShopId: "p1", name: "Shop", city: "Tunis", governorate: "Tunis", status: "ACTIVE",

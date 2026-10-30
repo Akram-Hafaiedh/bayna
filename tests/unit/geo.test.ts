@@ -2,8 +2,8 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { distanceKm, isInTunisia } from "@/lib/geo"
-import { GOVERNORATES, GOVERNORATE_NAMES, findGovernorate, governorateCentre } from "@/lib/governorates"
+import { distanceKm, isInTunisia } from "@/lib/shared/geo"
+import { GOVERNORATES, GOVERNORATE_NAMES, findGovernorate, governorateCentre } from "@/lib/shared/governorates"
 
 test("there are 24 governorates, with unique names and Arabic names", () => {
     assert.equal(GOVERNORATES.length, 24)

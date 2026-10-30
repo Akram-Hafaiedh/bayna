@@ -2,8 +2,8 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { ACCEPT_ERROR, parseAcceptance } from "@/lib/terms"
-import { LEGAL_VERSION, formatLegalDate, missingSiteDetails } from "@/lib/site"
+import { ACCEPT_ERROR, parseAcceptance } from "@/lib/shared/terms"
+import { LEGAL_VERSION, formatLegalDate, missingSiteDetails } from "@/lib/shared/site"
 
 test("only an explicit true accepts, and the current version is recorded", () => {
     assert.deepEqual(parseAcceptance(true), { ok: true, version: LEGAL_VERSION })

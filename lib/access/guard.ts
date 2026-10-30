@@ -15,12 +15,12 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { impersonationActor, requestMeta, type AuditActor, type RequestMeta } from "@/lib/audit/actor"
-import { READ_ONLY_MESSAGE, type ViewAs } from "@/lib/impersonation"
+import { READ_ONLY_MESSAGE, type ViewAs } from "@/lib/admin/impersonation"
 import type { BusinessPermission, PlatformPermission, ShopPermission } from "./catalogue"
 import { effective, has, roleNames } from "./evaluate"
 import { loadAccess, type Access } from "./load"
 import { pickActiveShop } from "./active-shop"
-import { SHOP_HEADER } from "@/lib/shop-paths"
+import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { reachableBusinessIds, reachableShopIds } from "./reach"
 import { readActiveShopHint } from "./active-cookie"
 import { pickActiveBusiness } from "./active-business"
@@ -109,7 +109,7 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
 
 /**
  * Action inside a shop. The shop is the one the page names: the browser sends its public id in the
- * x-shop header (see lib/shop-fetch.ts), so two tabs on two shops never mix. Without the header the
+ * x-shop header (see lib/shops/shop-fetch.ts), so two tabs on two shops never mix. Without the header the
  * one they last switched to (a cookie that is checked every time, never trusted), else the first by
  * id. A caller may force a shop with `opts.shopId`. Whichever way, it has to be a shop they work in.
  */

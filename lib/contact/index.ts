@@ -1,7 +1,7 @@
 // lib/contact.ts
 // The Contact page: what a visitor may send, how much of it, and the statuses the team moves it through.
 // Pure (unit tested); app/api/contact/route.ts does the database part.
-import { parseEmail } from "./email-input"
+import { parseEmail } from "../auth/email-input"
 
 export const CONTACT_TOPICS = [
     { value: "ACCOUNT", label: "Help with my account" },

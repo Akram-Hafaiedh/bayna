@@ -2,8 +2,8 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import PublicPlans from "@/components/plans/PublicPlans"
-import { listPlans } from "@/lib/plan-limits"
-import { CURRENCY, EVERY_PLAN_INCLUDES } from "@/lib/plans"
+import { listPlans } from "@/lib/plans/plan-limits"
+import { CURRENCY, EVERY_PLAN_INCLUDES } from "@/lib/plans/plans"
 
 export const metadata: Metadata = {
     title: "Plans and pricing",

@@ -8,7 +8,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/Toast"
 import type { MyShop } from "@/lib/access/shops"
-import { parseShopPath, shopPath } from "@/lib/shop-paths"
+import { parseShopPath, shopPath } from "@/lib/shops/shop-paths"
 
 export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; activeId: string | null }) {
     const router = useRouter()
@@ -99,45 +99,45 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                     <p className="px-3.5 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-zinc-400">Your shops</p>
                     <ul role="listbox" aria-label="Your shops" className="max-h-72 overflow-y-auto py-1">
                         {groups.map((group) => (
-                        <li key={group.id} role="presentation">
-                        {severalBusinesses && (
-                            <p className="px-3.5 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-400">{group.name}</p>
-                        )}
-                        <ul role="presentation">
-                        {group.shops.map((shop) => {
-                            const isActive = shop.id === activeId
-                            const pending = shop.status === "PENDING"
-                            return (
-                                <li key={shop.id}>
-                                    <button
-                                        type="button"
-                                        role="option"
-                                        aria-selected={isActive}
-                                        aria-disabled={pending}
-                                        disabled={pending || busyId !== null}
-                                        onClick={() => choose(shop)}
-                                        className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
-                                    >
-                                        <span className="min-w-0 flex-1">
-                                            <span className="block truncate text-sm font-medium text-zinc-900">{shop.name}</span>
-                                            <span className="block truncate text-xs text-zinc-400">
-                                                {pending
-                                                    ? "Waiting for approval"
-                                                    : [shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
-                                            </span>
-                                        </span>
-                                        {isActive && (
-                                            <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-zinc-900" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Current shop">
-                                                <path d="M4 10l4 4 8-8" />
-                                            </svg>
-                                        )}
-                                        {busyId === shop.id && <span className="text-xs text-zinc-400">Switching...</span>}
-                                    </button>
-                                </li>
-                            )
-                        })}
-                        </ul>
-                        </li>
+                            <li key={group.id} role="presentation">
+                                {severalBusinesses && (
+                                    <p className="px-3.5 pb-0.5 pt-2 text-[11px] font-medium uppercase tracking-wide text-zinc-400">{group.name}</p>
+                                )}
+                                <ul role="presentation">
+                                    {group.shops.map((shop) => {
+                                        const isActive = shop.id === activeId
+                                        const pending = shop.status === "PENDING"
+                                        return (
+                                            <li key={shop.id}>
+                                                <button
+                                                    type="button"
+                                                    role="option"
+                                                    aria-selected={isActive}
+                                                    aria-disabled={pending}
+                                                    disabled={pending || busyId !== null}
+                                                    onClick={() => choose(shop)}
+                                                    className="flex w-full items-center gap-2.5 px-3.5 py-2 text-left hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+                                                >
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="block truncate text-sm font-medium text-zinc-900">{shop.name}</span>
+                                                        <span className="block truncate text-xs text-zinc-400">
+                                                            {pending
+                                                                ? "Waiting for approval"
+                                                                : [shop.city, shop.roles.join(", ")].filter(Boolean).join(" · ")}
+                                                        </span>
+                                                    </span>
+                                                    {isActive && (
+                                                        <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 text-zinc-900" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="Current shop">
+                                                            <path d="M4 10l4 4 8-8" />
+                                                        </svg>
+                                                    )}
+                                                    {busyId === shop.id && <span className="text-xs text-zinc-400">Switching...</span>}
+                                                </button>
+                                            </li>
+                                        )
+                                    })}
+                                </ul>
+                            </li>
                         ))}
                     </ul>
                     <div className="border-t border-zinc-100 p-1">

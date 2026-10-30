@@ -1,10 +1,10 @@
 // app/api/auth/forgot-password/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { newResetToken } from "@/lib/reset-token"
+import { newResetToken } from "@/lib/auth/reset-token"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
-import { parseEmail } from "@/lib/email-input"
+import { parseEmail } from "@/lib/auth/email-input"
 import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 const SENT = { message: "If an account exists with this email, a reset link has been sent." }

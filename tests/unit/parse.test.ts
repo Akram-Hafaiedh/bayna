@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { safeNextPath } from "@/lib/parse"
+import { safeNextPath } from "@/lib/shared/parse"
 
 test("safeNextPath keeps paths inside the site", () => {
     assert.equal(safeNextPath("/invite/abc"), "/invite/abc")

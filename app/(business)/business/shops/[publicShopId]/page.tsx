@@ -2,10 +2,10 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { prisma } from "@/lib/prisma"
 import { effective, has } from "@/lib/access/evaluate"
-import { shopSetup } from "@/lib/shop-setup"
+import { shopSetup } from "@/lib/shops/shop-setup"
 import ShopDetailsEditor from "@/components/business/ShopDetailsEditor"
 
 export const metadata: Metadata = { title: "Shop" }

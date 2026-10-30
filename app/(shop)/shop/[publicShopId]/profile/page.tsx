@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react"
 import { NOTIFICATIONS_NEW_EVENT } from "@/components/NotificationBell"
 import ShopProfileForm, { type ProfileValues } from "@/components/shop/ShopProfileForm"
-import { shopFetch } from "@/lib/shop-fetch"
+import { shopFetch } from "@/lib/shops/shop-fetch"
 
 type Loaded = ProfileValues & { canEdit: boolean; active: boolean; needsReview: boolean }
 

@@ -6,8 +6,8 @@ import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { newResetToken } from "@/lib/reset-token"
-import { checkTarget } from "@/lib/user-status"
+import { newResetToken } from "@/lib/auth/reset-token"
+import { checkTarget } from "@/lib/users/user-status"
 
 const VALID_HOURS = 24
 

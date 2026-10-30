@@ -2,9 +2,9 @@
 
 // Building blocks shared by the product form (create and edit, linked and custom).
 import type { Unit } from "@/app/generated/prisma/enums"
-import type { CategoryTree } from "@/lib/shop-products"
-import { UNIT_OPTIONS } from "@/lib/units"
-import { PRODUCT_STATUS_LABEL, SHOP_CHOICES, type ProductStatusValue } from "@/lib/product-status"
+import type { CategoryTree } from "@/lib/shops/shop-products"
+import { UNIT_OPTIONS } from "@/lib/catalogue/units"
+import { PRODUCT_STATUS_LABEL, SHOP_CHOICES, type ProductStatusValue } from "@/lib/products/product-status"
 
 export type FormValues = {
     name: string

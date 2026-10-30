@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { hashResetToken, newResetToken } from "@/lib/reset-token"
+import { hashResetToken, newResetToken } from "@/lib/auth/reset-token"
 
 test("the stored value is the hash, not the secret in the link", () => {
     const { token, hash } = newResetToken()

@@ -2,7 +2,7 @@
 // Validation of catalogue item fields coming from admin API request bodies.
 import { prisma } from "@/lib/prisma"
 import type { Unit } from "@/app/generated/prisma/enums"
-import { parseText, parseUnit, type Parsed } from "@/lib/product-input"
+import { parseText, parseUnit, type Parsed } from "@/lib/products/product-input"
 
 export type CatalogFields = {
     name: string

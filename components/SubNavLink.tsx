@@ -2,7 +2,7 @@
 // A sub-navigation link that shows which page you are on.
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { isActiveLink } from "@/lib/active-link"
+import { isActiveLink } from "@/lib/shared/active-link"
 
 export default function SubNavLink({ href, label }: { href: string; label: string }) {
     const pathname = usePathname()

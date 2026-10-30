@@ -7,7 +7,7 @@
 //     holds keys they do not (a manager cannot touch the owner role)
 //   - a role in use cannot be deleted: move its people to another role first
 //   - changing a role must not leave the level without an owner (someone holding the ownership key)
-import { fail, ok, type Parsed } from "@/lib/parse"
+import { fail, ok, type Parsed } from "@/lib/shared/parse"
 import { holdsKey, isKnownKey } from "./catalogue"
 import { missingKeys } from "./team-rules"
 

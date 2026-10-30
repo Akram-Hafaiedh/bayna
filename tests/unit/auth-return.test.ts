@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { readAuthReturn } from "@/lib/auth-return"
+import { readAuthReturn } from "@/lib/auth/auth-return"
 
 test("reads the way back and the invited address", () => {
     assert.deepEqual(readAuthReturn("?next=%2Finvite%2Fabc&email=Sami%40Mail.com"), { next: "/invite/abc", email: "sami@mail.com" })

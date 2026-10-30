@@ -1,15 +1,15 @@
 import Link from "next/link"
-import type { ProductRow } from "@/lib/shop-products"
+import type { ProductRow } from "@/lib/shops/shop-products"
 import {
     buildProductsHref,
     defaultDir,
     LOW_STOCK_THRESHOLD,
     type ProductFilters,
     type SortKey,
-} from "@/lib/product-filters"
-import { UNIT_LABELS } from "@/lib/units"
-import { timeAgo } from "@/lib/time-ago"
-import { PRODUCT_STATUS_LABEL } from "@/lib/product-status"
+} from "@/lib/products/product-filters"
+import { UNIT_LABELS } from "@/lib/catalogue/units"
+import { timeAgo } from "@/lib/shared/time-ago"
+import { PRODUCT_STATUS_LABEL } from "@/lib/products/product-status"
 import DeleteProductButton from "./DeleteProductButton"
 import InlineEdit from "./InlineEdit"
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
-import { readAuthReturn } from "@/lib/auth-return"
+import { readAuthReturn } from "@/lib/auth/auth-return"
 
 export default function RegisterPage() {
     const router = useRouter()

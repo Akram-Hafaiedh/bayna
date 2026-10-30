@@ -4,17 +4,17 @@ import { prisma } from "@/lib/prisma"
 import { Unit } from "@/app/generated/prisma/enums"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { listProducts } from "@/lib/shop-products"
-import { SHOP_CHOICES } from "@/lib/product-status"
-import { limitBlock } from "@/lib/plan-limits"
-import { parseProductFilters } from "@/lib/product-filters"
+import { listProducts } from "@/lib/shops/shop-products"
+import { SHOP_CHOICES } from "@/lib/products/product-status"
+import { limitBlock } from "@/lib/plans/plan-limits"
+import { parseProductFilters } from "@/lib/products/product-filters"
 import {
     parseMinOrderQty,
     parsePrice,
     parseStock,
     parseText,
     parseUnit,
-} from "@/lib/product-input"
+} from "@/lib/products/product-input"
 
 const bad = (error: string, status = 400, extra?: Record<string, unknown>) =>
     NextResponse.json({ error, ...extra }, { status })

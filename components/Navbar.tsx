@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react"
 import { Suspense, useState, useRef, useEffect } from "react"
 import NotificationBell from "@/components/NotificationBell"
 import ModuleNav from "@/components/shop/ModuleNav"
-import { lastShopPath } from "@/lib/shop-paths"
+import { lastShopPath } from "@/lib/shops/shop-paths"
 
 type Role = "CLIENT" | "COMPANY" | "ADMIN"
 

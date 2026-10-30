@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { Role } from "@/app/generated/prisma/enums"
-import { redirectToMyShop } from "@/lib/shop-auth"
-import { cleanSection } from "@/lib/shop-paths"
+import { redirectToMyShop } from "@/lib/shops/shop-auth"
+import { cleanSection } from "@/lib/shops/shop-paths"
 
 export const metadata: Metadata = { title: "My shop" }
 

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { parseText } from "@/lib/product-input"
+import { parseText } from "@/lib/products/product-input"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 

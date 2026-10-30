@@ -3,9 +3,9 @@ import NextAuth, { CredentialsSignin } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
-import { SignInRefused, authorizeCredentials } from "@/lib/sign-in"
-import { shouldTouchActivity } from "@/lib/session-activity"
-import { endViewsOnSignOut, resolveImpersonation } from "@/lib/impersonation-session"
+import { SignInRefused, authorizeCredentials } from "@/lib/auth/sign-in"
+import { shouldTouchActivity } from "@/lib/users/session-activity"
+import { endViewsOnSignOut, resolveImpersonation } from "@/lib/admin/impersonation-session"
 import type { Role } from "@/app/generated/prisma/enums"
 
 // A sign-in refused because of the account's status. The `code` tells the login page which message to show.

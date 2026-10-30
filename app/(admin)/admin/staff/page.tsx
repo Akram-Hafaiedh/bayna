@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { platformCan } from "@/lib/access/page"
-import { loadStaffPage } from "@/lib/admin-staff"
+import { loadStaffPage } from "@/lib/admin/admin-staff"
 import { Role } from "@/app/generated/prisma/enums"
 import StaffList from "@/components/admin/StaffList"
 

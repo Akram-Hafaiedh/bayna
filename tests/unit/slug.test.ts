@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { slugify } from "@/lib/slug"
+import { slugify } from "@/lib/shared/slug"
 
 test("slugify lowercases, removes accents and joins words with dashes", () => {
     assert.equal(slugify("Ciment Gris 50kg"), "ciment-gris-50kg")

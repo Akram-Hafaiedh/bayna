@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import Navbar from "@/components/Navbar"
 import ShopSwitcherLoader from "@/components/shop/ShopSwitcherLoader"
 import { SubNav } from "@/components/DashboardShell"
-import { shopPath } from "@/lib/shop-paths"
+import { shopPath } from "@/lib/shops/shop-paths"
 
 type Params = Promise<{ publicShopId: string }>
 

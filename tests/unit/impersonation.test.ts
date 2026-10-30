@@ -5,7 +5,7 @@ import assert from "node:assert/strict"
 import {
     DEFAULT_MINUTES, END_PATH, MAX_MINUTES, READ_ONLY_MESSAGE, checkTarget, expiryFor, homeForViewedRole, isOpen,
     parseStart, parseViewAsCookie, timeLeft, viewAsBlock, viewAsCookieValue,
-} from "@/lib/impersonation"
+} from "@/lib/admin/impersonation"
 import { actorFromSession } from "@/lib/audit/actor"
 
 const client = { id: "t1", status: "ACTIVE", role: "CLIENT", deletedAt: null, hasPlatformRole: false }

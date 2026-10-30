@@ -9,7 +9,7 @@ declare module "next-auth" {
         } & DefaultSession["user"]
         loginSessionId?: string
         /** Set while a platform staff member is viewing as `user` (lib/impersonation.ts). `user` is then the viewed person. */
-        impersonation?: import("@/lib/impersonation").ViewAs
+        impersonation?: import("@/lib/admin/impersonation").ViewAs
     }
 
     interface User {

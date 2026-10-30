@@ -3,7 +3,7 @@
 import { test } from "vitest"
 import assert from "node:assert/strict"
 import { BODY_MAX, TITLE_MAX, buildNotifications, notifications } from "@/lib/notifications"
-import { timeAgo } from "@/lib/time-ago"
+import { timeAgo } from "@/lib/shared/time-ago"
 
 test("one row per distinct recipient, blanks dropped", () => {
     const rows = buildNotifications(["u1", "u2", "u1", "", null, undefined, "  "], { type: "t", title: "Hello" })

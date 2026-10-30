@@ -1,6 +1,6 @@
 // components/shop/restore-product.ts
 // Client helper: bring a product back from the trash. Returns a result instead of throwing.
-import { shopFetch } from "@/lib/shop-fetch"
+import { shopFetch } from "@/lib/shops/shop-fetch"
 export type RestoreResult =
     | { ok: true; id: string; name: string; needsPriceReview: boolean }
     | { ok: false; error: string }

@@ -13,7 +13,7 @@ import { PrismaClient } from "../app/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 import { serializeActor, systemActor } from "../lib/audit/actor"
-import { normalizeEmail } from "../lib/email-input"
+import { normalizeEmail } from "../lib/auth/email-input"
 
 const dry = process.argv.includes("--dry")
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })

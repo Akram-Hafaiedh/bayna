@@ -9,8 +9,8 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
-import { checkCanRequest, parseDeletionRequest, purgeDate } from "@/lib/account-deletion"
-import { deletionBlockers } from "@/lib/account-deletion-actions"
+import { checkCanRequest, parseDeletionRequest, purgeDate } from "@/lib/users/account-deletion"
+import { deletionBlockers } from "@/lib/users/account-deletion-actions"
 
 export async function POST(req: Request) {
     try {

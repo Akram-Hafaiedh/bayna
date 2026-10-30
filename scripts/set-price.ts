@@ -9,8 +9,8 @@ import "dotenv/config"
 import { PrismaClient } from "../app/generated/prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
-import { parsePriceArgs, priceWarnings } from "../lib/plan-price"
-import { serializeActor, systemActor } from "../lib/audit/actor"
+import { parsePriceArgs, priceWarnings } from "@/lib/plans/plan-price"
+import { serializeActor, systemActor } from "@/lib/audit/actor"
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) })

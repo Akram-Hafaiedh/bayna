@@ -1,8 +1,8 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { connection } from "next/server"
-import { requireShopPage } from "@/lib/shop-auth"
-import { shopPath } from "@/lib/shop-paths"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { shopPath } from "@/lib/shops/shop-paths"
 import { shopCan } from "@/lib/access/page"
 import ShopActivityFeed from "@/components/access/ShopActivityFeed"
 

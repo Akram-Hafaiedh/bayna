@@ -7,7 +7,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import ShopProfileForm, { type ProfileValues } from "@/components/shop/ShopProfileForm"
-import { SHOP_HEADER } from "@/lib/shop-paths"
+import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 
 export default function ShopDetailsEditor({
     shopPublicId,

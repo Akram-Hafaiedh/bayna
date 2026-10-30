@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 import { requireBusiness } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { parseBusinessFields } from "@/lib/business-input"
+import { parseBusinessFields } from "@/lib/businesses/business-input"
 
 const SELECT = {
     id: true,

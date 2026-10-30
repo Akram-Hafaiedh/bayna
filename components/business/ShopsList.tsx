@@ -9,8 +9,8 @@ import RowMenu, { type RowMenuItem } from "@/components/ui/RowMenu"
 import { ShowMore, useShowMore } from "@/components/access/ShowMore"
 import StatusPill from "@/components/business/StatusPill"
 import { useShopActions } from "@/components/business/use-shop-actions"
-import { countByStatus, filterShops, NO_SHOP_FILTERS, type ShopFilters, type ShopRow } from "@/lib/shop-list"
-import { SHOP_STATUSES, SHOP_STATUS_LABEL, type ShopStatusValue } from "@/lib/shop-status"
+import { countByStatus, filterShops, NO_SHOP_FILTERS, type ShopFilters, type ShopRow } from "@/lib/shops/shop-list"
+import { SHOP_STATUSES, SHOP_STATUS_LABEL, type ShopStatusValue } from "@/lib/shops/shop-status"
 
 // With a handful of shops a search box is noise; it appears from this many on
 const FILTER_FROM = 5

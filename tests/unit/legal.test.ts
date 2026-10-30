@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { PRIVACY_SECTIONS, TERMS_SECTIONS, type LegalSection } from "@/lib/legal"
+import { PRIVACY_SECTIONS, TERMS_SECTIONS, type LegalSection } from "@/lib/shared/legal"
 
 const docs: [string, LegalSection[]][] = [["privacy", PRIVACY_SECTIONS], ["terms", TERMS_SECTIONS]]
 

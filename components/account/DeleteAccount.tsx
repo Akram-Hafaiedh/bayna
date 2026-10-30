@@ -4,7 +4,7 @@
 // the person out when the request is accepted. Rules and wording: lib/account-deletion.ts.
 import { useState } from "react"
 import { signOut } from "next-auth/react"
-import { GRACE_DAYS } from "@/lib/account-deletion"
+import { GRACE_DAYS } from "@/lib/users/account-deletion"
 
 export default function DeleteAccount() {
     const [open, setOpen] = useState(false)

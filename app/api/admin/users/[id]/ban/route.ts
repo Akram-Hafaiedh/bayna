@@ -7,7 +7,7 @@ import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
 import { assertPlatformKeepsAnOwner } from "@/lib/access/owners"
-import { checkTarget, parseReason, userMove } from "@/lib/user-status"
+import { checkTarget, parseReason, userMove } from "@/lib/users/user-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {

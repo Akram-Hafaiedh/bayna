@@ -1,6 +1,6 @@
 import { Suspense } from "react"
-import { requireShopPage } from "@/lib/shop-auth"
-import { getCategoryTree } from "@/lib/shop-products"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { getCategoryTree } from "@/lib/shops/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
 
 export default function NewProductPage({ params }: { params: Promise<{ publicShopId: string }> }) {

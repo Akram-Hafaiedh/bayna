@@ -11,7 +11,7 @@
 // speaker check the Arabic before it is shown to clients.
 //
 // `name` is the value stored in Shop.governorate and is what the application form already used.
-import type { LatLng } from "./geo"
+import type { LatLng } from "@/lib/shared/geo"
 
 export type Governorate = {
     name: string

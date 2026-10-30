@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
-import { hashResetToken } from "@/lib/reset-token"
+import { hashResetToken } from "@/lib/auth/reset-token"
 import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {

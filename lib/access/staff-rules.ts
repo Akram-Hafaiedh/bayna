@@ -6,8 +6,8 @@
 //   - an account that works in a shop or a business cannot also be staff (it would need two dashboards,
 //     and the sign-in routes by one account type), so staff get their own account;
 //   - the platform always keeps one live owner (the person who can hand out access).
-import { fail, ok, type Parsed } from "@/lib/parse"
-import { parseEmail } from "@/lib/email-input"
+import { fail, ok, type Parsed } from "@/lib/shared/parse"
+import { parseEmail } from "@/lib/auth/email-input"
 import { OWNERSHIP_KEY } from "./catalogue"
 import { checkOwnerRule, platformMembers, type OwnerCheck, type StaffRow } from "./owners"
 import type { MemberAction } from "./team-rules"

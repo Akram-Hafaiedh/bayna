@@ -7,7 +7,7 @@ import { useState } from "react"
 import BillingToggle from "@/components/plans/BillingToggle"
 import ComparisonTable from "@/components/plans/ComparisonTable"
 import type { PlanRow } from "@/components/plans/types"
-import { yearlySaving, type BillingPeriod } from "@/lib/plans"
+import { yearlySaving, type BillingPeriod } from "@/lib/plans/plans"
 
 export type PlansTableRow = PlanRow
 

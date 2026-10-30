@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { guardTeam, targetLabel, TeamError } from "@/lib/access/team-actions"
 import { hashInviteToken, inviteExpiry, newInviteToken } from "@/lib/access/invite-token"
-import { holdsSeat, limitBlock } from "@/lib/plan-limits"
+import { holdsSeat, limitBlock } from "@/lib/plans/plan-limits"
 import { checkInvitee, missingKeys, parseInviteInput, roleUsableAt } from "@/lib/access/team-rules"
 
 export async function POST(req: Request) {

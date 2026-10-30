@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { buildUsersHref, NO_USER_QUERY, parseUserQuery, userWhere } from "@/lib/user-list"
+import { buildUsersHref, NO_USER_QUERY, parseUserQuery, userWhere } from "@/lib/users/user-list"
 
 test("an empty address means the defaults", () => {
     assert.deepEqual(parseUserQuery({}), NO_USER_QUERY)

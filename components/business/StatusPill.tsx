@@ -1,6 +1,6 @@
 // components/business/StatusPill.tsx
 // The small coloured label of a shop's status. No client code, so pages of any kind can use it.
-import { SHOP_STATUS_LABEL, SHOP_STATUS_TONE, type ShopStatusValue, type StatusTone } from "@/lib/shop-status"
+import { SHOP_STATUS_LABEL, SHOP_STATUS_TONE, type ShopStatusValue, type StatusTone } from "@/lib/shops/shop-status"
 
 const TONE: Record<StatusTone, string> = {
     green: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200",

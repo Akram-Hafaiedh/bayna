@@ -5,8 +5,8 @@
 // The one idea behind most of it: nobody can give or change access they do not hold themselves.
 // A manager cannot make an owner, and cannot touch one. The "last owner" rule is separate
 // (owners.ts) and is applied by the routes after these checks.
-import { fail, ok, type Parsed } from "@/lib/parse"
-import { normalizeEmail, parseEmail } from "@/lib/email-input"
+import { fail, ok, type Parsed } from "@/lib/shared/parse"
+import { normalizeEmail, parseEmail } from "@/lib/auth/email-input"
 import type { BusinessPermission, ShopPermission } from "./catalogue"
 
 export type TeamScope = "SHOP" | "BUSINESS"

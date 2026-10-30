@@ -3,9 +3,9 @@
 // One form for the shop application (/become-shop) and the shop profile (/shop/<publicShopId>/profile).
 // It collects the essentials; the parent decides where the body is sent.
 import { useState } from "react"
-import { GOVERNORATES, findGovernorate } from "@/lib/governorates"
-import { formatPhone } from "@/lib/shop-input"
-import type { LatLng } from "@/lib/geo"
+import { GOVERNORATES, findGovernorate } from "@/lib/shared/governorates"
+import { formatPhone } from "@/lib/shops/shop-input"
+import type { LatLng } from "@/lib/shared/geo"
 import LocationPicker, { type PinSource } from "@/components/map/LocationPicker"
 
 export type ProfileValues = {
@@ -160,18 +160,18 @@ export default function ShopProfileForm({ initial, submitLabel, onSubmit, notice
             </section>
 
             <div className={`space-y-6 ${contactPlace}`}>
-            <section className={card}>
-                <h2 className="text-base font-semibold text-zinc-900">Contact</h2>
-                <div className={`grid gap-4 ${wide ? "sm:grid-cols-2 lg:grid-cols-1" : "sm:grid-cols-2"}`}>
-                    <Field title="Phone" required hint="Tunisian number, for example 20 123 456">
-                        <input required disabled={disabled} type="tel" placeholder="+216 20 123 456" value={v.phone} onChange={(e) => set("phone", e.target.value)} className={input} />
-                    </Field>
-                    <Field title="WhatsApp" hint="Optional. Leave empty if it is the same number.">
-                        <input disabled={disabled} type="tel" placeholder="+216 20 123 456" value={v.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} className={input} />
-                    </Field>
-                </div>
-            </section>
-            {wide && children}
+                <section className={card}>
+                    <h2 className="text-base font-semibold text-zinc-900">Contact</h2>
+                    <div className={`grid gap-4 ${wide ? "sm:grid-cols-2 lg:grid-cols-1" : "sm:grid-cols-2"}`}>
+                        <Field title="Phone" required hint="Tunisian number, for example 20 123 456">
+                            <input required disabled={disabled} type="tel" placeholder="+216 20 123 456" value={v.phone} onChange={(e) => set("phone", e.target.value)} className={input} />
+                        </Field>
+                        <Field title="WhatsApp" hint="Optional. Leave empty if it is the same number.">
+                            <input disabled={disabled} type="tel" placeholder="+216 20 123 456" value={v.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} className={input} />
+                        </Field>
+                    </div>
+                </section>
+                {wide && children}
             </div>
 
             <section className={`${card} ${locationPlace}`}>

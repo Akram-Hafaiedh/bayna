@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { planRestore } from "@/lib/product-restore"
+import { planRestore } from "@/lib/products/product-restore"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 

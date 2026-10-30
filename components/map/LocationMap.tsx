@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import L from "leaflet"
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from "react-leaflet"
 import "leaflet/dist/leaflet.css"
-import type { LatLng } from "@/lib/geo"
+import type { LatLng } from "@/lib/shared/geo"
 
 const PIN = L.divIcon({
     className: "",

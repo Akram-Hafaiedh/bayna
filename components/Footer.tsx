@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import Link from "next/link"
-import { SITE } from "@/lib/site"
+import { SITE } from "@/lib/shared/site"
 
 // The year is read inside a cached component, the same way the sign-in layout does it
 async function Year() {

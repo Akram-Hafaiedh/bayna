@@ -1,7 +1,7 @@
 // lib/category-input.ts
 // Validation shared by the admin category routes. Categories form a two-level tree.
 import { prisma } from "@/lib/prisma"
-import { parseText, type Parsed } from "@/lib/product-input"
+import { parseText, type Parsed } from "@/lib/products/product-input"
 
 export type CategoryFields = {
     name: string

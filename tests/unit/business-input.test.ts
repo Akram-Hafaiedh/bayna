@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { parseBusinessFields, type BusinessSnapshot } from "@/lib/business-input"
+import { parseBusinessFields, type BusinessSnapshot } from "@/lib/businesses/business-input"
 
 const current: BusinessSnapshot = {
     name: "Carthage Materials",

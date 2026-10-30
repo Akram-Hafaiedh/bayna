@@ -3,7 +3,7 @@ import {
     buildProductsHref,
     PAGE_SIZES,
     type ProductFilters,
-} from "@/lib/product-filters"
+} from "@/lib/products/product-filters"
 
 /** 1 … 4 5 6 … 12 : first, last and the neighbours of the current page. */
 function pageWindow(page: number, pageCount: number): (number | "gap")[] {

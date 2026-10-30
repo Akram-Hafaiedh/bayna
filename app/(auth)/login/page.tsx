@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { readAuthReturn } from "@/lib/auth-return"
-import { messageForSignInCode } from "@/lib/user-status"
+import { readAuthReturn } from "@/lib/auth/auth-return"
+import { messageForSignInCode } from "@/lib/users/user-status"
 import { messageForRateLimitCode } from "@/lib/rate-limit/policies"
 
 export default function LoginPage() {

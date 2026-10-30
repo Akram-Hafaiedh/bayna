@@ -12,9 +12,9 @@
 //     chosen governorate. Without a pin, the governorate centre is used (source LOOKUP)
 //   - the result says which fields really changed and whether a verified shop must be flagged for admin
 //     review (name, address, city, governorate or location; phone, WhatsApp and description are not)
-import { distanceKm, isInTunisia } from "./geo"
-import { findGovernorate } from "./governorates"
-import { fail, ok, parseText, type Parsed } from "./parse"
+import { distanceKm, isInTunisia } from "@/lib/shared/geo"
+import { findGovernorate } from "@/lib/shared/governorates"
+import { fail, ok, parseText, type Parsed } from "@/lib/shared/parse"
 
 /** A pin farther than this from the governorate centre is refused (the largest governorates are ~200 km across). */
 export const MAX_PIN_DISTANCE_KM = 250

@@ -4,8 +4,8 @@
 // be shared and the back button works; typing waits a moment before it asks the server.
 import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { buildUsersHref, hasUserFilters, NO_USER_QUERY, USER_ROLES, type UserQuery } from "@/lib/user-list"
-import { USER_STATUSES, USER_STATUS_LABEL } from "@/lib/user-status"
+import { buildUsersHref, hasUserFilters, NO_USER_QUERY, USER_ROLES, type UserQuery } from "@/lib/users/user-list"
+import { USER_STATUSES, USER_STATUS_LABEL } from "@/lib/users/user-status"
 
 const field =
     "h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"

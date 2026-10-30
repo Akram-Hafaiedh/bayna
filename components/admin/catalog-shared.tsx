@@ -4,7 +4,7 @@
 // select, and one form used to create, edit and approve catalogue items.
 import { useEffect, useState } from "react"
 import type { Unit } from "@/app/generated/prisma/enums"
-import { UNIT_OPTIONS } from "@/lib/units"
+import { UNIT_OPTIONS } from "@/lib/catalogue/units"
 
 export type AdminCategory = {
     id: string

@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { isActiveLink } from "@/lib/active-link"
+import { isActiveLink } from "@/lib/shared/active-link"
 
 test("a link is active on its own page and below it, not on lookalikes", () => {
     assert.equal(isActiveLink("/shop/abc/team", "/shop/abc/team"), true)

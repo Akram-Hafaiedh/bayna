@@ -6,7 +6,7 @@ import { NextResponse } from "next/server"
 import { requireBusiness } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { moveFor, type ShopAction } from "@/lib/shop-status"
+import { moveFor, type ShopAction } from "@/lib/shops/shop-status"
 
 const OWNER_ACTIONS: ShopAction[] = ["submit", "close", "reopen"]
 

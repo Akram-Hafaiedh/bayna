@@ -1,12 +1,12 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
-import { requireShopPage } from "@/lib/shop-auth"
-import { getCategoryTree, getShopProduct } from "@/lib/shop-products"
+import { requireShopPage } from "@/lib/shops/shop-auth"
+import { getCategoryTree, getShopProduct } from "@/lib/shops/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
 import ConfirmPriceButton from "@/components/shop/ConfirmPriceButton"
 import { shopCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
-import { timeAgo } from "@/lib/time-ago"
+import { timeAgo } from "@/lib/shared/time-ago"
 
 export default function EditProductPage({
     params,

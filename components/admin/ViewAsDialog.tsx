@@ -4,7 +4,7 @@
 // (read-only). Used by the button on the admin user page and by the "..." menu of the users list. The route checks
 // the permission and the rules again.
 import { useState } from "react"
-import { REASON_MAX } from "@/lib/impersonation"
+import { REASON_MAX } from "@/lib/admin/impersonation"
 
 export default function ViewAsDialog({ publicUserId, name, onClose }: { publicUserId: string; name: string; onClose: () => void }) {
     const [reason, setReason] = useState("")

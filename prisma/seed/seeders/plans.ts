@@ -3,8 +3,8 @@
 // only the plans that are missing: a plan an admin edited is never overwritten. The one exception: a
 // plan that has no price at all gets the default prices (it was created before prices existed).
 import type { Seeder } from "../core"
-import { DEFAULT_PLANS } from "../../../lib/plans"
-import { serializeActor, systemActor } from "../../../lib/audit/actor"
+import { DEFAULT_PLANS } from "@/lib/plans/plans"
+import { serializeActor, systemActor } from "@/lib/audit/actor"
 
 export const plans: Seeder = {
     name: "plans",

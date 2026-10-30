@@ -4,12 +4,12 @@ import { notFound, redirect } from "next/navigation"
 import { connection } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { pickActiveShop } from "@/lib/access/active-shop"
 import { readActiveShopHint } from "@/lib/access/active-cookie"
 import { loadMyShops } from "@/lib/access/shops"
-import { shopPath } from "@/lib/shop-paths"
-import type { ShopStatusValue } from "@/lib/shop-status"
+import { shopPath } from "@/lib/shops/shop-paths"
+import type { ShopStatusValue } from "@/lib/shops/shop-status"
 
 export type ShopPage = { id: string; publicShopId: string; name: string; status: ShopStatusValue }
 

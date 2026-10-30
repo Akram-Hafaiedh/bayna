@@ -4,7 +4,7 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vitest"
 import { requirePlatform, requireShop } from "@/lib/access/guard"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
-import { SHOP_HEADER } from "@/lib/shop-paths"
+import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { cleanUp, demo, freshEmail, prisma, signInAs, signOut } from "./helpers"
 
 const req = (shopPublicId?: string) =>

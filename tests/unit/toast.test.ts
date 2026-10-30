@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { MAX_TOASTS, pushToast, removeToast, toastDuration, type ToastItem } from "@/lib/toast"
+import { MAX_TOASTS, pushToast, removeToast, toastDuration, type ToastItem } from "@/lib/shared/toast"
 
 const make = (id: number): ToastItem => ({ id, tone: "info", title: `t${id}`, duration: 1000 })
 

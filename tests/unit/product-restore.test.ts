@@ -3,7 +3,7 @@
 import { test } from "vitest"
 import assert from "node:assert/strict"
 import { Unit } from "@/app/generated/prisma/enums"
-import { planRestore } from "@/lib/product-restore"
+import { planRestore } from "@/lib/products/product-restore"
 
 const catalog = (over: Partial<{ isActive: boolean; unit: Unit; categoryId: string }> = {}) => ({
     isActive: true,

@@ -1,12 +1,12 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { businessCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
 import ShopsList from "@/components/business/ShopsList"
-import { shopSetup } from "@/lib/shop-setup"
-import type { ShopRow } from "@/lib/shop-list"
+import { shopSetup } from "@/lib/shops/shop-setup"
+import type { ShopRow } from "@/lib/shops/shop-list"
 
 export const metadata: Metadata = { title: "Shops" }
 

@@ -12,7 +12,7 @@ import {
     DEFAULT_PLANS, FREE_PLAN_KEY, LIMIT_KEYS, defaultPlan, evaluateLimit, limitMessage, limitOf, limitsEnforced,
     parseFeatures, parseLimits, planInForce,
     type Features, type LimitCheck, type LimitKey, type Limits, type PlanInForce, type PlanDefinition,
-} from "@/lib/plans"
+} from "@/lib/plans/plans"
 
 export type PlanView = PlanDefinition & { features: Features; limits: Limits }
 

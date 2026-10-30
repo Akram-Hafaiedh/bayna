@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { parseMinOrderQty, parsePrice, parseStock, parseText, parseUnit } from "@/lib/product-input"
+import { parseMinOrderQty, parsePrice, parseStock, parseText, parseUnit } from "@/lib/products/product-input"
 
 test("parsePrice returns a 3-decimal string", () => {
     assert.deepEqual(parsePrice(12.5), { ok: true, value: "12.500" })

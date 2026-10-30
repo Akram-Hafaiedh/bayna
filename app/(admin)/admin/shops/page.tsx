@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import StatusPill from "@/components/business/StatusPill"
-import type { ShopStatusValue } from "@/lib/shop-status"
+import type { ShopStatusValue } from "@/lib/shops/shop-status"
 
 type ShopRow = {
     id: string

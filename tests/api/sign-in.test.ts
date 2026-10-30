@@ -4,7 +4,7 @@
 // Run: npm run test:api
 import { afterAll, describe, expect, test } from "vitest"
 import bcrypt from "bcryptjs"
-import { SignInRefused, authorizeCredentials } from "@/lib/sign-in"
+import { SignInRefused, authorizeCredentials } from "@/lib/auth/sign-in"
 import { RATE_LIMITED_CODE } from "@/lib/rate-limit"
 import { cleanUp, freshEmail, freshIp, prisma } from "./helpers"
 

@@ -10,9 +10,9 @@
 //   5. Otherwise: in, and the per-email counter is cleared.
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
-import { normalizeEmail } from "@/lib/email-input"
-import { signInBlockFor } from "@/lib/user-status"
-import { signInCancelsDeletion } from "@/lib/account-deletion"
+import { normalizeEmail } from "@/lib/auth/email-input"
+import { signInBlockFor } from "@/lib/users/user-status"
+import { signInCancelsDeletion } from "@/lib/users/account-deletion"
 import { withAudit, logActivity } from "@/lib/audit/run"
 import { notify, notifications } from "@/lib/notifications"
 import { RATE, RATE_LIMITED_CODE, checkRateLimits, clearRateLimit, clientIp, recordRateLimits } from "@/lib/rate-limit"

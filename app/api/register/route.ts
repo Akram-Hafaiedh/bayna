@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
-import { parseEmail } from "@/lib/email-input"
-import { parseAcceptance } from "@/lib/terms"
+import { parseEmail } from "@/lib/auth/email-input"
+import { parseAcceptance } from "@/lib/shared/terms"
 import { RATE, clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit"
 
 export async function POST(req: Request) {

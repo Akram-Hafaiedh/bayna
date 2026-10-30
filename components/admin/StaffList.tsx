@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import RowMenu, { type RowMenuItem } from "@/components/ui/RowMenu"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
-import type { StaffInviteRow, StaffMember, StaffRoleOption } from "@/lib/admin-staff"
+import type { StaffInviteRow, StaffMember, StaffRoleOption } from "@/lib/admin/admin-staff"
 
 const STATUS_BADGE: Record<string, string> = {
     ACTIVE: "bg-emerald-50 text-emerald-700",

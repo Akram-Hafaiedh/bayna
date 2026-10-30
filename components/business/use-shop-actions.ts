@@ -6,8 +6,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
-import { shopPath } from "@/lib/shop-paths"
-import type { ShopAction } from "@/lib/shop-status"
+import { shopPath } from "@/lib/shops/shop-paths"
+import type { ShopAction } from "@/lib/shops/shop-status"
 
 const COPY: Partial<Record<ShopAction, { title: (n: string) => string; message: string; confirm: string; done: string; danger?: boolean }>> = {
     submit: {

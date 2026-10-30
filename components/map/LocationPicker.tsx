@@ -4,7 +4,7 @@
 // or use their current position. It starts from the governorate centre. The parent keeps the state.
 import { useState } from "react"
 import dynamic from "next/dynamic"
-import { isInTunisia, type LatLng } from "@/lib/geo"
+import { isInTunisia, type LatLng } from "@/lib/shared/geo"
 import type { LocationMapProps } from "./LocationMap"
 
 const LocationMap = dynamic<LocationMapProps>(() => import("./LocationMap"), {

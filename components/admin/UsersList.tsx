@@ -10,9 +10,9 @@ import RowMenu, { type RowMenuItem } from "@/components/ui/RowMenu"
 import ViewAsDialog from "@/components/admin/ViewAsDialog"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
-import type { UserRow } from "@/lib/user-list"
-import { userDetailPath } from "@/lib/user-detail"
-import { USER_STATUS_LABEL, userActions, REASON_MAX, type UserStatusValue } from "@/lib/user-status"
+import type { UserRow } from "@/lib/users/user-list"
+import { userDetailPath } from "@/lib/users/user-detail"
+import { USER_STATUS_LABEL, userActions, REASON_MAX, type UserStatusValue } from "@/lib/users/user-status"
 
 const ROLE_BADGE: Record<string, string> = {
     ADMIN: "bg-violet-50 text-violet-700",

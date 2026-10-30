@@ -2,7 +2,7 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { parseAssignArgs, subscriptionDates } from "@/lib/plan-assign"
+import { parseAssignArgs, subscriptionDates } from "@/lib/plans/plan-assign"
 
 const NOW = new Date("2026-10-26T12:00:00Z")
 

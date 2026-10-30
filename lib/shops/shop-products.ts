@@ -4,7 +4,7 @@
 import type { Prisma } from "@/app/generated/prisma/client"
 import type { ProductStatus, SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
-import { LOW_STOCK_THRESHOLD, type ProductFilters } from "@/lib/product-filters"
+import { LOW_STOCK_THRESHOLD, type ProductFilters } from "@/lib/products/product-filters"
 
 /** JSON-safe row (Decimal -> string, Date -> ISO) so it can cross into client components. */
 export type ProductRow = {

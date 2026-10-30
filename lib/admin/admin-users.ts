@@ -1,7 +1,7 @@
 // lib/admin-users.ts
 // Reads one page of users for the admin Users list (Server Components only).
 import { prisma } from "@/lib/prisma"
-import { userWhere, type UserQuery, type UserRow } from "@/lib/user-list"
+import { userWhere, type UserQuery, type UserRow } from "@/lib/users/user-list"
 
 export type UserPage = { items: UserRow[]; total: number; page: number; pageCount: number; pageSize: number }
 

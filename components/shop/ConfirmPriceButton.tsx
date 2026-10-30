@@ -5,7 +5,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/Toast"
-import { shopFetch } from "@/lib/shop-fetch"
+import { shopFetch } from "@/lib/shops/shop-fetch"
 
 export default function ConfirmPriceButton({ productId, className = "" }: { productId: string; className?: string }) {
     const router = useRouter()

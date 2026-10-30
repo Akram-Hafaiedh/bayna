@@ -4,8 +4,8 @@
 // final, and open a simple placeholder page.
 import Link from "next/link"
 import { useParams, usePathname } from "next/navigation"
-import { isActiveLink } from "@/lib/active-link"
-import { lastShopPath, shopPath } from "@/lib/shop-paths"
+import { isActiveLink } from "@/lib/shared/active-link"
+import { lastShopPath, shopPath } from "@/lib/shops/shop-paths"
 import type { ReactNode } from "react"
 
 type Module = { /** section of the shop, for example "team" */ href: string; label: string; soon?: boolean; icon: ReactNode }

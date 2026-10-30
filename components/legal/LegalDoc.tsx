@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { LEGAL_VERSION, SITE, formatLegalDate, missingSiteDetails } from "@/lib/site"
-import type { LegalSection } from "@/lib/legal"
+import { LEGAL_VERSION, SITE, formatLegalDate, missingSiteDetails } from "@/lib/shared/site"
+import type { LegalSection } from "@/lib/shared/legal"
 
 // One legal document (Terms or Privacy): title, date, a contents list on wide screens, then the sections.
 // Text colours are set on purpose: the app's default text turns light in dark mode and these cards are white.

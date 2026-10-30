@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useConfirm } from "@/components/ui/ConfirmDialog"
 import { useToast } from "@/components/ui/Toast"
 import { PRICE_CHECK_NOTE, restoreProduct } from "./restore-product"
-import { shopFetch } from "@/lib/shop-fetch"
+import { shopFetch } from "@/lib/shops/shop-fetch"
 
 export default function DeleteProductButton({ id, name }: { id: string; name: string }) {
     const router = useRouter()

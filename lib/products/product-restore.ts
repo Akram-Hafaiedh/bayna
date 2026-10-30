@@ -5,7 +5,7 @@
 // sat there: the item may be archived, or sold by a different unit. In that case we do not bring
 // back a wrong price quietly: the unit is brought in line and the product is flagged for a price check.
 import type { Unit } from "@/app/generated/prisma/enums"
-import { unitChangeReason } from "@/lib/price-review"
+import { unitChangeReason } from "@/lib/products/price-review"
 
 export type RestoreChanges = {
     categoryId?: string

@@ -6,8 +6,8 @@ import { POST as start } from "@/app/api/admin/impersonation/start/route"
 import { POST as end } from "@/app/api/admin/impersonation/end/route"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { READ_ONLY_MESSAGE } from "@/lib/impersonation"
-import { resolveImpersonation } from "@/lib/impersonation-session"
+import { READ_ONLY_MESSAGE } from "@/lib/admin/impersonation"
+import { resolveImpersonation } from "@/lib/admin/impersonation-session"
 import { RATE, clearRateLimit } from "@/lib/rate-limit"
 import { cleanUp, createStaff, createTarget, demo, prisma, signInAs, signOut } from "./helpers"
 
@@ -181,7 +181,7 @@ describe("signing out", () => {
         await begin({ userId: t.publicUserId, reason, password: PASSWORD })
         expect(await resolveImpersonation(support.id)).not.toBeNull()
         // the sign-out event of auth.ts
-        const { endViewsOnSignOut } = await import("@/lib/impersonation-session")
+        const { endViewsOnSignOut } = await import("@/lib/admin/impersonation-session")
         await endViewsOnSignOut(support.id)
         expect(await resolveImpersonation(support.id)).toBeNull()
         const row = await prisma.impersonationSession.findFirstOrThrow({ where: { targetUserId: t.id } })

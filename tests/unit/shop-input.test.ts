@@ -2,8 +2,8 @@
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { formatPhone, parsePhone, parseProfileFields, type ProfileSnapshot } from "@/lib/shop-input"
-import { findGovernorate } from "@/lib/governorates"
+import { formatPhone, parsePhone, parseProfileFields, type ProfileSnapshot } from "@/lib/shops/shop-input"
+import { findGovernorate } from "@/lib/shared/governorates"
 
 const sfax = findGovernorate("Sfax")!
 

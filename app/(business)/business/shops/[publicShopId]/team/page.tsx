@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { requireBusinessArea } from "@/lib/business-auth"
+import { requireBusinessArea } from "@/lib/businesses/business-auth"
 import { prisma } from "@/lib/prisma"
 import { effective, has } from "@/lib/access/evaluate"
 import { loadInvites, loadMembers, loadRoleOptions } from "@/lib/access/team"

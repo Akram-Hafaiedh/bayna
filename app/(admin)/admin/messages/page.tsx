@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import type { Metadata } from "next"
 import Link from "next/link"
 import { connection } from "next/server"
-import { requireRole } from "@/lib/session"
+import { requireRole } from "@/lib/auth/session"
 import { platformCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
 import { Role } from "@/app/generated/prisma/enums"
@@ -10,7 +10,7 @@ import {
     CONTACT_PAGE_SIZES, CONTACT_STATUSES, CONTACT_STATUS_LABEL, buildContactHref, parseContactQuery, replyHref, topicLabel,
     type ContactStatusValue,
 } from "@/lib/contact"
-import { timeAgo } from "@/lib/time-ago"
+import { timeAgo } from "@/lib/shared/time-ago"
 import MessageActions from "@/components/admin/MessageActions"
 import Pager from "@/components/ui/Pager"
 

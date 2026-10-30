@@ -8,7 +8,7 @@ import { GET as listProducts, POST as createProduct } from "@/app/api/shop/produ
 import { GET as getProduct, PATCH as updateProduct, DELETE as deleteProduct } from "@/app/api/shop/products/[id]/route"
 import { POST as restoreProduct } from "@/app/api/shop/products/[id]/restore/route"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
-import { SHOP_HEADER } from "@/lib/shop-paths"
+import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { call, cleanUp, demo, prisma, signInAs, signOut } from "./helpers"
 
 const OWNER = "carthage@demo.bayna.test"

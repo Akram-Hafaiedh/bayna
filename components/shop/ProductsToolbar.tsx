@@ -6,9 +6,9 @@ import {
     buildProductsHref,
     hasActiveFilters,
     type ProductFilters,
-} from "@/lib/product-filters"
-import { UNIT_OPTIONS } from "@/lib/units"
-import type { CategoryOption } from "@/lib/shop-products"
+} from "@/lib/products/product-filters"
+import { UNIT_OPTIONS } from "@/lib/catalogue/units"
+import type { CategoryOption } from "@/lib/shops/shop-products"
 
 const selectClass =
     "h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"

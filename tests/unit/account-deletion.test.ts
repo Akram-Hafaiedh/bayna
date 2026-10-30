@@ -4,7 +4,7 @@ import { test } from "vitest"
 import assert from "node:assert/strict"
 import {
     ANONYMISED_NAME, GRACE_DAYS, anonymisedEmail, blocker, checkCanRequest, daysLeft, isDue, parseDeletionRequest, purgeDate, signInCancelsDeletion,
-} from "@/lib/account-deletion"
+} from "@/lib/users/account-deletion"
 
 const asked = new Date("2026-10-28T12:00:00Z")
 
