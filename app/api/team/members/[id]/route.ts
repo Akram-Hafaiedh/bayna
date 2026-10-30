@@ -19,7 +19,7 @@ async function run(req: Request, id: string, action: MemberAction) {
     const member = await prisma.accessAssignment.findUnique({
         where: { id },
         select: {
-            id: true, userId: true, scope: true, providerId: true, businessId: true, status: true,
+            id: true, userId: true, scope: true, shopId: true, businessId: true, status: true,
             role: { select: { id: true, name: true, permissions: true } },
             user: { select: { name: true, email: true } },
         },
@@ -27,14 +27,14 @@ async function run(req: Request, id: string, action: MemberAction) {
     if (!member || member.scope === "PLATFORM") return NextResponse.json({ error: "Person not found" }, { status: 404 })
     const scope = member.scope
 
-    const guard = await guardTeam(scope, action.type, req, { providerId: member.providerId, businessId: member.businessId })
+    const guard = await guardTeam(scope, action.type, req, { shopId: member.shopId, businessId: member.businessId })
     if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
     const roleRow =
         action.type === "set_role"
             ? await prisma.accessRole.findUnique({
                 where: { id: action.roleId },
-                select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
+                select: { id: true, name: true, permissions: true, businessId: true, shopId: true },
             })
             : null
     // The new role must belong to this business, or to this shop (or its business, for a shop)
@@ -43,7 +43,7 @@ async function run(req: Request, id: string, action: MemberAction) {
             roleUsableAt(
                 roleRow,
                 scope === "SHOP"
-                    ? { scope, providerId: member.providerId!, businessId: guard.businessId }
+                    ? { scope, shopId: member.shopId!, businessId: guard.businessId }
                     : { scope, businessId: member.businessId! }
             )
             ? roleRow
@@ -67,12 +67,12 @@ async function run(req: Request, id: string, action: MemberAction) {
         return NextResponse.json({ error: "That person is already suspended" }, { status: 400 })
     }
 
-    const levelId = (scope === "SHOP" ? member.providerId : member.businessId)!
+    const levelId = (scope === "SHOP" ? member.shopId : member.businessId)!
     const label = await targetLabel(prisma, scope, levelId)
     const who = member.user.name || member.user.email
     const ownerTarget =
         scope === "SHOP"
-            ? ({ scope, providerId: member.providerId!, businessId: guard.businessId } as const)
+            ? ({ scope, shopId: member.shopId!, businessId: guard.businessId } as const)
             : ({ scope, businessId: member.businessId! } as const)
 
     await withAudit(guard.actor, async (tx) => {
@@ -88,8 +88,8 @@ async function run(req: Request, id: string, action: MemberAction) {
             if (!owner.ok) throw new TeamError(owner.error, 409)
         }
 
-        const shop = member.providerId ? (await shopPublicIds(tx, [member.providerId])).get(member.providerId) ?? null : null
-        const entry = { entityType: "AccessAssignment", entityId: id, providerId: member.providerId } as const
+        const shop = member.shopId ? (await shopPublicIds(tx, [member.shopId])).get(member.shopId) ?? null : null
+        const entry = { entityType: "AccessAssignment", entityId: id, shopId: member.shopId } as const
         const verb = describeAction(action.type)
 
         if (action.type === "set_role" && newRole) {

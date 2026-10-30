@@ -1,5 +1,5 @@
 // app/api/admin/shops/[id]/suspend/route.ts
-// The platform team suspends a shop (see lib/shop-status.ts). Needs shop.provider.suspend.
+// The platform team suspends a shop (see lib/shop-status.ts). Needs shop.record.suspend.
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
@@ -8,7 +8,7 @@ import { moveFor } from "@/lib/shop-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const guard = await requirePlatform("shop.provider.suspend", req)
+        const guard = await requirePlatform("shop.record.suspend", req)
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const { id } = await params

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import type { ProductRow } from "@/lib/provider-products"
+import type { ProductRow } from "@/lib/shop-products"
 import {
     buildProductsHref,
     defaultDir,

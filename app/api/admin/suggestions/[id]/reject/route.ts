@@ -1,5 +1,5 @@
 // app/api/admin/suggestions/[id]/reject/route.ts
-// POST { reviewNote? } - the provider keeps their custom product; only the request is closed.
+// POST { reviewNote? } - the shop keeps their custom product; only the request is closed.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requirePlatform } from "@/lib/access/guard"

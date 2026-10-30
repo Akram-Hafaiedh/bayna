@@ -88,8 +88,8 @@ describe("requireShop", () => {
         await signInAs(demo("viewer"))
         const a = await requireShop("product.listing.view", req(publicShopId.tunis))
         const b = await requireShop("product.listing.view", req(publicShopId.marsa))
-        expect(a).toMatchObject({ ok: true, provider: { id: shopId.tunis } })
-        expect(b).toMatchObject({ ok: true, provider: { id: shopId.marsa } })
+        expect(a).toMatchObject({ ok: true, shop: { id: shopId.tunis } })
+        expect(b).toMatchObject({ ok: true, shop: { id: shopId.marsa } })
     })
 
     test("naming a shop you do not work in is refused, even if you work in another one", async () => {
@@ -101,7 +101,7 @@ describe("requireShop", () => {
 
     test("without the header, a person with one shop gets that shop", async () => {
         await signInAs(demo("manager-tunis"))
-        expect(await requireShop("product.listing.view", req())).toMatchObject({ ok: true, provider: { id: shopId.tunis } })
+        expect(await requireShop("product.listing.view", req())).toMatchObject({ ok: true, shop: { id: shopId.tunis } })
     })
 
     test("a business-level role reaches every shop of its business", async () => {
@@ -140,9 +140,9 @@ describe("requireShop", () => {
 
     test("an applicant whose shop is still waiting is told so", async () => {
         const email = freshEmail("applicant")
-        const user = await prisma.user.create({ data: { email, name: "Applicant", password: "x", role: "PROVIDER" }, select: { id: true } })
+        const user = await prisma.user.create({ data: { email, name: "Applicant", password: "x", role: "COMPANY" }, select: { id: true } })
         const business = await prisma.business.create({ data: { name: "API test business" }, select: { id: true } })
-        await prisma.shop.create({ data: { userId: user.id, businessId: business.id, name: "API test shop", city: "Tunis", status: "PENDING" } })
+        await prisma.shop.create({ data: { applicantId: user.id, businessId: business.id, name: "API test shop", city: "Tunis", status: "PENDING" } })
         try {
             await signInAs(email)
             expect(await requireShop("product.listing.view", req())).toMatchObject({

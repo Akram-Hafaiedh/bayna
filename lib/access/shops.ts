@@ -27,13 +27,13 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
             where: {
                 userId,
                 scope: "SHOP",
-                providerId: { not: null },
+                shopId: { not: null },
                 ...live(now),
-                provider: { deletedAt: null, status: "ACTIVE" },
+                shop: { deletedAt: null, status: "ACTIVE" },
             },
             select: {
                 role: { select: { name: true } },
-                provider: { select: { id: true, publicShopId: true, name: true, city: true, business: { select: { id: true, name: true } } } },
+                shop: { select: { id: true, publicShopId: true, name: true, city: true, business: { select: { id: true, name: true } } } },
             },
         }),
         prisma.accessAssignment.findMany({
@@ -59,7 +59,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
             },
         }),
         prisma.shop.findMany({
-            where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
+            where: { applicantId: userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true, publicShopId: true, name: true, city: true, business: { select: { id: true, name: true } } },
         }),
     ])
@@ -83,7 +83,7 @@ export async function loadMyShops(userId: string, now: Date = new Date()): Promi
         })
     }
     for (const a of shopLevel) {
-        if (a.provider) add(a.provider, a.provider.business, a.role.name)
+        if (a.shop) add(a.shop, a.shop.business, a.role.name)
     }
     for (const a of businessLevel) {
         if (!a.business) continue

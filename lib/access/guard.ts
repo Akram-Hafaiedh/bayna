@@ -1,6 +1,6 @@
 // lib/access/guard.ts
 // One place that answers "may this person do this?" for API routes. Replaces isAdmin(),
-// getVerifiedProvider() and the inline `session.user.role !== ADMIN` checks.
+// getVerifiedShop() and the inline `session.user.role !== ADMIN` checks.
 //
 //   const guard = await requirePlatform("catalog.item.create", req)
 //   if (!guard.ok) return bad(guard.error, guard.status)
@@ -8,7 +8,7 @@
 //
 //   const guard = await requireShop("product.listing.edit", req)
 //   if (!guard.ok) return bad(guard.error, guard.status)
-//   guard.provider.id            // the shop the request is about
+//   guard.shop.id            // the shop the request is about
 //   guard.can("product.price.edit")   // field-level checks inside the route
 //
 // 401 = not signed in (or login revoked). 403 = signed in but not allowed, or account not active.
@@ -40,7 +40,7 @@ export type ShopGuard = {
     ok: true
     userId: string
     access: Access
-    provider: { id: string; businessId: string | null }
+    shop: { id: string; businessId: string | null }
     actor: AuditActor
     can: (key: ShopPermission) => boolean
 }
@@ -111,12 +111,12 @@ export async function requirePlatform(key: PlatformPermission, req?: Request): P
  * Action inside a shop. The shop is the one the page names: the browser sends its public id in the
  * x-shop header (see lib/shop-fetch.ts), so two tabs on two shops never mix. Without the header the
  * one they last switched to (a cookie that is checked every time, never trusted), else the first by
- * id. A caller may force a shop with `opts.providerId`. Whichever way, it has to be a shop they work in.
+ * id. A caller may force a shop with `opts.shopId`. Whichever way, it has to be a shop they work in.
  */
 export async function requireShop(
     key: ShopPermission,
     req?: Request,
-    opts: { providerId?: string } = {}
+    opts: { shopId?: string } = {}
 ): Promise<ShopGuard | GuardFail> {
     const a = await authenticate(req)
     if (!a.ok) return a
@@ -125,13 +125,13 @@ export async function requireShop(
     // Own shops plus every shop of the businesses the person is a business-level member of
     const shopIds = reachableShopIds(a.access.assignments, a.access.businessShops, now)
 
-    let providerId = opts.providerId
-    if (providerId) {
-        if (!shopIds.includes(providerId)) return fail("Forbidden", 403)
+    let shopId = opts.shopId
+    if (shopId) {
+        if (!shopIds.includes(shopId)) return fail("Forbidden", 403)
     } else if (shopIds.length === 0) {
         // An applicant still waiting for approval has no assignment yet; keep the clearer message.
         const pending = await prisma.shop.findFirst({
-            where: { userId: a.access.userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
+            where: { applicantId: a.access.userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true },
         })
         if (pending) return fail("Your shop is not approved yet", 403)
@@ -141,22 +141,22 @@ export async function requireShop(
         if (asked) {
             const named = await prisma.shop.findUnique({ where: { publicShopId: asked }, select: { id: true } })
             if (!named || !shopIds.includes(named.id)) return fail("Forbidden", 403)
-            providerId = named.id
+            shopId = named.id
         } else {
-            providerId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
+            shopId = pickActiveShop(shopIds, await readActiveShopHint()) ?? shopIds[0]
         }
     }
 
-    const provider = await prisma.shop.findUnique({
-        where: { id: providerId },
+    const shop = await prisma.shop.findUnique({
+        where: { id: shopId },
         select: { id: true, status: true, deletedAt: true, businessId: true },
     })
-    if (!provider || provider.deletedAt) return fail("Shop not found", 404)
-    if (provider.status === "PENDING" || provider.status === "DRAFT") return fail("Your shop is not approved yet", 403)
-    if (provider.status !== "ACTIVE") return fail("This shop is closed or suspended", 403)
+    if (!shop || shop.deletedAt) return fail("Shop not found", 404)
+    if (shop.status === "PENDING" || shop.status === "DRAFT") return fail("Your shop is not approved yet", 403)
+    if (shop.status !== "ACTIVE") return fail("This shop is closed or suspended", 403)
 
     // businessId lets a business-level role (owner, accountant) count inside this shop
-    const ctx = { providerId: provider.id, businessId: provider.businessId }
+    const ctx = { shopId: shop.id, businessId: shop.businessId }
     const eff = effective(a.access.assignments, ctx, now)
     if (!has(eff, key)) return fail("Forbidden", 403)
 
@@ -165,7 +165,7 @@ export async function requireShop(
         ok: true,
         userId: a.access.userId,
         access: a.access,
-        provider: { id: provider.id, businessId: provider.businessId },
+        shop: { id: shop.id, businessId: shop.businessId },
         actor: actorFor(a.access, a.meta, label, a.view),
         can: (k) => has(eff, k),
     }

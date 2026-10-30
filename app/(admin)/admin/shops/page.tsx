@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/Toast"
 import StatusPill from "@/components/business/StatusPill"
 import type { ShopStatusValue } from "@/lib/shop-status"
 
-type ProviderRow = {
+type ShopRow = {
     id: string
     name: string
     city: string
@@ -17,7 +17,7 @@ type ProviderRow = {
     latitude: number | null
     longitude: number | null
     createdAt: string
-    user: {
+    applicant: {
         id: string
         email: string
         name: string | null
@@ -25,15 +25,15 @@ type ProviderRow = {
     }
 }
 
-export default function AdminProvidersPage() {
-    const [providers, setProviders] = useState<ProviderRow[]>([])
+export default function AdminShopsPage() {
+    const [shops, setShops] = useState<ShopRow[]>([])
     const [filter, setFilter] = useState<"pending" | "verified" | "suspended" | "review" | "all">("pending")
     const [loading, setLoading] = useState(true)
     const [actionId, setActionId] = useState<string | null>(null)
     const [error, setError] = useState("")
     const confirm = useConfirm()
     const toast = useToast()
-    const nameOf = (id: string) => providers.find((p) => p.id === id)?.name ?? "The shop"
+    const nameOf = (id: string) => shops.find((p) => p.id === id)?.name ?? "The shop"
 
     async function load(f = filter) {
         setLoading(true)
@@ -45,9 +45,9 @@ export default function AdminProvidersPage() {
                 setError(data.error || "Failed to load")
                 return
             }
-            setProviders(data.providers || [])
+            setShops(data.shops || [])
         } catch {
-            setError("Failed to load providers")
+            setError("Failed to load shops")
         } finally {
             setLoading(false)
         }
@@ -131,7 +131,7 @@ export default function AdminProvidersPage() {
     async function reject(id: string) {
         const yes = await confirm({
             title: `Reject ${nameOf(id)}?`,
-            message: "The provider profile will be removed and the applicant will be told it was not approved.",
+            message: "The shop profile will be removed and the applicant will be told it was not approved.",
             confirmLabel: "Reject application",
             tone: "danger",
         })
@@ -192,9 +192,9 @@ export default function AdminProvidersPage() {
 
             {loading ? (
                 <p className="text-sm text-zinc-500">Loading...</p>
-            ) : providers.length === 0 ? (
+            ) : shops.length === 0 ? (
                 <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
-                    No providers in this filter.
+                    No shops in this filter.
                 </div>
             ) : (
                 <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
@@ -215,7 +215,7 @@ export default function AdminProvidersPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100">
-                            {providers.map((p) => (
+                            {shops.map((p) => (
                                 <tr key={p.id} className="hover:bg-zinc-50/50">
                                     <td className="px-4 py-3">
                                         <p className="font-medium text-zinc-900">
@@ -229,10 +229,10 @@ export default function AdminProvidersPage() {
                                     </td>
                                     <td className="px-4 py-3 hidden sm:table-cell">
                                         <p className="text-zinc-900">
-                                            {p.user.name || "—"}
+                                            {p.applicant.name || "—"}
                                         </p>
                                         <p className="text-xs text-zinc-400">
-                                            {p.user.email}
+                                            {p.applicant.email}
                                         </p>
                                     </td>
                                     <td className="px-4 py-3 hidden md:table-cell text-zinc-600">

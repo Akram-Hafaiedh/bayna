@@ -55,15 +55,15 @@ async function TeamContent() {
     // What this person may do in each shop of the business, worked out the way the routes do it
     const perShop = await Promise.all(
         shops.map(async (shop) => {
-            const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
+            const eff = effective(access.assignments, { shopId: shop.id, businessId: business.id })
             const can = (k: string) => has(eff, k)
             const visible = can(teamPermission("SHOP", "view"))
             const [members, invites, roles] = visible
                 ? await Promise.all([
-                    loadMembers({ scope: "SHOP", providerId: shop.id }),
-                    can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", providerId: shop.id }) : [],
+                    loadMembers({ scope: "SHOP", shopId: shop.id }),
+                    can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", shopId: shop.id }) : [],
                     // the shop's own roles plus the roles of the business
-                    loadRoleOptions({ scope: "SHOP", providerId: shop.id, businessId: business.id }),
+                    loadRoleOptions({ scope: "SHOP", shopId: shop.id, businessId: business.id }),
                 ])
                 : [[], [], []]
             return { shop, can, visible, members, invites, roles }

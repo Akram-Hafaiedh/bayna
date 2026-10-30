@@ -18,7 +18,7 @@ export async function POST(
         if (!guard.ok) return bad(guard.error, guard.status)
 
         const product = await prisma.product.findFirst({
-            where: { id, providerId: guard.provider.id, deletedAt: { not: null } },
+            where: { id, shopId: guard.shop.id, deletedAt: { not: null } },
             select: {
                 id: true,
                 name: true,

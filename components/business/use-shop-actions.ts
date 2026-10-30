@@ -43,7 +43,7 @@ export function useShopActions() {
             const res = await fetch("/api/me/active-shop", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ providerId: shop.id }),
+                body: JSON.stringify({ shopId: shop.id }),
             })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {

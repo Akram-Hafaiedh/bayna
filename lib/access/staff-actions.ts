@@ -24,7 +24,7 @@ export async function assertStaffKeepsOwner(tx: Tx, change: StaffChange, now: Da
 export async function worksInShopOrBusiness(tx: Pick<Tx, "accessAssignment" | "shop">, userId: string): Promise<{ worksInShopOrBusiness: boolean; ownsAShop: boolean }> {
     const [assignments, shops] = await Promise.all([
         tx.accessAssignment.count({ where: { userId, scope: { in: ["SHOP", "BUSINESS"] } } }),
-        tx.shop.count({ where: { userId, deletedAt: null } }),
+        tx.shop.count({ where: { applicantId: userId, deletedAt: null } }),
     ])
     return { worksInShopOrBusiness: assignments > 0, ownsAShop: shops > 0 }
 }

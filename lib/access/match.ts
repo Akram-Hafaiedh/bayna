@@ -7,7 +7,7 @@
 // segment, where it matches the rest. "*" alone matches everything.
 //   "catalog.*"        every catalog key (catalog.item.view, catalog.category.reorder, ...)
 //   "access.*.view"    access.role.view, access.assignment.view
-//   "shop.provider.*"  every action on shop.provider
+//   "shop.record.*"  every action on shop.record
 
 export function matchesPattern(pattern: string, key: string): boolean {
     if (pattern === "*") return true

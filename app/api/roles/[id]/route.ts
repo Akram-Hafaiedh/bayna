@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ id: string }> }
 async function loadRole(id: string) {
     const role = await prisma.accessRole.findUnique({
         where: { id },
-        select: { id: true, name: true, description: true, permissions: true, scope: true, businessId: true, providerId: true },
+        select: { id: true, name: true, description: true, permissions: true, scope: true, businessId: true, shopId: true },
     })
     const target = role ? targetOfRole(role) : null
     return role && target ? { role, target } : null
@@ -40,7 +40,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
         const check = checkRoleChange({ can: guard.can, existing: role.permissions, next: next.permissions })
         if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
 
-        const owner = target.scope === "BUSINESS" ? ({ scope: "BUSINESS", businessId: target.businessId } as const) : ({ scope: "SHOP", providerId: target.providerId } as const)
+        const owner = target.scope === "BUSINESS" ? ({ scope: "BUSINESS", businessId: target.businessId } as const) : ({ scope: "SHOP", shopId: target.shopId } as const)
         await withAudit(guard.actor, async (tx) => {
             if (!(await roleNameFree(tx, owner, next.name, role.id))) throw new TeamError("There is already a role with that name", 409)
             const keeps = await assertRoleEditKeepsOwner(tx, role, next.permissions)
@@ -58,7 +58,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
                 await logActivity(tx, guard.actor, {
                     entityType: "AccessRole",
                     entityId: id,
-                    providerId: role.providerId,
+                    shopId: role.shopId,
                     action: "TEAM_ROLE_UPDATED",
                     changes,
                     note: `Changed the role ${next.name}`,
@@ -94,7 +94,7 @@ export async function DELETE(req: Request, { params }: Ctx) {
             await logActivity(tx, guard.actor, {
                 entityType: "AccessRole",
                 entityId: id,
-                providerId: role.providerId,
+                shopId: role.shopId,
                 action: "TEAM_ROLE_DELETED",
                 changes: [{ field: "role", from: role.name, to: null }],
                 note: `Deleted the role ${role.name}`,

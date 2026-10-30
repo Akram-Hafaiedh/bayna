@@ -15,7 +15,7 @@ const made: string[] = []
 
 beforeAll(async () => {
     const shop = async (name: string) => prisma.shop.findFirstOrThrow({ where: { name }, select: { id: true } })
-    const role = async (providerId: string, name: string) => (await prisma.accessRole.findFirstOrThrow({ where: { providerId, name }, select: { id: true } })).id
+    const role = async (shopId: string, name: string) => (await prisma.accessRole.findFirstOrThrow({ where: { shopId, name }, select: { id: true } })).id
     const t = await shop(SHOP_NAMES.tunis)
     const m = await shop(SHOP_NAMES.marsa)
     tunis = { id: t.id, viewerRole: await role(t.id, "Viewer"), managerRole: await role(t.id, "Manager") }
@@ -33,7 +33,7 @@ async function viewerInTunis() {
     const u = await createTarget("member")
     made.push(u.id)
     const a = await prisma.accessAssignment.create({
-        data: { userId: u.id, roleId: tunis.viewerRole, scope: "SHOP", providerId: tunis.id, status: "ACTIVE" },
+        data: { userId: u.id, roleId: tunis.viewerRole, scope: "SHOP", shopId: tunis.id, status: "ACTIVE" },
         select: { id: true },
     })
     return { ...u, assignmentId: a.id }
@@ -74,12 +74,12 @@ describe("inviting", () => {
         expect(token).toBeTruthy()
 
         const row = await prisma.accessInvite.findFirstOrThrow({ where: { email } })
-        expect(row).toMatchObject({ status: "PENDING", scope: "SHOP", providerId: tunis.id, roleId: tunis.viewerRole })
+        expect(row).toMatchObject({ status: "PENDING", scope: "SHOP", shopId: tunis.id, roleId: tunis.viewerRole })
         expect(row.tokenHash).not.toBe(token)
         expect(row.expiresAt.getTime()).toBeGreaterThan(Date.now())
 
         const log = await prisma.activityLog.findFirst({ where: { action: "TEAM_INVITED", entityId: row.id } })
-        expect(log).toMatchObject({ providerId: tunis.id })
+        expect(log).toMatchObject({ shopId: tunis.id })
     })
 
     test("a new link for the same person replaces the old one", async () => {

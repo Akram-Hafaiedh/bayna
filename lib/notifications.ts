@@ -4,15 +4,15 @@
 //
 //   await withAudit(guard.actor, async (tx) => {
 //       await tx.shop.update({ where: { id }, data: { needsReview: false } })
-//       await notify(tx, provider.userId, notifications.profileReviewed({ shop: provider.publicShopId }))
+//       await notify(tx, shop.applicantId, notifications.profileReviewed({ shop: shop.publicShopId }))
 //   })
 import type { Tx } from "@/lib/audit/run"
 import { shopPath } from "@/lib/shop-paths"
 
 export const NOTIFICATION_TYPES = {
-    applicationApproved: "provider.application.approved",
-    applicationRejected: "provider.application.rejected",
-    profileReviewed: "provider.profile.reviewed",
+    applicationApproved: "shop.application.approved",
+    applicationRejected: "shop.application.rejected",
+    profileReviewed: "shop.profile.reviewed",
     priceReviewNeeded: "catalog.unit.changed",
     teamJoined: "team.member.joined",
     teamRoleChanged: "team.member.role_changed",
@@ -68,7 +68,7 @@ export const notifications = {
         type: NOTIFICATION_TYPES.applicationRejected,
         title: "Your application was not approved",
         body: "You can review your details and apply again.",
-        href: "/become-provider",
+        href: "/become-shop",
     }),
     /** One per shop: `itemName` changed unit, `count` of the shop's products need a price check. */
     priceReviewNeeded: (a: { shop: string; itemName: string; reason: string; count: number }): NotificationInput => ({

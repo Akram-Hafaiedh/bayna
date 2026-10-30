@@ -6,11 +6,11 @@ import { membersWithPermission, type MemberAssignment } from "./members"
 
 const NOW = new Date("2026-10-17T12:00:00Z")
 
-function shopRole(userId: string, providerId: string, permissions: string[], extra: Partial<MemberAssignment> = {}): MemberAssignment {
+function shopRole(userId: string, shopId: string, permissions: string[], extra: Partial<MemberAssignment> = {}): MemberAssignment {
     return {
         userId,
         scope: "SHOP",
-        providerId,
+        shopId,
         status: "ACTIVE",
         expiresAt: null,
         role: { name: "X", permissions },
@@ -51,7 +51,7 @@ function businessRole(userId: string, businessId: string, permissions: string[],
     return {
         userId,
         scope: "BUSINESS",
-        providerId: null,
+        shopId: null,
         businessId,
         status: "ACTIVE",
         expiresAt: null,

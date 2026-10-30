@@ -1,4 +1,4 @@
-// lib/provider-input.ts
+// lib/shop-input.ts
 // Validation of the shop profile coming from API request bodies. One parser serves the application
 // form (creating, `current` is null) and the profile page (updating, `current` is the saved row), so
 // both ask for the same things in the same way.

@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import { requireShopPage } from "@/lib/shop-auth"
-import { getCategoryTree, getProviderProduct } from "@/lib/provider-products"
+import { getCategoryTree, getShopProduct } from "@/lib/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
 import ConfirmPriceButton from "@/components/shop/ConfirmPriceButton"
 import { shopCan } from "@/lib/access/page"
@@ -28,13 +28,13 @@ export default function EditProductPage({
 
 async function EditProductContent({ params }: { params: Promise<{ publicShopId: string; id: string }> }) {
     const { publicShopId, id } = await params
-    const provider = await requireShopPage(publicShopId)
-    if (provider?.status !== "ACTIVE") notFound()
+    const shop = await requireShopPage(publicShopId)
+    if (shop?.status !== "ACTIVE") notFound()
 
     const [product, categories, perms] = await Promise.all([
-        getProviderProduct(provider.id, id),
+        getShopProduct(shop.id, id),
         getCategoryTree(),
-        shopCan(provider.id, ["product.price.edit"] as const),
+        shopCan(shop.id, ["product.price.edit"] as const),
     ])
     if (!product) notFound()
 

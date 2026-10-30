@@ -27,8 +27,8 @@ export function parseStaffInvite(body: unknown): Parsed<StaffInvite> {
 }
 
 /** A platform role has no business and no shop. */
-export const isPlatformRole = (role: { businessId: string | null; providerId: string | null }) =>
-    role.businessId === null && role.providerId === null
+export const isPlatformRole = (role: { businessId: string | null; shopId: string | null }) =>
+    role.businessId === null && role.shopId === null
 
 export const STAFF_ACCOUNT_ERROR =
     "This account works in a shop or a business, so it cannot also be platform staff. Use a separate account for staff work."

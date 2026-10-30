@@ -16,7 +16,7 @@ import ThroughBusiness from "@/components/access/ThroughBusiness"
 
 export const metadata: Metadata = { title: "Team" }
 
-export default function ProviderTeamPage({ params }: { params: Promise<{ publicShopId: string }> }) {
+export default function ShopTeamPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
         <div className="space-y-6">
             <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-zinc-200" />}>
@@ -47,7 +47,7 @@ async function TeamContent({ params }: { params: Promise<{ publicShopId: string 
     const business = found?.business && !found.business.deletedAt ? found.business : null
 
     // What this person may do, worked out the same way the routes do it
-    const eff = effective(access.assignments, { providerId: shop.id, businessId: business?.id ?? null })
+    const eff = effective(access.assignments, { shopId: shop.id, businessId: business?.id ?? null })
     const can = (k: string) => has(eff, k)
     const bizEff = business ? effective(access.assignments, { businessId: business.id }) : null
     const canManageBusiness = !!bizEff && has(bizEff, teamPermission("BUSINESS", "view"))
@@ -64,9 +64,9 @@ async function TeamContent({ params }: { params: Promise<{ publicShopId: string 
     }
 
     const [members, invites, roles, throughBusiness] = await Promise.all([
-        loadMembers({ scope: "SHOP", providerId: shop.id }),
-        can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", providerId: shop.id }) : [],
-        loadRoleOptions({ scope: "SHOP", providerId: shop.id, businessId: business?.id ?? null }),
+        loadMembers({ scope: "SHOP", shopId: shop.id }),
+        can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", shopId: shop.id }) : [],
+        loadRoleOptions({ scope: "SHOP", shopId: shop.id, businessId: business?.id ?? null }),
         business ? loadMembers({ scope: "BUSINESS", businessId: business.id }) : [],
     ])
 

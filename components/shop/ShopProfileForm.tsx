@@ -1,10 +1,10 @@
 "use client"
 // components/shop/ShopProfileForm.tsx
-// One form for the shop application (/become-provider) and the shop profile (/shop/<publicShopId>/profile).
+// One form for the shop application (/become-shop) and the shop profile (/shop/<publicShopId>/profile).
 // It collects the essentials; the parent decides where the body is sent.
 import { useState } from "react"
 import { GOVERNORATES, findGovernorate } from "@/lib/governorates"
-import { formatPhone } from "@/lib/provider-input"
+import { formatPhone } from "@/lib/shop-input"
 import type { LatLng } from "@/lib/geo"
 import LocationPicker, { type PinSource } from "@/components/map/LocationPicker"
 

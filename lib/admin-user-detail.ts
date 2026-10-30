@@ -24,12 +24,12 @@ export async function getUserDetail(publicUserId: string) {
             select: {
                 id: true, scope: true, status: true, expiresAt: true, createdAt: true,
                 role: { select: { name: true } },
-                provider: { select: { name: true } },
+                shop: { select: { name: true } },
                 business: { select: { name: true } },
             },
         }),
         prisma.shop.findMany({
-            where: { userId: user.id, deletedAt: null },
+            where: { applicantId: user.id, deletedAt: null },
             orderBy: { createdAt: "asc" },
             select: { id: true, name: true, status: true, createdAt: true },
         }),

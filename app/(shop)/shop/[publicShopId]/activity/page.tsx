@@ -8,7 +8,7 @@ import ShopActivityFeed from "@/components/access/ShopActivityFeed"
 
 export const metadata: Metadata = { title: "Activity" }
 
-export default function ProviderActivityPage({
+export default function ShopActivityPage({
     params,
     searchParams,
 }: {

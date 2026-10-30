@@ -1,6 +1,6 @@
 // lib/business-auth.ts
 // Helper for the Business area's Server Component pages (call inside a <Suspense> boundary).
-// Sends people who hold no business-level role back to the provider dashboard, and returns the
+// Sends people who hold no business-level role back to the shop dashboard, and returns the
 // business being shown (the one chosen in the picker). Pages only use this to decide what to show:
 // every API route checks permissions itself.
 import { connection } from "next/server"
@@ -17,7 +17,7 @@ export async function requireBusinessArea(): Promise<{
     businesses: MyBusiness[]
 }> {
     await connection()
-    const user = await requireRole([Role.PROVIDER])
+    const user = await requireRole([Role.COMPANY])
     const mine = await loadMyBusinesses(user.id)
     const business = mine?.businesses.find((b) => b.id === mine.activeId)
     if (!mine || !business) redirect("/shop")

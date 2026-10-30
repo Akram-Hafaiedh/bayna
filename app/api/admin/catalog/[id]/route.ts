@@ -56,7 +56,7 @@ export async function PATCH(
         const linked = unitChanged
             ? await prisma.product.findMany({
                 where: { catalogItemId: id },
-                select: { id: true, providerId: true, deletedAt: true },
+                select: { id: true, shopId: true, deletedAt: true },
             })
             : []
         const live = linked.filter((p) => !p.deletedAt)
@@ -99,14 +99,14 @@ export async function PATCH(
             // One notification per shop, to the people who may edit prices
             if (unitChanged && live.length > 0) {
                 const perShop = new Map<string, number>()
-                for (const p of live) perShop.set(p.providerId, (perShop.get(p.providerId) ?? 0) + 1)
+                for (const p of live) perShop.set(p.shopId, (perShop.get(p.shopId) ?? 0) + 1)
                 const members = await loadShopMembersWith(tx, [...perShop.keys()], "product.price.edit")
                 const publicIds = await shopPublicIds(tx, [...perShop.keys()])
-                for (const [providerId, count] of perShop) {
+                for (const [shopId, count] of perShop) {
                     await notify(
                         tx,
-                        members.get(providerId) ?? [],
-                        notifications.priceReviewNeeded({ shop: publicIds.get(providerId)!, itemName: updated.name, reason, count })
+                        members.get(shopId) ?? [],
+                        notifications.priceReviewNeeded({ shop: publicIds.get(shopId)!, itemName: updated.name, reason, count })
                     )
                 }
             }

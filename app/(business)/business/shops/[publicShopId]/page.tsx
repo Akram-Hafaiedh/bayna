@@ -29,7 +29,7 @@ async function ShopContent({ params }: { params: Promise<{ publicShopId: string 
     const shop = await prisma.shop.findFirst({
         where: { publicShopId, businessId: business.id, deletedAt: null },
         select: {
-            id: true, userId: true, name: true, description: true, phone: true, whatsapp: true,
+            id: true, applicantId: true, name: true, description: true, phone: true, whatsapp: true,
             address: true, city: true, governorate: true, latitude: true, longitude: true, locationSource: true,
             status: true, createdAt: true,
             _count: { select: { products: { where: { deletedAt: null } } } },
@@ -37,10 +37,10 @@ async function ShopContent({ params }: { params: Promise<{ publicShopId: string 
     })
     if (!shop) notFound()
 
-    const people = await prisma.accessAssignment.count({ where: { providerId: shop.id, status: "ACTIVE" } })
+    const people = await prisma.accessAssignment.count({ where: { shopId: shop.id, status: "ACTIVE" } })
 
     // What this person may do in this shop, worked out the way the routes do it
-    const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
+    const eff = effective(access.assignments, { shopId: shop.id, businessId: business.id })
     const canEdit = has(eff, "shop.profile.edit")
     // A live shop is edited through the shop profile route; one still waiting for approval can only be
     // edited by the person who applied for it
@@ -49,7 +49,7 @@ async function ShopContent({ params }: { params: Promise<{ publicShopId: string 
         shop.status === "ACTIVE"
             ? canEdit ? "profile" : "readonly"
             : shop.status === "PENDING" || shop.status === "DRAFT"
-                ? shop.userId === userId ? "application" : "readonly"
+                ? shop.applicantId === userId ? "application" : "readonly"
                 : "readonly"
 
     const setup = shopSetup(shop)

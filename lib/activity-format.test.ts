@@ -48,7 +48,7 @@ test("odd data does not break it", () => {
 
 test("filters", () => {
     assert.deepEqual(kindFilter("products"), { entityType: "Product" })
-    assert.deepEqual(kindFilter("shop"), { entityType: "Provider" })
+    assert.deepEqual(kindFilter("shop"), { entityType: "Shop" })
     assert.deepEqual(kindFilter("team"), { action: { startsWith: "TEAM_" } })
     assert.ok("NOT" in kindFilter("all"))
     assert.equal(parseKind("team"), "team")

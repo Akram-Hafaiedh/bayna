@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { Unit } from "@/app/generated/prisma/enums"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
-import { listProducts } from "@/lib/provider-products"
+import { listProducts } from "@/lib/shop-products"
 import { SHOP_CHOICES } from "@/lib/product-status"
 import { limitBlock } from "@/lib/plan-limits"
 import { parseProductFilters } from "@/lib/product-filters"
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
         if (!guard.ok) return bad(guard.error, guard.status)
 
         const filters = parseProductFilters(new URL(req.url).searchParams)
-        const result = await listProducts(guard.provider.id, filters)
+        const result = await listProducts(guard.shop.id, filters)
 
         return NextResponse.json({
             products: result.items,
@@ -45,11 +45,11 @@ export async function POST(req: Request) {
     try {
         const guard = await requireShop("product.listing.create", req)
         if (!guard.ok) return bad(guard.error, guard.status)
-        const providerId = guard.provider.id
+        const shopId = guard.shop.id
 
         // The business's plan may cap how many products it can list (off until plans are switched on)
-        if (guard.provider.businessId) {
-            const blocked = await limitBlock(guard.provider.businessId, "products")
+        if (guard.shop.businessId) {
+            const blocked = await limitBlock(guard.shop.businessId, "products")
             if (blocked) return bad(blocked, 403)
         }
 
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         }
 
         // Optional link to the shared catalogue. A linked product inherits the
-        // catalogue unit and category so prices stay comparable across providers.
+        // catalogue unit and category so prices stay comparable across shops.
         let catalog: { id: string; name: string; brand: string | null; unit: Unit; categoryId: string } | null = null
         if (body.catalogItemId) {
             catalog = await prisma.catalogItem.findFirst({
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
             if (!catalog) return bad("Catalogue item not found")
 
             const existing = await prisma.product.findFirst({
-                where: { providerId, catalogItemId: catalog.id },
+                where: { shopId, catalogItemId: catalog.id },
                 select: { id: true, deletedAt: true },
             })
             if (existing && !existing.deletedAt) {
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
 
             const pending = await prisma.catalogSuggestion.findFirst({
                 where: {
-                    providerId,
+                    shopId,
                     status: "PENDING",
                     name: { equals: finalName, mode: "insensitive" },
                 },
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         const product = await withAudit(guard.actor, (tx) =>
             tx.product.create({
                 data: {
-                    providerId,
+                    shopId,
                     catalogItemId: catalog?.id ?? null,
                     name: finalName,
                     nameAr: nameAr.ok ? nameAr.value : null,
@@ -180,7 +180,7 @@ export async function POST(req: Request) {
                         ? {
                             suggestion: {
                                 create: {
-                                    providerId,
+                                    shopId,
                                     name: finalName,
                                     nameAr: nameAr.ok ? nameAr.value : null,
                                     brand: brand.ok ? brand.value : null,
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ product }, { status: 201 })
     } catch (error) {
-        // Unique (providerId, catalogItemId) hit by a concurrent request
+        // Unique (shopId, catalogItemId) hit by a concurrent request
         if ((error as { code?: string })?.code === "P2002") {
             return bad("You already list this catalogue item", 409)
         }

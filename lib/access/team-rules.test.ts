@@ -19,9 +19,9 @@ function canAs(scope: "BUSINESS" | "SHOP", key: string) {
     const r = role(scope, key)
     const a: AssignmentInput =
         scope === "SHOP"
-            ? { scope, providerId: "s1", businessId: null, status: "ACTIVE", expiresAt: null, role: { name: r.name, permissions: r.permissions } }
-            : { scope, providerId: null, businessId: "b1", status: "ACTIVE", expiresAt: null, role: { name: r.name, permissions: r.permissions } }
-    const eff = effective([a], scope === "SHOP" ? { providerId: "s1" } : { providerId: "s1", businessId: "b1" })
+            ? { scope, shopId: "s1", businessId: null, status: "ACTIVE", expiresAt: null, role: { name: r.name, permissions: r.permissions } }
+            : { scope, shopId: null, businessId: "b1", status: "ACTIVE", expiresAt: null, role: { name: r.name, permissions: r.permissions } }
+    const eff = effective([a], scope === "SHOP" ? { shopId: "s1" } : { shopId: "s1", businessId: "b1" })
     return (k: string) => has(eff, k)
 }
 
@@ -189,19 +189,19 @@ test("invitation: someone who reaches the shop through the business is not invit
 })
 
 test("where a role may be used: a business role in its business and its shops, a shop role in its shop only", () => {
-    const bizRole = { businessId: "b1", providerId: null }
-    const shopRole = { businessId: null, providerId: "s1" }
+    const bizRole = { businessId: "b1", shopId: null }
+    const shopRole = { businessId: null, shopId: "s1" }
     // a business team can use business roles only
     assert.equal(roleUsableAt(bizRole, { scope: "BUSINESS", businessId: "b1" }), true)
     assert.equal(roleUsableAt(shopRole, { scope: "BUSINESS", businessId: "b1" }), false)
     assert.equal(roleUsableAt(bizRole, { scope: "BUSINESS", businessId: "b2" }), false)
     // a shop team can use its own roles and the roles of its business
-    assert.equal(roleUsableAt(shopRole, { scope: "SHOP", providerId: "s1", businessId: "b1" }), true)
-    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", providerId: "s1", businessId: "b1" }), true)
+    assert.equal(roleUsableAt(shopRole, { scope: "SHOP", shopId: "s1", businessId: "b1" }), true)
+    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", shopId: "s1", businessId: "b1" }), true)
     // never another shop's role, never another business's role
-    assert.equal(roleUsableAt(shopRole, { scope: "SHOP", providerId: "s2", businessId: "b1" }), false)
-    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", providerId: "s1", businessId: "b2" }), false)
-    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", providerId: "s1", businessId: null }), false)
+    assert.equal(roleUsableAt(shopRole, { scope: "SHOP", shopId: "s2", businessId: "b1" }), false)
+    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", shopId: "s1", businessId: "b2" }), false)
+    assert.equal(roleUsableAt(bizRole, { scope: "SHOP", shopId: "s1", businessId: null }), false)
     // a platform role (no owner) is never given from a team page
-    assert.equal(roleUsableAt({ businessId: null, providerId: null }, { scope: "SHOP", providerId: "s1", businessId: "b1" }), false)
+    assert.equal(roleUsableAt({ businessId: null, shopId: null }, { scope: "SHOP", shopId: "s1", businessId: "b1" }), false)
 })

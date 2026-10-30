@@ -1,8 +1,8 @@
-// lib/provider-input.test.ts
+// lib/shop-input.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"
-import { formatPhone, parsePhone, parseProfileFields, type ProfileSnapshot } from "./provider-input"
+import { formatPhone, parsePhone, parseProfileFields, type ProfileSnapshot } from "./shop-input"
 import { findGovernorate } from "./governorates"
 
 const sfax = findGovernorate("Sfax")!

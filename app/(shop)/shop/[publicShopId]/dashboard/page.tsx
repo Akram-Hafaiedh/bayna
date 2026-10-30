@@ -4,11 +4,11 @@ import Link from "next/link"
 import { requireShopPage } from "@/lib/shop-auth"
 import { shopPath } from "@/lib/shop-paths"
 
-export default function ProviderDashboardPage({ params }: { params: Promise<{ publicShopId: string }> }) {
+export default function ShopDashboardPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
         <div>
             <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-                Provider Dashboard
+                Shop Dashboard
             </h1>
             <p className="mt-2 text-zinc-500">
                 Manage your products, stock, and orders.
@@ -23,34 +23,34 @@ export default function ProviderDashboardPage({ params }: { params: Promise<{ pu
                     </div>
                 }
             >
-                <ProviderStats params={params} />
+                <ShopStats params={params} />
             </Suspense>
         </div>
     )
 }
 
-async function ProviderStats({ params }: { params: Promise<{ publicShopId: string }> }) {
+async function ShopStats({ params }: { params: Promise<{ publicShopId: string }> }) {
     const { publicShopId } = await params
-    const provider = await requireShopPage(publicShopId)
+    const shop = await requireShopPage(publicShopId)
 
     const live = { deletedAt: null }
-    const productCount = provider
-        ? await prisma.product.count({ where: { providerId: provider.id, ...live } })
+    const productCount = shop
+        ? await prisma.product.count({ where: { shopId: shop.id, ...live } })
         : 0
-    const lowStock = provider
+    const lowStock = shop
         ? await prisma.product.count({
-            where: { providerId: provider.id, ...live, stock: { lt: 5 } },
+            where: { shopId: shop.id, ...live, stock: { lt: 5 } },
         })
         : 0
-    const needsReview = provider
+    const needsReview = shop
         ? await prisma.product.count({
-            where: { providerId: provider.id, ...live, needsPriceReview: true },
+            where: { shopId: shop.id, ...live, needsPriceReview: true },
         })
         : 0
 
     return (
         <>
-            {provider?.status !== "ACTIVE" && (
+            {shop?.status !== "ACTIVE" && (
                 <div className="mt-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     Your account is not verified yet. Product listing may be
                     limited until an admin approves you.
@@ -96,9 +96,9 @@ async function ProviderStats({ params }: { params: Promise<{ publicShopId: strin
                 </div>
             </div>
 
-            {provider?.name && (
+            {shop?.name && (
                 <p className="mt-4 text-sm text-zinc-500">
-                    Shop: {provider.name}
+                    Shop: {shop.name}
                 </p>
             )}
         </>

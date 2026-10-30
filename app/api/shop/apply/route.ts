@@ -1,6 +1,6 @@
 // app/api/shop/apply/route.ts
 // The shop application. POST submits it, GET shows its status, PATCH edits it while it is pending,
-// DELETE withdraws it. A person may run several shops, so a provider can apply again for another one
+// DELETE withdraws it. A person may run several shops, so someone who already has a shop can apply again for another one
 // (one application at a time). The fields are checked by the same parser as the shop profile.
 // The role stays CLIENT until an admin approves.
 // Every shop belongs to a business. A first application creates the business together with the shop;
@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma"
 import { withAudit } from "@/lib/audit/run"
 import { actorFromSession, requestMeta } from "@/lib/audit/actor"
 import { Role } from "@/app/generated/prisma/enums"
-import { parsePhone, parseProfileFields } from "@/lib/provider-input"
+import { parsePhone, parseProfileFields } from "@/lib/shop-input"
 import { parseText } from "@/lib/parse"
 import { businessesForNewShop } from "@/lib/access/business-options"
 import { resolveBusinessChoice } from "@/lib/business-choice"
@@ -31,10 +31,10 @@ export async function POST(req: Request) {
         if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
         if (user.role === Role.ADMIN) {
-            return NextResponse.json({ error: "Admin accounts cannot become providers" }, { status: 400 })
+            return NextResponse.json({ error: "Admin accounts cannot become shops" }, { status: 400 })
         }
         const waiting = await prisma.shop.findFirst({
-            where: { userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
+            where: { applicantId: userId, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             select: { id: true },
         })
         if (waiting) {
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
             }
         }
 
-        const provider = await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
+        const shop = await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
             let businessId: string
             if (choice.kind === "existing") {
                 businessId = choice.businessId
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
             }
             const shop = await tx.shop.create({
                 data: {
-                    userId,
+                    applicantId: userId,
                     businessId,
                     name: data.name!,
                     city: data.city!,
@@ -107,11 +107,11 @@ export async function POST(req: Request) {
         })
 
         return NextResponse.json(
-            { message: "Application submitted. Waiting for admin approval.", providerId: provider.id, publicShopId: provider.publicShopId, status: "pending" },
+            { message: "Application submitted. Waiting for admin approval.", shopId: shop.id, publicShopId: shop.publicShopId, status: "pending" },
             { status: 201 }
         )
     } catch (error) {
-        console.error("Become provider error:", error)
+        console.error("Become shop error:", error)
         return failed()
     }
 }
@@ -122,17 +122,17 @@ export async function GET() {
         const session = await auth()
         if (!session?.user?.id) return unauthorized()
 
-        const provider = await prisma.shop.findFirst({
-            where: { userId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
+        const shop = await prisma.shop.findFirst({
+            where: { applicantId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
             orderBy: { createdAt: "desc" },
         })
         // The businesses a new shop could be added to (for the "Create shop" form)
         const businesses = await businessesForNewShop(session.user.id)
-        if (!provider) return NextResponse.json({ status: "none", businesses })
+        if (!shop) return NextResponse.json({ status: "none", businesses })
 
-        return NextResponse.json({ status: "pending", provider, businesses })
+        return NextResponse.json({ status: "pending", shop, businesses })
     } catch (error) {
-        console.error("Get provider status error:", error)
+        console.error("Get shop status error:", error)
         return failed()
     }
 }
@@ -141,12 +141,12 @@ export async function GET() {
 async function pendingApplication() {
     const session = await auth()
     if (!session?.user?.id) return { error: unauthorized() } as const
-    const provider = await prisma.shop.findFirst({
-        where: { userId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
+    const shop = await prisma.shop.findFirst({
+        where: { applicantId: session.user.id, status: { in: ["DRAFT", "PENDING"] }, deletedAt: null },
         orderBy: { createdAt: "desc" },
     })
-    if (!provider) return { error: NextResponse.json({ error: "You have no application waiting" }, { status: 404 }) } as const
-    return { session, provider } as const
+    if (!shop) return { error: NextResponse.json({ error: "You have no application waiting" }, { status: 404 }) } as const
+    return { session, shop } as const
 }
 
 // PATCH: edit the application while it waits for approval
@@ -154,19 +154,19 @@ export async function PATCH(req: Request) {
     try {
         const found = await pendingApplication()
         if ("error" in found) return found.error
-        const { session, provider } = found
+        const { session, shop } = found
 
         const body = await req.json().catch(() => null)
-        const parsed = parseProfileFields(body, provider)
+        const parsed = parseProfileFields(body, shop)
         if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
         if (parsed.value.data.phone === null) {
             return NextResponse.json({ error: "A phone number is required" }, { status: 400 })
         }
 
         const updated = await withAudit(actorFromSession(session, requestMeta(req)), (tx) =>
-            tx.shop.update({ where: { id: provider.id }, data: parsed.value.data })
+            tx.shop.update({ where: { id: shop.id }, data: parsed.value.data })
         )
-        return NextResponse.json({ message: "Application updated", status: "pending", provider: updated })
+        return NextResponse.json({ message: "Application updated", status: "pending", shop: updated })
     } catch (error) {
         console.error("Update application error:", error)
         return failed()
@@ -178,14 +178,14 @@ export async function DELETE(req: Request) {
     try {
         const found = await pendingApplication()
         if ("error" in found) return found.error
-        const { session, provider } = found
+        const { session, shop } = found
 
         await withAudit(actorFromSession(session, requestMeta(req)), async (tx) => {
-            await tx.shop.delete({ where: { id: provider.id } })
+            await tx.shop.delete({ where: { id: shop.id } })
             // A business created only for this application goes with it
-            if (provider.businessId) {
+            if (shop.businessId) {
                 await tx.business.deleteMany({
-                    where: { id: provider.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
+                    where: { id: shop.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
                 })
             }
         })

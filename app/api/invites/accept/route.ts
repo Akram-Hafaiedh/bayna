@@ -2,7 +2,7 @@
 // POST { token }: the signed-in person accepts an invitation link.
 // The link is bound to one email address, so it only works for a person signed in with that address.
 // Accepting creates the assignment (or updates an existing one), marks the invitation used, makes
-// the person a "provider" for routing if they were a plain client, and tells the person who invited them.
+// the person a "company" account for routing if they were a plain client, and tells the person who invited them.
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 import { prisma } from "@/lib/prisma"
@@ -33,9 +33,9 @@ export async function POST(req: Request) {
         const invite = await prisma.accessInvite.findUnique({
             where: { tokenHash: hashInviteToken(token) },
             select: {
-                id: true, scope: true, providerId: true, businessId: true, email: true, status: true, expiresAt: true, invitedById: true,
-                role: { select: { id: true, name: true, permissions: true, businessId: true, providerId: true } },
-                provider: { select: { id: true, businessId: true, deletedAt: true } },
+                id: true, scope: true, shopId: true, businessId: true, email: true, status: true, expiresAt: true, invitedById: true,
+                role: { select: { id: true, name: true, permissions: true, businessId: true, shopId: true } },
+                shop: { select: { id: true, businessId: true, deletedAt: true } },
                 business: { select: { id: true, deletedAt: true } },
             },
         })
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
             if (!verdict.ok) return NextResponse.json({ error: verdict.error }, { status: verdict.status })
             const account = checkStaffAccount(await worksInShopOrBusiness(prisma, user.id))
             if (!account.ok) return NextResponse.json({ error: account.error }, { status: 403 })
-            if (invite.role.businessId || invite.role.providerId) return NextResponse.json({ error: "This invitation link is not valid" }, { status: 404 })
+            if (invite.role.businessId || invite.role.shopId) return NextResponse.json({ error: "This invitation link is not valid" }, { status: 404 })
 
             const staffActor: AuditActor = {
                 actorId: user.id,
@@ -104,12 +104,12 @@ export async function POST(req: Request) {
             state: inviteState(invite),
             inviteEmail: invite.email,
             userEmail: user.email,
-            targetGone: scope === "SHOP" ? !invite.provider || !!invite.provider.deletedAt : !invite.business || !!invite.business.deletedAt,
+            targetGone: scope === "SHOP" ? !invite.shop || !!invite.shop.deletedAt : !invite.business || !!invite.business.deletedAt,
             accountActive: user.status === "ACTIVE" && !user.deletedAt,
         })
         if (!verdict.ok) return NextResponse.json({ error: verdict.error }, { status: verdict.status })
 
-        const levelId = (scope === "SHOP" ? invite.providerId : invite.businessId)!
+        const levelId = (scope === "SHOP" ? invite.shopId : invite.businessId)!
         const label = await targetLabel(prisma, scope, levelId)
         const actor: AuditActor = {
             actorId: user.id,
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
             if (claimed.count === 0) throw new TeamError(ACCEPT_ERRORS.accepted, 409)
 
             const existing = await tx.accessAssignment.findFirst({
-                where: scope === "SHOP" ? { userId: user.id, scope, providerId: levelId } : { userId: user.id, scope, businessId: levelId },
+                where: scope === "SHOP" ? { userId: user.id, scope, shopId: levelId } : { userId: user.id, scope, businessId: levelId },
                 select: { id: true },
             })
             if (existing) {
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
                 const owner = await assertTeamKeepsOwner(
                     tx,
                     scope === "SHOP"
-                        ? { scope, providerId: levelId, businessId: invite.provider?.businessId ?? null }
+                        ? { scope, shopId: levelId, businessId: invite.shop?.businessId ?? null }
                         : { scope, businessId: levelId },
                     { type: "set_role", assignmentId: existing.id, newPermissions: invite.role.permissions }
                 )
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
                         userId: user.id,
                         roleId: invite.role.id,
                         scope,
-                        providerId: scope === "SHOP" ? levelId : null,
+                        shopId: scope === "SHOP" ? levelId : null,
                         businessId: scope === "BUSINESS" ? levelId : null,
                         status: "ACTIVE",
                         invitedById: invite.invitedById,
@@ -158,12 +158,12 @@ export async function POST(req: Request) {
             }
 
             // The role only decides which dashboard opens; permissions come from the assignment
-            if (user.role === "CLIENT") await tx.user.update({ where: { id: user.id }, data: { role: "PROVIDER" } })
+            if (user.role === "CLIENT") await tx.user.update({ where: { id: user.id }, data: { role: "COMPANY" } })
 
             await logActivity(tx, actor, {
                 entityType: "AccessAssignment",
                 entityId: existing?.id ?? null,
-                providerId: scope === "SHOP" ? levelId : null,
+                shopId: scope === "SHOP" ? levelId : null,
                 action: "TEAM_JOINED",
                 changes: [{ field: "member", from: null, to: `${user.name || user.email} (${invite.role.name})` }],
                 note: `${user.name || user.email} accepted an invitation to ${label} as ${invite.role.name}`,

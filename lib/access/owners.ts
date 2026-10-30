@@ -96,17 +96,17 @@ export async function assertPlatformKeepsAnOwner(tx: Tx, userId: string, now: Da
  */
 export async function assertKeepsAnOwner(
     tx: Tx,
-    target: { businessId: string } | { providerId: string; businessId: string | null },
+    target: { businessId: string } | { shopId: string; businessId: string | null },
     change: OwnerChange,
     now: Date = new Date()
 ): Promise<OwnerCheck> {
-    const forBusiness = !("providerId" in target)
+    const forBusiness = !("shopId" in target)
     const key = forBusiness ? OWNERSHIP_KEY.BUSINESS : OWNERSHIP_KEY.SHOP
     const where = forBusiness
         ? { scope: "BUSINESS" as const, businessId: target.businessId }
         : {
             OR: [
-                { scope: "SHOP" as const, providerId: (target as { providerId: string }).providerId },
+                { scope: "SHOP" as const, shopId: (target as { shopId: string }).shopId },
                 ...(target.businessId ? [{ scope: "BUSINESS" as const, businessId: target.businessId }] : []),
             ],
         }
@@ -115,7 +115,7 @@ export async function assertKeepsAnOwner(
         select: {
             id: true,
             scope: true,
-            providerId: true,
+            shopId: true,
             businessId: true,
             status: true,
             expiresAt: true,

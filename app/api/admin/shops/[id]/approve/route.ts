@@ -19,31 +19,31 @@ export async function POST(
 
         const { id } = await params
 
-        const provider = await prisma.shop.findUnique({
+        const shop = await prisma.shop.findUnique({
             where: { id },
         })
 
-        if (!provider) {
+        if (!shop) {
             return NextResponse.json(
-                { error: "Provider not found" },
+                { error: "Shop not found" },
                 { status: 404 }
             )
         }
 
-        if (provider.status === "ACTIVE") {
+        if (shop.status === "ACTIVE") {
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
         }
-        if (provider.status !== "PENDING") {
+        if (shop.status !== "PENDING") {
             return NextResponse.json({ error: "Only a shop waiting for approval can be approved" }, { status: 400 })
         }
 
         // The applicant becomes an owner of the business (which reaches every shop of it): they get the
         // business role that holds the ownership key (there is no special "Owner" role). A shop not
         // linked to a business keeps a shop-level owner.
-        const businessId = provider.businessId
+        const businessId = shop.businessId
         const ownerScope = businessId ? "BUSINESS" : "SHOP"
         const ownerRole = await prisma.$transaction((tx) =>
-            findOwnerRole(tx, businessId ? { businessId } : { providerId: id })
+            findOwnerRole(tx, businessId ? { businessId } : { shopId: id })
         )
         if (!ownerRole) {
             return NextResponse.json(
@@ -53,8 +53,8 @@ export async function POST(
         }
         const alreadyOwner = await prisma.accessAssignment.findFirst({
             where: businessId
-                ? { userId: provider.userId, scope: "BUSINESS", businessId } // already works in the business, whatever the role
-                : { userId: provider.userId, scope: "SHOP", providerId: id },
+                ? { userId: shop.applicantId, scope: "BUSINESS", businessId } // already works in the business, whatever the role
+                : { userId: shop.applicantId, scope: "SHOP", shopId: id },
             select: { id: true },
         })
 
@@ -65,28 +65,28 @@ export async function POST(
                 data: { status: "ACTIVE" },
             })
             await tx.user.update({
-                where: { id: provider.userId },
-                data: { role: Role.PROVIDER },
+                where: { id: shop.applicantId },
+                data: { role: Role.COMPANY },
             })
             if (!alreadyOwner) {
                 await tx.accessAssignment.create({
                     data: {
-                        userId: provider.userId,
+                        userId: shop.applicantId,
                         roleId: ownerRoleId,
                         scope: ownerScope,
                         businessId: businessId ?? null,
-                        providerId: businessId ? null : id,
+                        shopId: businessId ? null : id,
                         status: "ACTIVE",
                         invitedById: guard.userId,
                     },
                 })
             }
-            await notify(tx, provider.userId, notifications.applicationApproved({ shop: (await shopPublicIds(tx, [id])).get(id)! }))
+            await notify(tx, shop.applicantId, notifications.applicationApproved({ shop: (await shopPublicIds(tx, [id])).get(id)! }))
         })
 
-        return NextResponse.json({ message: "Provider approved" })
+        return NextResponse.json({ message: "Shop approved" })
     } catch (error) {
-        console.error("Approve provider error:", error)
+        console.error("Approve shop error:", error)
         return NextResponse.json(
             { error: "Something went wrong" },
             { status: 500 }

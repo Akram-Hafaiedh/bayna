@@ -1,6 +1,6 @@
 // app/api/admin/suggestions/route.ts
 // GET /api/admin/suggestions?status=pending|approved|rejected|all
-// Catalogue requests from providers, each with possible duplicates already in the catalogue.
+// Catalogue requests from shops, each with possible duplicates already in the catalogue.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import type { Prisma } from "@/app/generated/prisma/client"
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
             orderBy: { createdAt: "asc" },
             take: 100,
             include: {
-                provider: { select: { name: true, city: true } },
+                shop: { select: { name: true, city: true } },
                 category: { select: { id: true, name: true } },
                 catalogItem: { select: { id: true, name: true } },
             },

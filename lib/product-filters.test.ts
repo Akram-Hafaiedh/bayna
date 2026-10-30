@@ -11,10 +11,10 @@ test("the reason names both units", () => {
 
 test("countAffected counts distinct products and shops", () => {
     const rows = [
-        { id: "p1", providerId: "s1" },
-        { id: "p2", providerId: "s1" },
-        { id: "p3", providerId: "s2" },
-        { id: "p3", providerId: "s2" },
+        { id: "p1", shopId: "s1" },
+        { id: "p2", shopId: "s1" },
+        { id: "p3", shopId: "s2" },
+        { id: "p3", shopId: "s2" },
     ]
     assert.deepEqual(countAffected(rows), { products: 3, shops: 2 })
     assert.deepEqual(countAffected([]), { products: 0, shops: 0 })

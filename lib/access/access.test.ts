@@ -25,7 +25,7 @@ const assign = (roleId: string, extra: Partial<AssignmentInput> = {}): Assignmen
     const r = role(roleId)
     return {
         scope: r.scope,
-        providerId: r.scope === "SHOP" ? "shopA" : null,
+        shopId: r.scope === "SHOP" ? "shopA" : null,
         status: "ACTIVE",
         expiresAt: null,
         role: { name: r.name, permissions: r.permissions },
@@ -145,59 +145,59 @@ test("support agent cannot delete or merge tickets; support lead can merge", () 
 
 test("default deny: no assignments, no access", () => {
     assert.equal(can([], "catalog.item.view"), false)
-    assert.equal(can([], "product.listing.view", { providerId: "shopA" }), false)
+    assert.equal(can([], "product.listing.view", { shopId: "shopA" }), false)
 })
 
 test("platform check uses platform assignments only; shop check uses that shop only", () => {
     const owner = assign("OWNER")
     const admin = assign("ADMIN")
     assert.equal(can([owner], "product.listing.create"), false, "shop role does not apply to a platform check")
-    assert.equal(can([owner], "product.listing.create", { providerId: "shopA" }), true)
-    assert.equal(can([owner], "product.listing.create", { providerId: "shopB" }), false, "other shop")
-    assert.equal(can([admin], "catalog.item.view", { providerId: "shopA" }), false, "platform role does not apply inside a shop")
+    assert.equal(can([owner], "product.listing.create", { shopId: "shopA" }), true)
+    assert.equal(can([owner], "product.listing.create", { shopId: "shopB" }), false, "other shop")
+    assert.equal(can([admin], "catalog.item.view", { shopId: "shopA" }), false, "platform role does not apply inside a shop")
     assert.equal(can([admin], "catalog.item.view"), true)
 })
 
 test("the same key means different things in shop and platform scope", () => {
     const handler = assign("ORDER_HANDLER")
-    assert.equal(can([handler], "order.request.view_all", { providerId: "shopA" }), true)
+    assert.equal(can([handler], "order.request.view_all", { shopId: "shopA" }), true)
     assert.equal(can([handler], "order.request.view_all"), false)
 })
 
 test("SUPER_ADMIN can do anything on the platform, but not inside a shop it has no assignment for", () => {
     const sa = assign("SUPER_ADMIN")
     assert.equal(can([sa], "anything.at.all"), true)
-    assert.equal(can([sa], "product.listing.create", { providerId: "shopA" }), false)
+    assert.equal(can([sa], "product.listing.create", { shopId: "shopA" }), false)
 })
 
 test("access is the union of the person's roles: two roles add up, nothing is taken away", () => {
     const clerk = assign("INVENTORY_CLERK")
-    assert.equal(can([clerk], "product.price.edit", { providerId: "shopA" }), false)
+    assert.equal(can([clerk], "product.price.edit", { shopId: "shopA" }), false)
     const both = [clerk, assign("MANAGER")]
-    assert.equal(can(both, "product.price.edit", { providerId: "shopA" }), true, "the manager role adds price editing")
-    assert.equal(can(both, "product.listing.create", { providerId: "shopA" }), true)
+    assert.equal(can(both, "product.price.edit", { shopId: "shopA" }), true, "the manager role adds price editing")
+    assert.equal(can(both, "product.listing.create", { shopId: "shopA" }), true)
 })
 
 test("a wildcard role holds everything at its own level and nothing outside it", () => {
     const owner = assign("OWNER")
-    assert.equal(can([owner], "anything.at.all", { providerId: "shopA" }), true)
-    assert.equal(can([owner], "anything.at.all", { providerId: "shopB" }), false)
+    assert.equal(can([owner], "anything.at.all", { shopId: "shopA" }), true)
+    assert.equal(can([owner], "anything.at.all", { shopId: "shopB" }), false)
     assert.equal(can([owner], "anything.at.all"), false)
 })
 
 test("every role is evaluated the same way: a custom role is just a name and keys", () => {
     const custom: AssignmentInput = {
-        scope: "SHOP", providerId: "shopA", status: "ACTIVE", expiresAt: null,
+        scope: "SHOP", shopId: "shopA", status: "ACTIVE", expiresAt: null,
         role: { name: "Night shift", permissions: ["order.request.view_all", "order.request.update_status"] },
     }
-    assert.equal(can([custom], "order.request.update_status", { providerId: "shopA" }), true)
-    assert.equal(can([custom], "order.request.refund", { providerId: "shopA" }), false)
+    assert.equal(can([custom], "order.request.update_status", { shopId: "shopA" }), true)
+    assert.equal(can([custom], "order.request.refund", { shopId: "shopA" }), false)
 })
 
 test("suspended, invited and expired assignments grant nothing", () => {
     const now = new Date("2026-10-15T12:00:00Z")
     const key = "product.listing.view"
-    const ctx = { providerId: "shopA" }
+    const ctx = { shopId: "shopA" }
     assert.equal(can([assign("VIEWER", { status: "SUSPENDED" })], key, ctx, now), false)
     assert.equal(can([assign("VIEWER", { status: "INVITED" })], key, ctx, now), false)
     assert.equal(can([assign("VIEWER", { expiresAt: new Date("2026-10-15T11:59:59Z") })], key, ctx, now), false)
@@ -205,28 +205,28 @@ test("suspended, invited and expired assignments grant nothing", () => {
 })
 
 test("a person with two shops gets each shop's own permissions", () => {
-    const a = assign("OWNER", { providerId: "shopA" })
-    const b = assign("VIEWER", { providerId: "shopB" })
-    assert.equal(can([a, b], "product.listing.create", { providerId: "shopA" }), true)
-    assert.equal(can([a, b], "product.listing.create", { providerId: "shopB" }), false)
-    assert.equal(can([a, b], "product.listing.view", { providerId: "shopB" }), true)
+    const a = assign("OWNER", { shopId: "shopA" })
+    const b = assign("VIEWER", { shopId: "shopB" })
+    assert.equal(can([a, b], "product.listing.create", { shopId: "shopA" }), true)
+    assert.equal(can([a, b], "product.listing.create", { shopId: "shopB" }), false)
+    assert.equal(can([a, b], "product.listing.view", { shopId: "shopB" }), true)
 })
 
 test("handing out the wildcard needs the wildcard", () => {
-    const manager = effective([assign("MANAGER")], { providerId: "shopA" })
+    const manager = effective([assign("MANAGER")], { shopId: "shopA" })
     assert.deepEqual(ungrantable(manager, ["*"]), ["*"])
-    assert.deepEqual(ungrantable(effective([assign("OWNER")], { providerId: "shopA" }), ["*"]), [])
+    assert.deepEqual(ungrantable(effective([assign("OWNER")], { shopId: "shopA" }), ["*"]), [])
 })
 
 test("no privilege escalation: ungrantable lists the keys the actor does not hold", () => {
-    const manager = effective([assign("MANAGER")], { providerId: "shopA" })
+    const manager = effective([assign("MANAGER")], { shopId: "shopA" })
     assert.deepEqual(ungrantable(manager, ["product.price.edit", "team.member.transfer_ownership"]), ["team.member.transfer_ownership"])
-    const owner = effective([assign("OWNER")], { providerId: "shopA" })
+    const owner = effective([assign("OWNER")], { shopId: "shopA" })
     assert.deepEqual(ungrantable(owner, ALL_SHOP_KEYS), [])
 })
 
 test("listAllowed returns what a role can do", () => {
-    const eff = effective([assign("VIEWER")], { providerId: "shopA" })
+    const eff = effective([assign("VIEWER")], { shopId: "shopA" })
     const allowed = listAllowed(eff, ALL_SHOP_KEYS)
     assert.ok(allowed.includes("product.listing.view"))
     assert.ok(!allowed.includes("product.listing.edit"))

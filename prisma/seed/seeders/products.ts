@@ -71,9 +71,9 @@ function basePrice(item: { slug: string; name: string; unit: Unit }, categorySlu
     return min + (max - min) * Math.pow(unit01(`price:${item.slug}`), 1.5)
 }
 
-function offerPrice(provider: { key: string; priceFactor: number }, base: number, itemSlug: string): string {
-    const jitter = 0.96 + 0.08 * unit01(`${provider.key}:jitter:${itemSlug}`)
-    const raw = base * provider.priceFactor * jitter
+function offerPrice(shop: { key: string; priceFactor: number }, base: number, itemSlug: string): string {
+    const jitter = 0.96 + 0.08 * unit01(`${shop.key}:jitter:${itemSlug}`)
+    const raw = base * shop.priceFactor * jitter
     const rounded = Math.max(0.05, Math.round(raw * 20) / 20) // 0.050 TND steps
     return rounded.toFixed(3) // Decimal(12,3)
 }
@@ -112,7 +112,7 @@ export const products: Seeder = {
 
         for (const p of SHOPS) {
             const shop = await prisma.shop.findFirst({
-                where: { name: p.name, user: { email: p.ownerEmail }, deletedAt: null },
+                where: { name: p.name, applicant: { email: p.ownerEmail }, deletedAt: null },
                 select: { id: true },
             })
             if (!shop) throw new SeedError(`Shop "${p.name}" is missing. Run: npm run seed shops`)
@@ -142,7 +142,7 @@ export const products: Seeder = {
             for (const o of offers) offersPerItem.set(o.catalogItemId, (offersPerItem.get(o.catalogItemId) ?? 0) + 1)
 
             const existing = await prisma.product.findMany({
-                where: { providerId: shop.id, catalogItemId: { not: null } },
+                where: { shopId: shop.id, catalogItemId: { not: null } },
                 select: { id: true, catalogItemId: true },
             })
             const existingByItem = new Map(existing.map((e) => [e.catalogItemId, e.id]))
@@ -150,7 +150,7 @@ export const products: Seeder = {
             const toUpdate = offers.filter((o) => existingByItem.has(o.catalogItemId))
 
             if (toCreate.length > 0) {
-                await prisma.product.createMany({ data: toCreate.map((o) => ({ providerId: shop.id, ...o })) })
+                await prisma.product.createMany({ data: toCreate.map((o) => ({ shopId: shop.id, ...o })) })
             }
             for (const o of toUpdate) {
                 await prisma.product.update({ where: { id: existingByItem.get(o.catalogItemId)! }, data: o })
@@ -170,11 +170,11 @@ export const products: Seeder = {
                 categoryId: customCategory?.id ?? null,
             }
             const existingCustom = await prisma.product.findFirst({
-                where: { providerId: shop.id, catalogItemId: null, name: customName },
+                where: { shopId: shop.id, catalogItemId: null, name: customName },
                 select: { id: true },
             })
             if (existingCustom) await prisma.product.update({ where: { id: existingCustom.id }, data: custom })
-            else await prisma.product.create({ data: { providerId: shop.id, ...custom } })
+            else await prisma.product.create({ data: { shopId: shop.id, ...custom } })
 
             totalOffers += offers.length
             log(`${p.name}: ${offers.length} catalogue offers + 1 free-form`)

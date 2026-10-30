@@ -36,7 +36,7 @@ describe("inviting staff", () => {
         expect(token).toHaveLength(43)
 
         const row = await prisma.accessInvite.findFirstOrThrow({ where: { email } })
-        expect(row).toMatchObject({ scope: "PLATFORM", status: "PENDING", providerId: null, businessId: null })
+        expect(row).toMatchObject({ scope: "PLATFORM", status: "PENDING", shopId: null, businessId: null })
         expect(row.tokenHash).toBe(hashInviteToken(token))
         expect(row.tokenHash).not.toBe(token)
     })
@@ -123,7 +123,7 @@ describe("accepting a staff invitation", () => {
         const user = await prisma.user.findUniqueOrThrow({ where: { id: person.id } })
         expect(user.role).toBe("ADMIN")
         const row = await prisma.accessAssignment.findFirstOrThrow({ where: { userId: person.id, scope: "PLATFORM" }, include: { role: true } })
-        expect(row).toMatchObject({ status: "ACTIVE", providerId: null, businessId: null })
+        expect(row).toMatchObject({ status: "ACTIVE", shopId: null, businessId: null })
         expect(row.role.name).toBe("Support agent")
     })
 
@@ -164,7 +164,7 @@ describe("accepting a staff invitation", () => {
             const res = await call(accept, { body: { token } })
             expect(res.status).toBe(403)
             const user = await prisma.user.findUniqueOrThrow({ where: { email: demo("manager-tunis") } })
-            expect(user.role).toBe("PROVIDER")
+            expect(user.role).toBe("COMPANY")
         } finally {
             await prisma.accessInvite.deleteMany({ where: { tokenHash: hashInviteToken(token) } })
         }

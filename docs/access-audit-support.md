@@ -1,13 +1,13 @@
 # Access control, audit, impersonation and support
 
-Design notes behind `TODO.md` (Phase 7, Phase 8 and the provider profile in Phase 3a).
+Design notes behind `TODO.md` (Phase 7, Phase 8 and the shop profile in Phase 3a).
 Goal: add these once, at the data-model level, so the `User` table and the guards never have to be
 reworked when new modules arrive.
 
 Status: sections 1 (core) and 2 are built; the rest is design only. Built so far: the audit columns and
 triggers (section 2), and the access tables, permission catalogue, evaluator, system roles and guard
 (section 1: `lib/access/`, `prisma/schema.prisma`, `scripts/sync-access.ts`). Not built: role and
-assignment management screens, step-up checks, impersonation (3), support (4), the provider profile (5).
+assignment management screens, step-up checks, impersonation (3), support (4), the shop profile (5).
 Items marked **verify** depend on behaviour I could not test.
 
 ---
@@ -20,26 +20,26 @@ Items marked **verify** depend on behaviour I could not test.
 User ──< AccessAssignment >── Role ──< permission keys (strings)
               │
               ├─ scope        PLATFORM | SHOP
-              ├─ providerId   null for PLATFORM, the shop for SHOP
+              ├─ shopId   null for PLATFORM, the shop for SHOP
               ├─ status       INVITED | ACTIVE | SUSPENDED
               ├─ grants[]     extra permission keys for this person
               ├─ denies[]     keys removed for this person
               └─ expiresAt    optional (temporary staff, time-boxed support access)
 
-Role:  id, scope, providerId (null = system role), key, name, description,
+Role:  id, scope, shopId (null = system role), key, name, description,
        isSystem, permissions String[]
 ```
 
 - A user can hold several assignments (a platform support agent who also owns a shop; a person
   working for two shops). The UI can start with one shop per user without changing the schema.
-- `Provider.userId` stays as "the applicant / original owner" and is migrated to an OWNER assignment.
+- `Shop.userId` stays as "the applicant / original owner" and is migrated to an OWNER assignment.
 - Clients need no assignment. Client abilities are self-service and enforced by ownership.
-- The global `User.role` (CLIENT / PROVIDER / ADMIN) stays **only for routing** (which dashboard to
+- The global `User.role` (CLIENT / COMPANY / ADMIN) stays **only for routing** (which dashboard to
   open). Authorization never reads it.
-- `Role.providerId` is nullable from day one so shops can have custom roles later without a schema
+- `Role.shopId` is nullable from day one so shops can have custom roles later without a schema
   change. System roles are locked; to customise, copy one.
 
-**Built:** `AccessRole` and `AccessAssignment` (plain `providerId` on the role, real foreign keys on the
+**Built:** `AccessRole` and `AccessAssignment` (plain `shopId` on the role, real foreign keys on the
 assignment so deleting a user or shop removes its assignments). Two choices made while building:
 a check that names a shop looks only at that shop's assignments and a check without one looks only at
 platform assignments, so the same key (`order.request.view_all`) can mean different things in the two
@@ -119,7 +119,7 @@ Rules:
 | `user.account` | view, create, update, suspend, reinstate, delete, restore, export |
 | `user.credential` | reset_password, revoke_sessions, force_logout |
 | `shop.application` | view, approve, reject, request_changes |
-| `shop.provider` | view, update, verify, suspend, reinstate, delete, restore |
+| `shop.record` | view, update, verify, suspend, reinstate, delete, restore |
 | `catalog.item` | view, create, update, archive, merge, import, export |
 | `catalog.category` | view, create, update, archive, reorder |
 | `catalog.suggestion` | view, review |
@@ -176,7 +176,7 @@ Platform:
 | SUPPORT_AGENT | Ticket and feedback handling (no delete or merge), read access to users, shops and orders, `impersonation.session.start_readonly` |
 | SUPPORT_LEAD | Agent + assign, merge, escalate, export, canned replies, SLA |
 | CATALOGUE_MANAGER | `catalog.*`, `product.listing.view_all` |
-| MODERATOR | `shop.application.*`, `shop.provider.*`, `product.moderation.*`, `order.dispute.*` |
+| MODERATOR | `shop.application.*`, `shop.record.*`, `product.moderation.*`, `order.dispute.*` |
 | FINANCE | `finance.*`, `order.request.view_all`, `analytics.*` |
 | AUDITOR | Read-only: `audit.*`, `access.*.view`, user and shop views |
 
@@ -207,7 +207,7 @@ no foreign key (see Cautions).
 `Account`, `Session` and `VerificationToken` gained `createdAt` / `updatedAt`; `PasswordResetToken`
 and `LoginSession` gained `updatedAt`; every model gained the two actor columns.
 
-Soft delete (`deletedAt`, `deletedById`) exists on `User`, `Provider`, `Product`, `CatalogItem` and
+Soft delete (`deletedAt`, `deletedById`) exists on `User`, `Shop`, `Product`, `CatalogItem` and
 `Category`, and will be added to orders and tickets later. **Nothing filters on it yet** and routes
 still hard-delete, so no behaviour changed. Turning it on is a separate task (3b).
 
@@ -222,7 +222,7 @@ Actor meaning:
 
 Cautions:
 
-- **Soft delete and unique constraints.** `Product (providerId, catalogItemId)` and the unique slugs
+- **Soft delete and unique constraints.** `Product (shopId, catalogItemId)` and the unique slugs
   would block re-creating something that was soft-deleted. Use partial unique indexes
   (`WHERE "deletedAt" IS NULL`) written in raw SQL inside the migration, since Prisma cannot express
   them.
@@ -284,7 +284,7 @@ Events that are not row changes (logins, impersonation, permission changes) use 
 |---|---|
 | `id`, `createdAt` | |
 | `entityType`, `entityId` | what changed (any table, users included) |
-| `providerId` | null for platform-level entities; powers the shop activity feed |
+| `shopId` | null for platform-level entities; powers the shop activity feed |
 | `action` | From triggers: CREATE, UPDATE, DELETE, SOFT_DELETE, RESTORE. From `logActivity()`: LOGIN, PASSWORD_RESET_REQUESTED, ROLE_CHANGE, IMPERSONATION_START, ... (free text, so new modules need no migration) |
 | `changes` | JSON list of `{ field, from, to }` |
 | `actorId` + snapshots | `actorName`, `actorRole` copied at write time so history survives deletion or anonymisation |
@@ -300,13 +300,13 @@ Rules:
 - The app never updates or deletes rows. A trigger enforces it (UPDATE, DELETE and TRUNCATE raise an
   error). A retention or erasure job can lift the guard for one transaction with
   `SELECT set_config('app.audit_maintenance', 'on', true)`.
-- Indexes: `(entityType, entityId, createdAt)`, `(providerId, createdAt)`, `(actorId, createdAt)`.
+- Indexes: `(entityType, entityId, createdAt)`, `(shopId, createdAt)`, `(actorId, createdAt)`.
 - Retention and erasure: on erasure requests anonymise the snapshot fields rather than delete rows.
   Confirm the retention period and erasure rules with a lawyer for Tunisia.
 
 ### 2.4 One Timeline component, four places
 
-1. Entity history tab (product, provider, user, order, ticket)
+1. Entity history tab (product, shop, user, order, ticket)
 2. Shop activity page for owner and manager (filter by member and entity)
 3. Admin global audit view
 4. "My account activity" for every user (logins, password and role changes, support access)
@@ -361,7 +361,7 @@ expired, suspended). A role preview page lists what a role can do.
 `SupportTicket`
 
 - `number` (human id such as `BYN-0042`, from a database sequence)
-- `requesterId`, `providerId?` (when raised for a shop)
+- `requesterId`, `shopId?` (when raised for a shop)
 - `category`: ACCOUNT, SHOP_APPLICATION, CATALOGUE, PRODUCT, ORDER, PAYMENT, BUG, OTHER
 - `priority`: LOW, NORMAL, HIGH, URGENT
 - `status`: OPEN, IN_PROGRESS, WAITING_ON_USER, RESOLVED, CLOSED
@@ -392,7 +392,7 @@ Separate from tickets because the workflow differs.
 
 - `FeatureRequest`: `title`, `description`, `kind` (FEATURE, IMPROVEMENT, OTHER), `status`
   (NEW, UNDER_REVIEW, PLANNED, IN_PROGRESS, SHIPPED, DECLINED, DUPLICATE), `authorId`,
-  `providerId?`, `duplicateOfId?`, `voteCount`, `publicNote`
+  `shopId?`, `duplicateOfId?`, `voteCount`, `publicNote`
 - `FeatureVote`: unique (`requestId`, `userId`)
 - `FeatureComment`
 - Duplicate suggestions while typing (Postgres `pg_trgm` similarity: **verify** it is available on the
@@ -404,7 +404,7 @@ Separate from tickets because the workflow differs.
 
 - Real email sending (reset links are only logged today)
 - In-app notification centre (`Notification`: user, type, title, body, href, `readAt`). Built 16 Oct 2026 (TODO Phase 7b): stamped by `audit_stamp` but with no `audit_log` trigger, because the event that causes a notification is already in `ActivityLog` and a read is not an auditable change
-- File storage and a generic `Attachment` table (also needed for product images; pick the provider
+- File storage and a generic `Attachment` table (also needed for product images; pick the shop
   once)
 - A scheduled-jobs mechanism (SLA, auto-close, digests)
 
@@ -414,30 +414,30 @@ First response time, time to resolution, open tickets by category, requests by s
 
 ---
 
-## 5. Provider profile (Phase 3a, the next task)
+## 5. Shop profile (Phase 3a, the next task)
 
 Built after the Phase 7 foundation (decided 15 Oct 2026), so it uses the real guard and the real
 audit columns from the start.
 
 ### 5.1 Findings from the current code
 
-- The only code that updates a `Provider` is the admin approval route.
+- The only code that updates a `Shop` is the admin approval route.
 - `POST /api/shop/apply` creates the profile once; there is no edit or withdraw.
-- `/shop/*` is gated on the global `PROVIDER` role, and a pending applicant is still a CLIENT.
-  So editing a **pending** application has to live under `/become-provider`, not `/provider`.
+- `/shop/*` is gated on the global `COMPANY` role, and a pending applicant is still a CLIENT.
+  So editing a **pending** application has to live under `/become-shop`, not `/shop`.
 - Latitude and longitude exist in the schema but nothing sets them (only the demo seed). The apply
   form collects city and governorate as free text.
-- The reject route deletes the `Provider` row, which destroys the profile and all its history.
+- The reject route deletes the `Shop` row, which destroys the profile and all its history.
 
 ### 5.2 Scope
 
 | Piece | Detail |
 |---|---|
 | Page | `/shop/<publicShopId>/profile`: Identity, Contact, Location sections; verification badge; read-only when the member lacks `shop.profile.edit` |
-| API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/provider-input.ts` in the style of `lib/product-input.ts` |
-| Pending applicants | `PATCH` and `DELETE` on `/api/shop/apply` to edit or withdraw while pending, plus the matching UI in `/become-provider` |
+| API | `GET` / `PATCH /api/shop/profile`, validated in a new `lib/shop-input.ts` in the style of `lib/product-input.ts` |
+| Pending applicants | `PATCH` and `DELETE` on `/api/shop/apply` to edit or withdraw while pending, plus the matching UI in `/become-shop` |
 | Fields | businessName, description, phone, address, city, governorate, latitude, longitude, plus new columns `whatsapp`, `locationSource`, `needsReview` |
-| Location | Decided 16 Oct 2026: the provider sets his own location with a map pin (click or drag), starting from the governorate centre or an address search. `locationSource` (LOOKUP, PIN, GEOCODED) records how it was set, so a pin the provider placed is trusted over a guess. The 24 governorates are a TypeScript constant (`lib/governorates.ts`, not a database table) with coordinates from a cited source. A pin must lie inside Tunisia and within 250 km of its governorate centre; shops saved before the map existed (coordinates, no `locationSource`) are shown as IMPORTED. The same map component later shows all shops on the public pages (Phase 4) |
+| Location | Decided 16 Oct 2026: the shop sets his own location with a map pin (click or drag), starting from the governorate centre or an address search. `locationSource` (LOOKUP, PIN, GEOCODED) records how it was set, so a pin the shop placed is trusted over a guess. The 24 governorates are a TypeScript constant (`lib/governorates.ts`, not a database table) with coordinates from a cited source. A pin must lie inside Tunisia and within 250 km of its governorate centre; shops saved before the map existed (coordinates, no `locationSource`) are shown as IMPORTED. The same map component later shows all shops on the public pages (Phase 4) |
 | Audit | Uses the Phase 7 audit columns and `ActivityLog`; writes a before / after entry in the same transaction |
 | Guard | `requirePermission("shop.profile.edit")` |
 
@@ -455,7 +455,7 @@ Decided on 15 Oct 2026:
 
 - phone, WhatsApp, description: save and log only
 - businessName, address, city, governorate and location: save, log, and set `needsReview` so an admin
-  sees it in the providers list. The shop stays live and the change is not blocked
+  sees it in the shops list. The shop stays live and the change is not blocked
 
 Not chosen: blocking these edits until an admin re-approves (safer, but slows every shop down).
 
@@ -467,4 +467,4 @@ per shop. They stay in 3a "optional later" and 3e.
 ### 5.5 Tests
 
 Unit tests run on Vitest (adopted 16 Oct 2026, replacing Node's built-in runner): `npm run test:unit`.
-This task adds unit tests for `lib/provider-input.ts` and the governorate lookup.
+This task adds unit tests for `lib/shop-input.ts` and the governorate lookup.

@@ -27,8 +27,8 @@ test("links leave the defaults out, and a new filter goes back to page 1", () =>
 })
 
 test("every word of the search must match somewhere", () => {
-    const where = userWhere({ ...NO_USER_QUERY, q: "amel carthage", role: "PROVIDER" })
-    assert.equal(where.role, "PROVIDER")
+    const where = userWhere({ ...NO_USER_QUERY, q: "amel carthage", role: "COMPANY" })
+    assert.equal(where.role, "COMPANY")
     assert.equal(where.status, undefined)
     assert.equal((where.AND as unknown[]).length, 2)
     assert.equal(userWhere(NO_USER_QUERY).AND && (userWhere(NO_USER_QUERY).AND as unknown[]).length, 0)

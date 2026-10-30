@@ -30,9 +30,9 @@ test("an invitation needs a valid email and a role", () => {
 })
 
 test("only a role with no business and no shop is a platform role", () => {
-    assert.equal(isPlatformRole({ businessId: null, providerId: null }), true)
-    assert.equal(isPlatformRole({ businessId: "b1", providerId: null }), false)
-    assert.equal(isPlatformRole({ businessId: null, providerId: "s1" }), false)
+    assert.equal(isPlatformRole({ businessId: null, shopId: null }), true)
+    assert.equal(isPlatformRole({ businessId: "b1", shopId: null }), false)
+    assert.equal(isPlatformRole({ businessId: null, shopId: "s1" }), false)
 })
 
 test("an account that works in a shop or business, or owns one, cannot be staff", () => {

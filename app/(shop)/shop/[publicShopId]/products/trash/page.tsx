@@ -4,14 +4,14 @@ import type { Metadata } from "next"
 import { requireShopPage } from "@/lib/shop-auth"
 import { shopPath } from "@/lib/shop-paths"
 import { shopCan } from "@/lib/access/page"
-import { listTrash, TRASH_LIMIT } from "@/lib/provider-products"
+import { listTrash, TRASH_LIMIT } from "@/lib/shop-products"
 import { UNIT_LABELS } from "@/lib/units"
 import { timeAgo } from "@/lib/time-ago"
 import RestoreButton from "@/components/shop/RestoreButton"
 
 export const metadata: Metadata = { title: "Trash" }
 
-export default function ProviderTrashPage({ params }: { params: Promise<{ publicShopId: string }> }) {
+export default function ShopTrashPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
         <div className="space-y-6">
             <div>
@@ -41,14 +41,14 @@ async function BackToProducts({ params }: { params: Promise<{ publicShopId: stri
 
 async function TrashContent({ params }: { params: Promise<{ publicShopId: string }> }) {
     const { publicShopId } = await params
-    const provider = await requireShopPage(publicShopId)
-    if (!provider) {
+    const shop = await requireShopPage(publicShopId)
+    if (!shop) {
         return <p className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">Shop not found.</p>
     }
 
     const [{ items, total }, perms] = await Promise.all([
-        listTrash(provider.id),
-        shopCan(provider.id, ["product.listing.restore"] as const),
+        listTrash(shop.id),
+        shopCan(shop.id, ["product.listing.restore"] as const),
     ])
     const canRestore = perms["product.listing.restore"]
 

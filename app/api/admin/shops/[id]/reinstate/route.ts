@@ -1,5 +1,5 @@
 // app/api/admin/shops/[id]/reinstate/route.ts
-// The platform team reinstates a shop (see lib/shop-status.ts). Needs shop.provider.reinstate.
+// The platform team reinstates a shop (see lib/shop-status.ts). Needs shop.record.reinstate.
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
@@ -8,7 +8,7 @@ import { moveFor } from "@/lib/shop-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const guard = await requirePlatform("shop.provider.reinstate", req)
+        const guard = await requirePlatform("shop.record.reinstate", req)
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const { id } = await params

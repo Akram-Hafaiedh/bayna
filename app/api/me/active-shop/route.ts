@@ -1,5 +1,5 @@
 // app/api/me/active-shop/route.ts
-// POST { providerId }: switch the shop the signed-in person is working in.
+// POST { shopId }: switch the shop the signed-in person is working in.
 // The shop must be one they work in right now (a live assignment); anything else is refused.
 // The cookie only remembers the choice. Every request checks it again (see pickActiveShop).
 import { NextResponse } from "next/server"
@@ -13,10 +13,10 @@ export async function POST(req: Request) {
         if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
         const body = await req.json().catch(() => null)
-        const providerId = typeof body?.providerId === "string" ? body.providerId : ""
+        const shopId = typeof body?.shopId === "string" ? body.shopId : ""
 
         const shops = await loadMyShops(session.user.id)
-        const shop = shops.find((s) => s.id === providerId && s.status === "ACTIVE")
+        const shop = shops.find((s) => s.id === shopId && s.status === "ACTIVE")
         if (!shop) return NextResponse.json({ error: "You do not work in that shop" }, { status: 403 })
 
         const res = NextResponse.json({ activeId: shop.id, name: shop.name })

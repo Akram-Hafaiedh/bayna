@@ -24,13 +24,13 @@ export async function POST(req: Request) {
         if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
         const { name, description, permissions } = parsed.value
 
-        const guard = await guardRoles(scope === "BUSINESS" ? { scope, businessId: targetId } : { scope, providerId: targetId }, "manage", req)
+        const guard = await guardRoles(scope === "BUSINESS" ? { scope, businessId: targetId } : { scope, shopId: targetId }, "manage", req)
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const check = checkRoleChange({ can: guard.can, existing: null, next: permissions })
         if (!check.ok) return NextResponse.json({ error: check.error }, { status: check.status })
 
-        const owner = scope === "BUSINESS" ? ({ scope, businessId: guard.businessId! } as const) : ({ scope, providerId: guard.providerId! } as const)
+        const owner = scope === "BUSINESS" ? ({ scope, businessId: guard.businessId! } as const) : ({ scope, shopId: guard.shopId! } as const)
         const role = await withAudit(guard.actor, async (tx) => {
             if (!(await roleNameFree(tx, owner, name))) throw new TeamError("There is already a role with that name", 409)
             const created = await tx.accessRole.create({
@@ -40,14 +40,14 @@ export async function POST(req: Request) {
                     permissions,
                     scope,
                     businessId: scope === "BUSINESS" ? guard.businessId : null,
-                    providerId: scope === "SHOP" ? guard.providerId : null,
+                    shopId: scope === "SHOP" ? guard.shopId : null,
                 },
                 select: { id: true, name: true },
             })
             await logActivity(tx, guard.actor, {
                 entityType: "AccessRole",
                 entityId: created.id,
-                providerId: scope === "SHOP" ? guard.providerId : null,
+                shopId: scope === "SHOP" ? guard.shopId : null,
                 action: "TEAM_ROLE_CREATED",
                 changes: [{ field: "role", from: null, to: `${name} (${permissions.includes("*") ? "everything" : `${permissions.length} permissions`})` }],
                 note: `Created the role ${name}`,

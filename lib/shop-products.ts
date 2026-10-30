@@ -1,5 +1,5 @@
-// lib/provider-products.ts
-// Server-side querying for the provider's product list: search, filters, sort, pagination.
+// lib/shop-products.ts
+// Server-side querying for the shop's product list: search, filters, sort, pagination.
 // Used by the API route today and by the products page (Server Component) next.
 import type { Prisma } from "@/app/generated/prisma/client"
 import type { ProductStatus, SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
@@ -84,7 +84,7 @@ function searchClauses(q: string): Prisma.ProductWhereInput[] {
 }
 
 async function buildWhere(
-    providerId: string,
+    shopId: string,
     f: ProductFilters
 ): Promise<Prisma.ProductWhereInput> {
     const and: Prisma.ProductWhereInput[] = searchClauses(f.q)
@@ -110,14 +110,14 @@ async function buildWhere(
 
     if (f.unit) and.push({ unit: f.unit })
 
-    return { providerId, deletedAt: null, AND: and }
+    return { shopId, deletedAt: null, AND: and }
 }
 
 export async function listProducts(
-    providerId: string,
+    shopId: string,
     filters: ProductFilters
 ): Promise<ProductPage> {
-    const where = await buildWhere(providerId, filters)
+    const where = await buildWhere(shopId, filters)
 
     const total = await prisma.product.count({ where })
     const pageCount = Math.max(1, Math.ceil(total / filters.pageSize))
@@ -150,8 +150,8 @@ export type ProductStats = {
     trashed: number
 }
 
-export async function getProductStats(providerId: string): Promise<ProductStats> {
-    const live = { providerId, deletedAt: null }
+export async function getProductStats(shopId: string): Promise<ProductStats> {
+    const live = { shopId, deletedAt: null }
     const [total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed] = await Promise.all([
         prisma.product.count({ where: live }),
         prisma.product.count({ where: { ...live, status: "HIDDEN" } }),
@@ -162,7 +162,7 @@ export async function getProductStats(providerId: string): Promise<ProductStats>
         }),
         prisma.product.count({ where: { ...live, stock: { lte: 0 } } }),
         prisma.product.count({ where: { ...live, needsPriceReview: true } }),
-        prisma.product.count({ where: { providerId, deletedAt: { not: null } } }),
+        prisma.product.count({ where: { shopId, deletedAt: { not: null } } }),
     ])
     return { total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed }
 }
@@ -187,8 +187,8 @@ export type TrashRow = {
 export const TRASH_LIMIT = 200
 
 /** Removed products, most recently removed first. */
-export async function listTrash(providerId: string): Promise<{ items: TrashRow[]; total: number }> {
-    const where = { providerId, deletedAt: { not: null } } satisfies Prisma.ProductWhereInput
+export async function listTrash(shopId: string): Promise<{ items: TrashRow[]; total: number }> {
+    const where = { shopId, deletedAt: { not: null } } satisfies Prisma.ProductWhereInput
     const [total, rows] = await Promise.all([
         prisma.product.count({ where }),
         prisma.product.findMany({
@@ -242,11 +242,11 @@ export type CategoryOption = {
     children: { id: string; name: string; count: number }[]
 }
 
-/** Only categories this provider actually uses, grouped root -> sub-categories, with counts. */
-export async function getFilterCategories(providerId: string): Promise<CategoryOption[]> {
+/** Only categories this shop actually uses, grouped root -> sub-categories, with counts. */
+export async function getFilterCategories(shopId: string): Promise<CategoryOption[]> {
     const groups = await prisma.product.groupBy({
         by: ["categoryId"],
-        where: { providerId, deletedAt: null, categoryId: { not: null } },
+        where: { shopId, deletedAt: null, categoryId: { not: null } },
         _count: { _all: true },
     })
     const counts = new Map(groups.map((g) => [g.categoryId as string, g._count._all]))
@@ -314,13 +314,13 @@ export type ProductDetail = {
     suggestion: { status: SuggestionStatus; reviewNote: string | null } | null
 }
 
-/** Returns null when the product does not exist or belongs to another provider. */
-export async function getProviderProduct(
-    providerId: string,
+/** Returns null when the product does not exist or belongs to another shop. */
+export async function getShopProduct(
+    shopId: string,
     id: string
 ): Promise<ProductDetail | null> {
     const p = await prisma.product.findFirst({
-        where: { id, providerId, deletedAt: null },
+        where: { id, shopId, deletedAt: null },
         select: {
             id: true,
             name: true,

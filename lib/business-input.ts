@@ -5,7 +5,7 @@
 // because changing them needs a stronger permission (business.profile.edit_legal).
 import { fail, ok, parseText, type Parsed } from "@/lib/parse"
 import { parseEmail } from "@/lib/email-input"
-import { parsePhone } from "@/lib/provider-input"
+import { parsePhone } from "@/lib/shop-input"
 
 export type BusinessSnapshot = {
     name: string

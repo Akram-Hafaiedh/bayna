@@ -15,7 +15,7 @@ export function reachableShopIds(
     const ids = new Set<string>()
     for (const a of assignments) {
         if (!isLive(a, now)) continue
-        if (a.scope === "SHOP" && a.providerId) ids.add(a.providerId)
+        if (a.scope === "SHOP" && a.shopId) ids.add(a.shopId)
         if (a.scope === "BUSINESS" && a.businessId) {
             for (const shop of shopsByBusiness[a.businessId] ?? []) ids.add(shop)
         }

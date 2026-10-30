@@ -6,7 +6,7 @@ import { OWNERSHIP_KEY, holdsKey } from "./catalogue"
 import { inviteState, type InviteState } from "./invite-token"
 import type { RoleTarget } from "./team-rules"
 
-export type TeamTarget = { scope: "SHOP"; providerId: string } | { scope: "BUSINESS"; businessId: string }
+export type TeamTarget = { scope: "SHOP"; shopId: string } | { scope: "BUSINESS"; businessId: string }
 
 export type TeamMember = {
     /** the assignment id: what the member routes act on */
@@ -47,7 +47,7 @@ export type RoleOption = {
 }
 
 const where = (t: TeamTarget) =>
-    t.scope === "SHOP" ? { scope: "SHOP" as const, providerId: t.providerId } : { scope: "BUSINESS" as const, businessId: t.businessId }
+    t.scope === "SHOP" ? { scope: "SHOP" as const, shopId: t.shopId } : { scope: "BUSINESS" as const, businessId: t.businessId }
 
 /** Owners first, then by name. */
 function byRank(a: TeamMember, b: TeamMember): number {
@@ -124,8 +124,8 @@ export async function loadRoleOptions(target: RoleTarget): Promise<RoleOption[]>
             ? { scope: "BUSINESS" as const, businessId: target.businessId }
             : {
                 OR: [
-                    { scope: "SHOP" as const, providerId: target.providerId },
-                    ...(target.businessId ? [{ scope: "BUSINESS" as const, businessId: target.businessId, providerId: null }] : []),
+                    { scope: "SHOP" as const, shopId: target.shopId },
+                    ...(target.businessId ? [{ scope: "BUSINESS" as const, businessId: target.businessId, shopId: null }] : []),
                 ],
             }
     const rows = await prisma.accessRole.findMany({

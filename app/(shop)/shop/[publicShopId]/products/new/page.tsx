@@ -1,6 +1,6 @@
 import { Suspense } from "react"
 import { requireShopPage } from "@/lib/shop-auth"
-import { getCategoryTree } from "@/lib/provider-products"
+import { getCategoryTree } from "@/lib/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
 
 export default function NewProductPage({ params }: { params: Promise<{ publicShopId: string }> }) {
@@ -24,8 +24,8 @@ export default function NewProductPage({ params }: { params: Promise<{ publicSho
 
 async function NewProductContent({ params }: { params: Promise<{ publicShopId: string }> }) {
     const { publicShopId } = await params
-    const provider = await requireShopPage(publicShopId)
-    if (provider?.status !== "ACTIVE") {
+    const shop = await requireShopPage(publicShopId)
+    if (shop?.status !== "ACTIVE") {
         return (
             <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 Your account is not verified yet. You can add products once an admin

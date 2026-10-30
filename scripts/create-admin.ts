@@ -46,7 +46,7 @@ async function main() {
         if (existing.status !== "ACTIVE") throw new Error(`That account is ${existing.status.toLowerCase().replace("_", " ")}. Reinstate it first.`)
         const account = checkStaffAccount({
             worksInShopOrBusiness: (await prisma.accessAssignment.count({ where: { userId: existing.id, scope: { in: ["SHOP", "BUSINESS"] } } })) > 0,
-            ownsAShop: (await prisma.shop.count({ where: { userId: existing.id, deletedAt: null } })) > 0,
+            ownsAShop: (await prisma.shop.count({ where: { applicantId: existing.id, deletedAt: null } })) > 0,
         })
         if (!account.ok) throw new Error(account.error)
     }

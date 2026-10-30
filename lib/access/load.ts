@@ -31,7 +31,7 @@ export const loadAccess = cache(async (userId: string): Promise<Access | null> =
             accessAssignments: {
                 select: {
                     scope: true,
-                    providerId: true,
+                    shopId: true,
                     businessId: true,
                     status: true,
                     expiresAt: true,

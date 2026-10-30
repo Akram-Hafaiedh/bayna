@@ -15,7 +15,7 @@ export async function listUsers(query: UserQuery): Promise<UserPage> {
         where,
         select: {
             id: true, publicUserId: true, email: true, name: true, phone: true, role: true, status: true, suspendedReason: true, createdAt: true,
-            providers: { where: { deletedAt: null }, select: { id: true, name: true, status: true }, orderBy: { createdAt: "asc" } },
+            appliedShops: { where: { deletedAt: null }, select: { id: true, name: true, status: true }, orderBy: { createdAt: "asc" } },
         },
         // id as tie-breaker keeps pages stable when several accounts share a date
         orderBy: [{ createdAt: "desc" }, { id: "asc" }],
@@ -23,7 +23,7 @@ export async function listUsers(query: UserQuery): Promise<UserPage> {
         take: query.pageSize,
     })
     return {
-        items: rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })),
+        items: rows.map(({ appliedShops, ...r }) => ({ ...r, shops: appliedShops, createdAt: r.createdAt.toISOString() })),
         total,
         page,
         pageCount,

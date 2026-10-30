@@ -41,7 +41,7 @@ export type ActivityEntry = {
     entityType: string
     entityId?: string | null
     /** Set for shop-scoped events so they show up in the shop activity feed. */
-    providerId?: string | null
+    shopId?: string | null
     /** For example LOGIN, PASSWORD_RESET_REQUESTED, IMPERSONATION_START, ROLE_CHANGE. */
     action: string
     changes?: Prisma.InputJsonValue
@@ -61,7 +61,7 @@ export async function logActivity(
         data: {
             entityType: entry.entityType,
             entityId: entry.entityId ?? null,
-            providerId: entry.providerId ?? null,
+            shopId: entry.shopId ?? null,
             action: entry.action,
             changes: entry.changes,
             note: entry.note ?? null,

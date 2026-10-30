@@ -19,10 +19,10 @@ export function unitChangeReason(from: Unit, to: Unit): string {
 export type FlagCounts = { products: number; shops: number }
 
 /** Counts of distinct products and distinct shops, for the admin's "are you sure" preview. */
-export function countAffected(rows: readonly { id: string; providerId: string }[]): FlagCounts {
+export function countAffected(rows: readonly { id: string; shopId: string }[]): FlagCounts {
     return {
         products: new Set(rows.map((r) => r.id)).size,
-        shops: new Set(rows.map((r) => r.providerId)).size,
+        shops: new Set(rows.map((r) => r.shopId)).size,
     }
 }
 

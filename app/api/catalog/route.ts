@@ -12,7 +12,7 @@ export async function GET(req: Request) {
         if (!guard.ok) {
             return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
-        const providerId = guard.provider.id
+        const shopId = guard.shop.id
 
         const params = new URL(req.url).searchParams
         const q = (params.get("q") ?? "").trim().slice(0, 100)
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
                 category: { select: { id: true, name: true } },
                 // Lets the UI say "already in your products" or "in your trash" instead of failing on save
                 // (unique per shop and item, so at most one row)
-                products: { where: { providerId }, select: { id: true, deletedAt: true }, take: 1 },
+                products: { where: { shopId }, select: { id: true, deletedAt: true }, take: 1 },
             },
         })
 

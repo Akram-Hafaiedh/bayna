@@ -2,9 +2,9 @@
 
 **Local marketplace for Tunisia — with real landed-cost comparison**
 
-Bayna is a marketplace that connects clients with local providers. Buyers discover products, compare real prices (including travel cost), and order for pickup or cash-on-delivery. Providers get a simple dashboard to manage stock, prices, and orders.
+Bayna is a marketplace that connects clients with local shops. Buyers discover products, compare real prices (including travel cost), and order for pickup or cash-on-delivery. Shops get a simple dashboard to manage stock, prices, and orders.
 
-Price comparison is a core feature, not the whole product. A pure comparator does not sustain a business; Bayna is built to drive transactions, provider tools, and local commerce.
+Price comparison is a core feature, not the whole product. A pure comparator does not sustain a business; Bayna is built to drive transactions, shop tools, and local commerce.
 
 **Current focus:** Construction materials (MVP) — expandable to hardware, auto parts, and more  
 **Market:** Tunisia  
@@ -18,16 +18,16 @@ Most tools either list prices with no way to buy, or run a marketplace with no h
 
 Bayna does both:
 
-> “Is it actually worth buying from this provider — and can I order it?”
+> “Is it actually worth buying from this shop — and can I order it?”
 
 We combine:
 
-- **Marketplace** — providers list stock and prices; clients search, order (pickup / COD)
+- **Marketplace** — shops list stock and prices; clients search, order (pickup / COD)
 - **Real landed cost** — price + distance + estimated travel cost, so “cheaper far away” is honest
-- **Shared catalogue** — comparable products across providers when it makes sense
-- **Provider tools** — stock, pricing, and sales management for local businesses
+- **Shared catalogue** — comparable products across shops when it makes sense
+- **Shop tools** — stock, pricing, and sales management for local businesses
 
-The business is local commerce (orders, providers, retention). Comparison is how buyers find the best option and why providers want to be listed.
+The business is local commerce (orders, shops, retention). Comparison is how buyers find the best option and why shops want to be listed.
 
 ---
 
@@ -47,18 +47,18 @@ The business is local commerce (orders, providers, retention). Comparison is how
 | Model | Role |
 |-------|------|
 | **Category** | Grouping (Cement, Steel, Bricks, Plumbing, Hardware…) — supports parent/child. Shared taxonomy, managed by admin. |
-| **CatalogItem** | Shared product identity. Optional on a product. Enables fair comparison across providers when linked. |
-| **Product** | A provider’s offer. Always belongs to one provider. Optional `catalogItemId`. |
+| **CatalogItem** | Shared product identity. Optional on a product. Enables fair comparison across shops when linked. |
+| **Product** | A shop’s offer. Always belongs to one shop. Optional `catalogItemId`. |
 
 Rules:
 
-- A product **must** belong to a provider (this is a marketplace listing)
-- `catalogItemId` is **optional** → providers can sell niche or custom items that don’t enter cross-provider comparison
-- Multiple providers can link products to the same catalog item → that’s how comparison works
+- A product **must** belong to a shop (this is a marketplace listing)
+- `catalogItemId` is **optional** → shops can sell niche or custom items that don’t enter cross-shop comparison
+- Multiple shops can link products to the same catalog item → that’s how comparison works
 - Free-form products still appear in search and can be ordered; they simply don’t show in “compare this exact item” views
 - Sale units: piece, bag, meter, m², m³, ton, roll, liter, other
 
-Categories and catalog items are platform-managed so the shared taxonomy stays clean and comparable. Providers are not limited to the catalogue: they can list custom products freely.
+Categories and catalog items are platform-managed so the shared taxonomy stays clean and comparable. Shops are not limited to the catalogue: they can list custom products freely.
 
 ---
 
@@ -68,7 +68,7 @@ Categories and catalog items are platform-managed so the shared taxonomy stays c
 app/
 ├── (auth)/              # Login / Register / Forgot-Reset password
 ├── (public)/            # Landing, search, product pages
-├── (account)/           # Profile, Become a Provider
+├── (account)/           # Profile, Become a Shop
 ├── (client)/            # CLIENT dashboard (/dashboard)
 ├── (shop)/              # shop area (/shop/[publicShopId]/...)
 ├── (admin)/             # ADMIN dashboard (/admin/...)
@@ -118,13 +118,13 @@ npm run dev
 | Role         | How you get it                                      | Dashboard URL            |
 |--------------|-----------------------------------------------------|--------------------------|
 | **CLIENT**   | Default on registration                             | `/dashboard`             |
-| **PROVIDER** | Apply after being CLIENT (+ optional admin approval)| `/shop` (opens your shop) |
+| **COMPANY** | Apply after being CLIENT (+ optional admin approval)| `/shop` (opens your shop) |
 | **ADMIN**    | Manual / promoted only                              | `/admin/dashboard`       |
 
 **Rules:**
 
 - Every new user is created as **CLIENT** by default
-- Users can later apply to become a **PROVIDER** (separate flow)
+- Users can later apply to become a **COMPANY** (separate flow)
 - **ADMIN** is never self-assigned from the public UI
 
 ### How to make a user ADMIN
@@ -147,9 +147,9 @@ UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
 Protected routes are enforced in `proxy.ts` (Next.js proxy / middleware style):
 
 - `/admin/*` → ADMIN only
-- `/shop/*` → PROVIDER only (the shop in the address must be one you work in, else 404)
+- `/shop/*` → COMPANY only (the shop in the address must be one you work in, else 404)
 - `/dashboard` → CLIENT only
-- `/profile`, `/become-provider` → any authenticated user
+- `/profile`, `/become-shop` → any authenticated user
 
 Unauthenticated users are redirected to `/login`. Wrong-role users are redirected to their home dashboard.
 
@@ -176,18 +176,18 @@ The seed script loads **16 categories** and ~**200 catalog items** based on a Tu
 15. Roofing, Façade & Exterior  
 16. Garden & Outdoor Landscaping  
 
-No prices are seeded — providers set their own prices when creating products. Categories for **hardware store items** and **auto/car parts** can be added later the same way.
+No prices are seeded — shops set their own prices when creating products. Categories for **hardware store items** and **auto/car parts** can be added later the same way.
 
 ---
 
 ## Roadmap
 
-**Done:** shared catalogue and categories with admin management; provider product management (list with
+**Done:** shared catalogue and categories with admin management; shop product management (list with
 search, filters and pagination, create from the catalogue or as a custom product, edit, delete); admin
 review of catalogue requests; audit columns and an append-only activity log on every table; a
-permission layer (roles and assignments, one guard for every admin and provider API route).
+permission layer (roles and assignments, one guard for every admin and shop API route).
 
-**Also done and verified:** the provider profile (shop identity, contact, map pin) with admin review of
+**Also done and verified:** the shop profile (shop identity, contact, map pin) with admin review of
 edits to a verified shop's name and location, edit / withdraw for pending applications, and
 notifications (a bell in the header, so a shop learns when its changes are reviewed or its application is
 decided).
@@ -202,7 +202,7 @@ impersonation); R7 billing, analytics and reviews. Product images are deferred u
 chosen.
 
 **Backlog (not started):** richer account and security pages (2FA, sessions, connected accounts), person and admin detail profiles, inventory with a stock ledger and reorder queue,
-personal versus business clients with invoices, provider and client team pages, analytics and reports,
+personal versus business clients with invoices, shop and client team pages, analytics and reports,
 promotions and reviews, a help and support module, an admin project / deal board, and admin billing.
 
 Longer term: client search and ordering, distance + travel cost, COD/pickup flows, i18n (FR + AR), and

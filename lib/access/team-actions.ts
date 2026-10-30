@@ -19,7 +19,7 @@ export type TeamGuard = {
     userId: string
     actor: AuditActor
     scope: TeamScope
-    providerId: string | null
+    shopId: string | null
     businessId: string | null
     /** may this person hold this key here? (for the "nobody hands out what they lack" rule) */
     can: (key: string) => boolean
@@ -35,18 +35,18 @@ export async function guardTeam(
     scope: TeamScope,
     name: TeamPermissionName,
     req: Request,
-    target: { providerId?: string | null; businessId?: string | null } = {}
+    target: { shopId?: string | null; businessId?: string | null } = {}
 ): Promise<TeamGuard | TeamGuardFail> {
     if (scope === "SHOP") {
-        const g = await requireShop(teamPermission("SHOP", name), req, target.providerId ? { providerId: target.providerId } : {})
+        const g = await requireShop(teamPermission("SHOP", name), req, target.shopId ? { shopId: target.shopId } : {})
         if (!g.ok) return g
         return {
             ok: true,
             userId: g.userId,
             actor: g.actor,
             scope,
-            providerId: g.provider.id,
-            businessId: g.provider.businessId,
+            shopId: g.shop.id,
+            businessId: g.shop.businessId,
             can: (k) => g.can(k as never),
         }
     }
@@ -57,7 +57,7 @@ export async function guardTeam(
         userId: g.userId,
         actor: g.actor,
         scope,
-        providerId: null,
+        shopId: null,
         businessId: g.business.id,
         can: (k) => g.can(k as never),
     }
@@ -70,13 +70,13 @@ export async function guardTeam(
  */
 export async function assertTeamKeepsOwner(
     tx: Tx,
-    target: { scope: "SHOP"; providerId: string; businessId: string | null } | { scope: "BUSINESS"; businessId: string },
+    target: { scope: "SHOP"; shopId: string; businessId: string | null } | { scope: "BUSINESS"; businessId: string },
     change: OwnerChange,
     now: Date = new Date()
 ): Promise<OwnerCheck> {
     return target.scope === "BUSINESS"
         ? assertKeepsAnOwner(tx, { businessId: target.businessId }, change, now)
-        : assertKeepsAnOwner(tx, { providerId: target.providerId, businessId: target.businessId }, change, now)
+        : assertKeepsAnOwner(tx, { shopId: target.shopId, businessId: target.businessId }, change, now)
 }
 
 /** The name shown in messages: the shop's name, or the business's. */
@@ -100,11 +100,11 @@ export async function demoteIfNoLongerWorking(tx: Tx, userId: string, now: Date 
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
         }),
-        tx.shop.count({ where: { userId, deletedAt: null } }),
+        tx.shop.count({ where: { applicantId: userId, deletedAt: null } }),
         tx.user.findUnique({ where: { id: userId }, select: { role: true } }),
     ])
-    // Only a PROVIDER goes back to CLIENT. An admin is never touched.
-    if (user?.role === "PROVIDER" && assignments === 0 && own === 0) {
+    // Only a COMPANY goes back to CLIENT. An admin is never touched.
+    if (user?.role === "COMPANY" && assignments === 0 && own === 0) {
         await tx.user.update({ where: { id: userId }, data: { role: "CLIENT" } })
     }
 }

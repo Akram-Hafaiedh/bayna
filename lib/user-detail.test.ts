@@ -14,10 +14,10 @@ test("a session is open until it is revoked", () => {
 })
 
 test("a role names where it applies", () => {
-    assert.equal(assignmentPlace({ scope: "PLATFORM", provider: null, business: null }), "Bayna platform")
-    assert.equal(assignmentPlace({ scope: "BUSINESS", provider: null, business: { name: "Carthage Group" } }), "Carthage Group")
-    assert.equal(assignmentPlace({ scope: "SHOP", provider: { name: "Tunis Auto" }, business: null }), "Tunis Auto")
-    assert.equal(assignmentPlace({ scope: "SHOP", provider: null, business: null }), "A shop")
+    assert.equal(assignmentPlace({ scope: "PLATFORM", shop: null, business: null }), "Bayna platform")
+    assert.equal(assignmentPlace({ scope: "BUSINESS", shop: null, business: { name: "Carthage Group" } }), "Carthage Group")
+    assert.equal(assignmentPlace({ scope: "SHOP", shop: { name: "Tunis Auto" }, business: null }), "Tunis Auto")
+    assert.equal(assignmentPlace({ scope: "SHOP", shop: null, business: null }), "A shop")
 })
 
 test("a role past its end date reads Expired", () => {

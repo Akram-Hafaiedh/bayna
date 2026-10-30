@@ -61,7 +61,7 @@ const DEFS: Def[] = [
             "support.ticket.change_status", "support.ticket.change_priority", "support.ticket.reopen",
             "feedback.request.view_all", "feedback.request.triage", "feedback.request.change_status",
             "feedback.request.comment",
-            "user.account.view", "shop.provider.view", "shop.application.view",
+            "user.account.view", "shop.record.view", "shop.application.view",
             "order.request.view_all", "order.dispute.view",
             "impersonation.session.start_readonly", "impersonation.session.view",
         ],
@@ -78,7 +78,7 @@ const DEFS: Def[] = [
             "support.canned_reply.manage", "support.sla.manage",
             "feedback.request.view_all", "feedback.request.triage", "feedback.request.change_status",
             "feedback.request.comment", "feedback.request.merge",
-            "user.account.view", "shop.provider.view", "shop.application.view",
+            "user.account.view", "shop.record.view", "shop.application.view",
             "order.request.view_all", "order.dispute.view",
             "impersonation.session.start_readonly", "impersonation.session.view",
         ],
@@ -95,7 +95,7 @@ const DEFS: Def[] = [
         name: "Moderator",
         description: "Reviews shop applications, shops, listings and disputes.",
         scope: "PLATFORM",
-        include: ["shop.application.*", "shop.provider.*", "product.moderation.*", "order.dispute.*"],
+        include: ["shop.application.*", "shop.record.*", "product.moderation.*", "order.dispute.*"],
     },
     {
         id: "FINANCE",
@@ -111,7 +111,7 @@ const DEFS: Def[] = [
         scope: "PLATFORM",
         include: [
             "audit.*", "access.*.view",
-            "user.account.view", "shop.provider.view", "shop.application.view",
+            "user.account.view", "shop.record.view", "shop.application.view",
         ],
     },
 

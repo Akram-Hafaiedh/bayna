@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
         const role = await prisma.accessRole.findUnique({
             where: { id: roleId },
-            select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
+            select: { id: true, name: true, permissions: true, businessId: true, shopId: true },
         })
         if (!role || !isPlatformRole(role)) return NextResponse.json({ error: "Unknown role" }, { status: 400 })
         if (missingKeys(role.permissions, (k) => guard.can(k as never)).length > 0) {

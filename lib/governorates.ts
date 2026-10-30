@@ -5,12 +5,12 @@
 // Coordinates: taken on 16 Oct 2026 from the "Coordinates" shown on each governorate's English
 // Wikipedia article (https://en.wikipedia.org/wiki/<Name>_Governorate), which gives the
 // governorate's central point (usually its capital), to about 0.001 degrees (roughly 100 m).
-// They are a STARTING POINT for the map pin, not a shop address: the provider moves the pin to the
+// They are a STARTING POINT for the map pin, not a shop address: the shop moves the pin to the
 // real location. Arabic names are the standard spelling of the name shown on the same articles
 // (they list "ڨ" for the Tunisian pronunciation; standard Arabic "ق" is used here). Have a native
 // speaker check the Arabic before it is shown to clients.
 //
-// `name` is the value stored in Provider.governorate and is what the application form already used.
+// `name` is the value stored in Shop.governorate and is what the application form already used.
 import type { LatLng } from "./geo"
 
 export type Governorate = {

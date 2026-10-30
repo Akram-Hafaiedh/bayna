@@ -1,6 +1,6 @@
 "use client"
 // components/shop/ShopSwitcher.tsx
-// Which shop am I working in? Always shown for providers, even with one shop, so "Create shop" is
+// Which shop am I working in? Always shown for company accounts, even with one shop, so "Create shop" is
 // always one click away. Switching reloads the shop pages (a product of one shop is not a product
 // of another): it opens the same section of the other shop (the list, not a product's edit page).
 import { useEffect, useRef, useState } from "react"
@@ -55,7 +55,7 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
             const res = await fetch("/api/me/active-shop", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ providerId: shop.id }),
+                body: JSON.stringify({ shopId: shop.id }),
             })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) {
@@ -142,7 +142,7 @@ export default function ShopSwitcher({ shops, activeId }: { shops: MyShop[]; act
                     </ul>
                     <div className="border-t border-zinc-100 p-1">
                         <Link
-                            href="/become-provider"
+                            href="/become-shop"
                             onClick={() => setOpen(false)}
                             className="flex h-9 items-center gap-2 rounded-lg px-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
                         >

@@ -53,7 +53,7 @@ async function ActivityContent({ searchParams }: { searchParams: Promise<{ page?
                 { entityType: "Business", entityId: business.id },
                 { entityType: "AccessInvite", entityId: { in: invites.map((i) => i.id) }, action: { startsWith: "TEAM_" } },
                 { entityType: "AccessAssignment", entityId: { in: assignments.map((a) => a.id) }, action: { startsWith: "TEAM_" } },
-                { providerId: { in: shops.map((s) => s.id) }, action: { startsWith: "TEAM_" } },
+                { shopId: { in: shops.map((s) => s.id) }, action: { startsWith: "TEAM_" } },
             ],
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],

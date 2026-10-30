@@ -27,7 +27,7 @@ export default function CatalogPicker({
     onCantFind,
 }: {
     onPick: (item: CatalogResult) => void
-    /** Called with the current search text when the provider cannot find their item. */
+    /** Called with the current search text when the shop cannot find their item. */
     onCantFind: (query: string) => void
 }) {
     const [q, setQ] = useState("")

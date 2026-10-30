@@ -7,7 +7,7 @@ import RolesList from "@/components/access/RolesList"
 
 export const metadata: Metadata = { title: "Roles" }
 
-export default function ProviderRolesPage({ params }: { params: Promise<{ publicShopId: string }> }) {
+export default function ShopRolesPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
         <div className="max-w-4xl space-y-6">
             <Suspense fallback={<div className="h-72 animate-pulse rounded-xl bg-zinc-200" />}>

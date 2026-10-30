@@ -136,7 +136,7 @@ export const users: Seeder = {
         const target = (place: Place) =>
             place.level === "BUSINESS"
                 ? { scope: "BUSINESS" as const, businessId: businessIds.get(place.business)! }
-                : { scope: "SHOP" as const, providerId: shopIds.get(place.shop)! }
+                : { scope: "SHOP" as const, shopId: shopIds.get(place.shop)! }
         const roleOf = async (place: Place, name: string) => {
             const t = target(place)
             const role = await prisma.accessRole.findFirst({ where: { ...t, name }, select: { id: true } })
@@ -151,7 +151,7 @@ export const users: Seeder = {
 
         // ---- People and what they can do -------------------------------------------------------
         for (const p of PEOPLE) {
-            const type = p.platformRole ? "ADMIN" : p.grants.length ? "PROVIDER" : "CLIENT"
+            const type = p.platformRole ? "ADMIN" : p.grants.length ? "COMPANY" : "CLIENT"
             const user = await prisma.user.upsert({
                 where: { email: testEmail(p.local) },
                 update: { name: p.name, role: type },

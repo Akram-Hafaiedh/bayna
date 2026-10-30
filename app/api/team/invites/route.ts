@@ -25,21 +25,21 @@ export async function POST(req: Request) {
             scope,
             "invite",
             req,
-            scope === "SHOP" ? { providerId: targetId } : { businessId: targetId }
+            scope === "SHOP" ? { shopId: targetId } : { businessId: targetId }
         )
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         // The role must belong to this business, or to this shop (or its business, for a shop)
         const role = await prisma.accessRole.findUnique({
             where: { id: roleId },
-            select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
+            select: { id: true, name: true, permissions: true, businessId: true, shopId: true },
         })
         const usable =
             !!role &&
             roleUsableAt(
                 role,
                 scope === "SHOP"
-                    ? { scope, providerId: guard.providerId!, businessId: guard.businessId }
+                    ? { scope, shopId: guard.shopId!, businessId: guard.businessId }
                     : { scope, businessId: guard.businessId! }
             )
         if (!role || !usable) return NextResponse.json({ error: "Unknown role" }, { status: 400 })
@@ -47,8 +47,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "You cannot invite someone to a role with more access than your own." }, { status: 403 })
         }
 
-        const target = scope === "SHOP" ? { scope, providerId: guard.providerId! } : { scope, businessId: guard.businessId! }
-        const targetWhere = scope === "SHOP" ? { providerId: guard.providerId! } : { businessId: guard.businessId! }
+        const target = scope === "SHOP" ? { scope, shopId: guard.shopId! } : { scope, businessId: guard.businessId! }
+        const targetWhere = scope === "SHOP" ? { shopId: guard.shopId! } : { businessId: guard.businessId! }
 
         // Who is this for? Emails are matched without regard to case (old accounts may be mixed-case).
         // Not your own address, not someone already on this team, and for a shop not someone who already
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
         const token = newInviteToken()
         const now = new Date()
         const expiresAt = inviteExpiry(now)
-        const label = await targetLabel(prisma, scope, scope === "SHOP" ? guard.providerId! : guard.businessId!)
+        const label = await targetLabel(prisma, scope, scope === "SHOP" ? guard.shopId! : guard.businessId!)
 
         const invite = await withAudit(guard.actor, async (tx) => {
             // A new link for the same person replaces the older one
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
             await logActivity(tx, guard.actor, {
                 entityType: "AccessInvite",
                 entityId: created.id,
-                providerId: guard.providerId,
+                shopId: guard.shopId,
                 action: "TEAM_INVITED",
                 changes: [{ field: "invite", from: null, to: `${email} as ${role.name} in ${label}` }],
                 note: `Invited ${email} to ${label} as ${role.name}`,

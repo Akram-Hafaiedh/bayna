@@ -31,15 +31,15 @@ export function teamPermission(scope: TeamScope, name: TeamPermissionName): Shop
 }
 
 /** Where a role may be used: the business or shop being managed. */
-export type RoleTarget = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; providerId: string; businessId: string | null }
+export type RoleTarget = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; shopId: string; businessId: string | null }
 
 /**
  * Can this role be given at this place? A business role works in its own business and in any shop of
  * it; a shop role only in its own shop. Platform roles are never given from a team page.
  */
-export function roleUsableAt(role: { businessId: string | null; providerId: string | null }, target: RoleTarget): boolean {
-    if (target.scope === "BUSINESS") return role.businessId === target.businessId && role.providerId === null
-    if (role.providerId !== null) return role.providerId === target.providerId
+export function roleUsableAt(role: { businessId: string | null; shopId: string | null }, target: RoleTarget): boolean {
+    if (target.scope === "BUSINESS") return role.businessId === target.businessId && role.shopId === null
+    if (role.shopId !== null) return role.shopId === target.shopId
     return role.businessId !== null && role.businessId === target.businessId
 }
 

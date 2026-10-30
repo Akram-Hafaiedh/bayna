@@ -34,7 +34,7 @@ async function ShopTeamContent({ params }: { params: Promise<{ publicShopId: str
     })
     if (!shop) notFound()
 
-    const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
+    const eff = effective(access.assignments, { shopId: shop.id, businessId: business.id })
     const can = (k: string) => has(eff, k)
     const bizEff = effective(access.assignments, { businessId: business.id })
     const canManageBusiness = has(bizEff, teamPermission("BUSINESS", "view"))
@@ -61,9 +61,9 @@ async function ShopTeamContent({ params }: { params: Promise<{ publicShopId: str
     }
 
     const [members, invites, roles, throughBusiness] = await Promise.all([
-        loadMembers({ scope: "SHOP", providerId: shop.id }),
-        can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", providerId: shop.id }) : [],
-        loadRoleOptions({ scope: "SHOP", providerId: shop.id, businessId: business.id }),
+        loadMembers({ scope: "SHOP", shopId: shop.id }),
+        can(teamPermission("SHOP", "invite")) ? loadInvites({ scope: "SHOP", shopId: shop.id }) : [],
+        loadRoleOptions({ scope: "SHOP", shopId: shop.id, businessId: business.id }),
         loadMembers({ scope: "BUSINESS", businessId: business.id }),
     ])
 

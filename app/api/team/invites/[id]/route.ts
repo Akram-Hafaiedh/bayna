@@ -13,13 +13,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const invite = await prisma.accessInvite.findUnique({
             where: { id },
             select: {
-                id: true, scope: true, providerId: true, businessId: true, status: true, email: true,
+                id: true, scope: true, shopId: true, businessId: true, status: true, email: true,
                 role: { select: { name: true, permissions: true } },
             },
         })
         if (!invite || invite.scope === "PLATFORM") return NextResponse.json({ error: "Invitation not found" }, { status: 404 })
 
-        const guard = await guardTeam(invite.scope, "invite", req, { providerId: invite.providerId, businessId: invite.businessId })
+        const guard = await guardTeam(invite.scope, "invite", req, { shopId: invite.shopId, businessId: invite.businessId })
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         if (invite.status !== "PENDING") {
@@ -29,13 +29,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "You cannot cancel an invitation for a role with more access than your own." }, { status: 403 })
         }
 
-        const label = await targetLabel(prisma, invite.scope, (invite.providerId ?? invite.businessId)!)
+        const label = await targetLabel(prisma, invite.scope, (invite.shopId ?? invite.businessId)!)
         await withAudit(guard.actor, async (tx) => {
             await tx.accessInvite.update({ where: { id }, data: { status: "REVOKED", revokedAt: new Date() } })
             await logActivity(tx, guard.actor, {
                 entityType: "AccessInvite",
                 entityId: id,
-                providerId: invite.providerId,
+                shopId: invite.shopId,
                 action: "TEAM_INVITE_CANCELLED",
                 changes: [{ field: "invite", from: `${invite.email} as ${invite.role.name} in ${label}`, to: null }],
                 note: `Cancelled the invitation for ${invite.email}`,

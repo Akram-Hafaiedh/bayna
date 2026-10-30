@@ -27,7 +27,7 @@ function toValues(p: Record<string, unknown>): ProfileValues {
 
 type AppStatus = "loading" | "none" | "pending"
 
-export default function BecomeProviderPage() {
+export default function BecomeShopPage() {
     const { data: session } = useSession()
     const [appStatus, setAppStatus] = useState<AppStatus>("loading")
     const [application, setApplication] = useState<ProfileValues | null>(null)
@@ -54,7 +54,7 @@ export default function BecomeProviderPage() {
                 setBusinesses(options)
                 setBusinessChoice((c) => c || options[0]?.id || "")
                 if (data.status === "pending") {
-                    setApplication(toValues(data.provider))
+                    setApplication(toValues(data.shop))
                     setAppStatus("pending")
                 } else if (options.length > 0) {
                     // Someone who runs a business adds a shop from the Business area, not from here
@@ -71,7 +71,7 @@ export default function BecomeProviderPage() {
         return (
             <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center">
                 <h1 className="text-xl font-semibold text-zinc-900">
-                    Admin accounts cannot become providers
+                    Admin accounts cannot become shops
                 </h1>
                 <Link
                     href="/admin/dashboard"
@@ -107,13 +107,13 @@ export default function BecomeProviderPage() {
         if (!res.ok) return data.error || "Application failed"
 
         if (pending) {
-            setApplication(toValues(data.provider))
+            setApplication(toValues(data.shop))
             setVersion((x) => x + 1)
             setMessage("Application updated.")
         } else {
             // Load what was saved, so the pending view shows the real values
             const again = await (await fetch("/api/shop/apply")).json()
-            if (again.provider) setApplication(toValues(again.provider))
+            if (again.shop) setApplication(toValues(again.shop))
             setAppStatus("pending")
             setMessage("Application submitted.")
         }
@@ -147,8 +147,8 @@ export default function BecomeProviderPage() {
     }
 
     const pending = appStatus === "pending"
-    // Already a provider: this page creates one more shop
-    const another = role === "PROVIDER"
+    // Already a company account: this page creates one more shop
+    const another = role === "COMPANY"
 
     return (
         <div className="max-w-3xl space-y-6">

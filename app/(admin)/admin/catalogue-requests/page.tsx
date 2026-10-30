@@ -17,7 +17,7 @@ type Suggestion = {
     status: "PENDING" | "APPROVED" | "REJECTED"
     reviewNote: string | null
     createdAt: string
-    provider: { name: string; city: string }
+    shop: { name: string; city: string }
     category: { id: string; name: string }
     catalogItem: { id: string; name: string } | null
     similar: Similar[]
@@ -98,7 +98,7 @@ export default function CatalogueRequestsPage() {
                         Catalogue requests
                     </h1>
                     <p className="mt-1 text-sm text-zinc-500">
-                        Items providers want added to the shared catalogue. Approving links their
+                        Items shops want added to the shared catalogue. Approving links their
                         product so it appears in price comparisons.
                     </p>
                 </div>
@@ -144,7 +144,7 @@ export default function CatalogueRequestsPage() {
                                     </p>
                                 </div>
                                 <p className="text-xs text-zinc-400 text-right">
-                                    {s.provider.name}, {s.provider.city}
+                                    {s.shop.name}, {s.shop.city}
                                     <br />
                                     {new Date(s.createdAt).toLocaleDateString()}
                                 </p>
@@ -180,7 +180,7 @@ export default function CatalogueRequestsPage() {
                                                 ))}
                                             </ul>
                                             <p className="text-xs text-zinc-400">
-                                                Linking changes the provider&apos;s product to that item&apos;s unit and category.
+                                                Linking changes the shop&apos;s product to that item&apos;s unit and category.
                                             </p>
                                         </div>
                                     )}
@@ -188,7 +188,7 @@ export default function CatalogueRequestsPage() {
                                     {reviewing === s.id && (
                                         <div className="rounded-lg bg-zinc-50 p-4 space-y-3">
                                             <p className="text-sm font-medium text-zinc-700">
-                                                Check the details, fix anything that is off, then add it. The provider&apos;s
+                                                Check the details, fix anything that is off, then add it. The shop&apos;s
                                                 product is linked to the new item.
                                             </p>
                                             <CatalogItemForm

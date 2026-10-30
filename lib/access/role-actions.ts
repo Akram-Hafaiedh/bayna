@@ -10,7 +10,7 @@ import { isLive, type AssignmentInput } from "./evaluate"
 import { requireBusiness, requireShop } from "./guard"
 import { checkRoleEditKeepsOwner, type RoleMember } from "./role-rules"
 
-export type RoleTarget = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; providerId: string }
+export type RoleTarget = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; shopId: string }
 
 export type RoleGuard = {
     ok: true
@@ -18,7 +18,7 @@ export type RoleGuard = {
     actor: AuditActor
     level: "BUSINESS" | "SHOP"
     /** the shop the role belongs to (shop roles only) */
-    providerId: string | null
+    shopId: string | null
     businessId: string | null
     can: (key: string) => boolean
 }
@@ -32,16 +32,16 @@ export async function guardRoles(target: RoleTarget, name: "view" | "manage", re
     if (target.scope === "BUSINESS") {
         const g = await requireBusiness(name === "manage" ? "business.role.manage" : "business.role.view", req, { businessId: target.businessId })
         if (!g.ok) return g
-        return { ok: true, userId: g.userId, actor: g.actor, level: "BUSINESS", providerId: null, businessId: g.business.id, can: (k) => g.can(k as never) }
+        return { ok: true, userId: g.userId, actor: g.actor, level: "BUSINESS", shopId: null, businessId: g.business.id, can: (k) => g.can(k as never) }
     }
-    const g = await requireShop(name === "manage" ? "team.role.manage" : "team.role.view", req, { providerId: target.providerId })
+    const g = await requireShop(name === "manage" ? "team.role.manage" : "team.role.view", req, { shopId: target.shopId })
     if (!g.ok) return g
-    return { ok: true, userId: g.userId, actor: g.actor, level: "SHOP", providerId: g.provider.id, businessId: g.provider.businessId, can: (k) => g.can(k as never) }
+    return { ok: true, userId: g.userId, actor: g.actor, level: "SHOP", shopId: g.shop.id, businessId: g.shop.businessId, can: (k) => g.can(k as never) }
 }
 
 /** The owner of a stored role as a target, or null for a platform role (those are not managed here). */
-export function targetOfRole(role: { businessId: string | null; providerId: string | null }): RoleTarget | null {
-    if (role.providerId) return { scope: "SHOP", providerId: role.providerId }
+export function targetOfRole(role: { businessId: string | null; shopId: string | null }): RoleTarget | null {
+    if (role.shopId) return { scope: "SHOP", shopId: role.shopId }
     if (role.businessId) return { scope: "BUSINESS", businessId: role.businessId }
     return null
 }
@@ -62,17 +62,17 @@ export async function roleUsage(tx: Tx | typeof prisma, roleId: string): Promise
  */
 export async function assertRoleEditKeepsOwner(
     tx: Tx,
-    role: { id: string; businessId: string | null; providerId: string | null },
+    role: { id: string; businessId: string | null; shopId: string | null },
     newPermissions: readonly string[],
     now: Date = new Date()
 ): Promise<{ ok: true } | { ok: false; error: string }> {
     let where: Prisma.AccessAssignmentWhereInput
     let key: string
-    if (role.providerId) {
-        const shop = await tx.shop.findUnique({ where: { id: role.providerId }, select: { businessId: true } })
+    if (role.shopId) {
+        const shop = await tx.shop.findUnique({ where: { id: role.shopId }, select: { businessId: true } })
         where = {
             OR: [
-                { scope: "SHOP" as const, providerId: role.providerId },
+                { scope: "SHOP" as const, shopId: role.shopId },
                 ...(shop?.businessId ? [{ scope: "BUSINESS" as const, businessId: shop.businessId }] : []),
             ],
         }
@@ -88,7 +88,7 @@ export async function assertRoleEditKeepsOwner(
         select: {
             roleId: true,
             scope: true,
-            providerId: true,
+            shopId: true,
             businessId: true,
             status: true,
             expiresAt: true,

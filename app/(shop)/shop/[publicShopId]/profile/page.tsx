@@ -28,7 +28,7 @@ function toValues(p: Record<string, unknown>): Loaded {
     }
 }
 
-export default function ProviderProfilePage() {
+export default function ShopProfilePage() {
     const [data, setData] = useState<Loaded | null>(null)
     const [version, setVersion] = useState(0)
     const [loadError, setLoadError] = useState("")
@@ -41,7 +41,7 @@ export default function ProviderProfilePage() {
                 const json = await res.json()
                 if (!alive) return
                 if (!res.ok) setLoadError(json.error || "Could not load your profile")
-                else setData(toValues(json.provider))
+                else setData(toValues(json.shop))
             })
             .catch(() => alive && setLoadError("Could not load your profile"))
         return () => {
@@ -58,7 +58,7 @@ export default function ProviderProfilePage() {
                 if (!res.ok) return
                 const json = await res.json()
                 setData((prev) =>
-                    prev ? { ...prev, needsReview: json.provider.needsReview === true, active: json.provider.status === "ACTIVE" } : prev
+                    prev ? { ...prev, needsReview: json.shop.needsReview === true, active: json.shop.status === "ACTIVE" } : prev
                 )
             } catch {
                 // keep what is shown
@@ -77,7 +77,7 @@ export default function ProviderProfilePage() {
         })
         const json = await res.json()
         if (!res.ok) return json.error || "Could not save"
-        setData(toValues(json.provider))
+        setData(toValues(json.shop))
         setVersion((x) => x + 1) // reload the form with what was saved
         setMessage(
             json.changed.length === 0

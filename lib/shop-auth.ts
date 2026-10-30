@@ -24,7 +24,7 @@ const select = { id: true, publicShopId: true, name: true, status: true } as con
  */
 export async function requireShopPage(publicShopId: string): Promise<ShopPage> {
     await connection()
-    const user = await requireRole([Role.PROVIDER])
+    const user = await requireRole([Role.COMPANY])
 
     const shops = await loadMyShops(user.id)
     const mine = shops.find((s) => s.publicShopId === publicShopId)
@@ -46,5 +46,5 @@ export async function landingShopPublicId(userId: string): Promise<string | null
 /** Redirects to the dashboard of the landing shop, or to the application page when there is none. */
 export async function redirectToMyShop(userId: string, section = "dashboard"): Promise<never> {
     const publicShopId = await landingShopPublicId(userId)
-    redirect(publicShopId ? shopPath(publicShopId, section) : "/become-provider")
+    redirect(publicShopId ? shopPath(publicShopId, section) : "/become-shop")
 }

@@ -56,7 +56,7 @@ const LATER = new Date(Date.now() + 30 * 60_000)
 
 test("the cookie round trips and ignores anything else", () => {
     assert.equal(viewAsCookieValue("READ_ONLY", "CLIENT", LATER), `ro.CLIENT.${LATER.getTime()}`)
-    assert.deepEqual(parseViewAsCookie(`ro.PROVIDER.${LATER.getTime()}`), { mode: "READ_ONLY", role: "PROVIDER", expiresAt: LATER.getTime() })
+    assert.deepEqual(parseViewAsCookie(`ro.COMPANY.${LATER.getTime()}`), { mode: "READ_ONLY", role: "COMPANY", expiresAt: LATER.getTime() })
     assert.deepEqual(parseViewAsCookie(`rw.CLIENT.${LATER.getTime()}`), { mode: "WRITE", role: "CLIENT", expiresAt: LATER.getTime() })
     for (const bad of ["ro.ADMIN", "ro", "", "xx.CLIENT", "ro.CLIENT.extra", "ro.CLIENT", "ro.CLIENT.123", null, undefined]) {
         assert.equal(parseViewAsCookie(bad as string | null | undefined), null)
@@ -89,7 +89,7 @@ test("while viewing read-only only reading is allowed, plus Exit and sign-out", 
 
 test("the landing page is the viewed person's own home", () => {
     assert.equal(homeForViewedRole("CLIENT"), "/dashboard")
-    assert.equal(homeForViewedRole("PROVIDER"), "/shop")
+    assert.equal(homeForViewedRole("COMPANY"), "/shop")
 })
 
 test("while viewing, the real admin is the actor and the viewed person is on whose behalf", () => {

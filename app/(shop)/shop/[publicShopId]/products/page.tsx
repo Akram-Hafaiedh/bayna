@@ -7,7 +7,7 @@ import {
     getFilterCategories,
     getProductStats,
     listProducts,
-} from "@/lib/provider-products"
+} from "@/lib/shop-products"
 import {
     buildProductsHref,
     hasActiveFilters,
@@ -21,7 +21,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>
 
 type Params = Promise<{ publicShopId: string }>
 
-export default function ProviderProductsPage({
+export default function ShopProductsPage({
     params,
     searchParams,
 }: {
@@ -72,13 +72,13 @@ async function ProductsHeader({ params }: { params: Params }) {
 async function ProductsContent({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
     const { publicShopId } = await params
     const base = shopPath(publicShopId, "")
-    const provider = await requireShopPage(publicShopId)
+    const shop = await requireShopPage(publicShopId)
     const filters = parseProductFilters(await searchParams)
 
-    if (!provider) {
+    if (!shop) {
         return <Notice>Shop not found.</Notice>
     }
-    if (provider.status !== "ACTIVE") {
+    if (shop.status !== "ACTIVE") {
         return (
             <Notice>
                 Your account is not verified yet. Product listing is available once an
@@ -88,10 +88,10 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
     }
 
     const [result, stats, categories, perms] = await Promise.all([
-        listProducts(provider.id, filters),
-        getProductStats(provider.id),
-        getFilterCategories(provider.id),
-        shopCan(provider.id, ["product.price.edit", "product.stock.edit"] as const),
+        listProducts(shop.id, filters),
+        getProductStats(shop.id),
+        getFilterCategories(shop.id),
+        shopCan(shop.id, ["product.price.edit", "product.stock.edit"] as const),
     ])
 
     if (stats.total === 0) {

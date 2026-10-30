@@ -27,7 +27,7 @@ export default async function ShopActivityFeed({
     const kind = parseKind(sp.type)
     const page = Math.max(1, Math.floor(Number(sp.page)) || 1)
 
-    const where: Prisma.ActivityLogWhereInput = { providerId: shopId, ...(kindFilter(kind) as unknown as Prisma.ActivityLogWhereInput) }
+    const where: Prisma.ActivityLogWhereInput = { shopId: shopId, ...(kindFilter(kind) as unknown as Prisma.ActivityLogWhereInput) }
     const rows = await prisma.activityLog.findMany({
         where,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],

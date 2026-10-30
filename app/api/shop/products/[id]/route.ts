@@ -22,7 +22,7 @@ async function getOwnedProduct(productId: string, key: ShopPermission, req: Requ
     if (!guard.ok) return { ok: false as const, error: guard.error, status: guard.status }
 
     const product = await prisma.product.findFirst({
-        where: { id: productId, providerId: guard.provider.id, deletedAt: null },
+        where: { id: productId, shopId: guard.shop.id, deletedAt: null },
         include: {
             category: { select: { id: true, name: true } },
             catalogItem: { select: { id: true, name: true, slug: true } },

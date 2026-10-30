@@ -12,7 +12,7 @@ export default function AdminDashboardPage() {
                 Admin Dashboard
             </h1>
             <p className="mt-2 text-zinc-500">
-                Manage users, providers, and platform settings.
+                Manage users, shops, and platform settings.
             </p>
 
             <Suspense
@@ -34,7 +34,7 @@ async function AdminStats() {
     await connection()
     await requireRole([Role.ADMIN])
 
-    const [pendingProviders, totalUsers, verifiedProviders] = await Promise.all([
+    const [pendingShops, totalUsers, verifiedShops] = await Promise.all([
         prisma.shop.count({ where: { status: "PENDING" } }),
         prisma.user.count(),
         prisma.shop.count({ where: { status: "ACTIVE" } }),
@@ -48,7 +48,7 @@ async function AdminStats() {
             >
                 <h3 className="font-medium text-zinc-900">Pending shops</h3>
                 <p className="mt-2 text-3xl font-semibold text-amber-600">
-                    {pendingProviders}
+                    {pendingShops}
                 </p>
                 <p className="mt-1 text-sm text-zinc-500">Waiting for approval</p>
             </Link>
@@ -70,7 +70,7 @@ async function AdminStats() {
             >
                 <h3 className="font-medium text-zinc-900">Verified shops</h3>
                 <p className="mt-2 text-3xl font-semibold text-emerald-600">
-                    {verifiedProviders}
+                    {verifiedShops}
                 </p>
                 <p className="mt-1 text-sm text-zinc-500">Active shops</p>
             </Link>

@@ -11,23 +11,23 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const guard = await requirePlatform("shop.provider.update", req)
+        const guard = await requirePlatform("shop.record.update", req)
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const { id } = await params
-        const provider = await prisma.shop.findUnique({ where: { id }, select: { id: true, userId: true, needsReview: true } })
-        if (!provider) return NextResponse.json({ error: "Provider not found" }, { status: 404 })
+        const shop = await prisma.shop.findUnique({ where: { id }, select: { id: true, applicantId: true, needsReview: true } })
+        if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
 
         // Nothing to review (already cleared, for example by another admin): do not notify twice
-        if (!provider.needsReview) return NextResponse.json({ message: "Already reviewed" })
+        if (!shop.needsReview) return NextResponse.json({ message: "Already reviewed" })
 
         await withAudit(guard.actor, async (tx) => {
             await tx.shop.update({ where: { id }, data: { needsReview: false } })
-            await notify(tx, provider.userId, notifications.profileReviewed({ shop: (await shopPublicIds(tx, [id])).get(id)! }))
+            await notify(tx, shop.applicantId, notifications.profileReviewed({ shop: (await shopPublicIds(tx, [id])).get(id)! }))
         })
         return NextResponse.json({ message: "Marked as reviewed" })
     } catch (error) {
-        console.error("Mark provider reviewed error:", error)
+        console.error("Mark shop reviewed error:", error)
         return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
     }
 }

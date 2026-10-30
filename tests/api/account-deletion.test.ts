@@ -85,15 +85,15 @@ describe("asking to delete the account", () => {
         const u = await createPerson("applicant")
         const business = await prisma.business.findFirstOrThrow({ select: { id: true } })
         await prisma.shop.create({
-            data: { userId: u.id, name: "Waiting Shop", businessId: business.id, status: "PENDING" } as never,
+            data: { applicantId: u.id, name: "Waiting Shop", businessId: business.id, status: "PENDING" } as never,
         }).catch(() => null)
-        const waiting = await prisma.shop.count({ where: { userId: u.id, status: "PENDING" } })
+        const waiting = await prisma.shop.count({ where: { applicantId: u.id, status: "PENDING" } })
         if (waiting === 0) return // the shop model needs more fields than this test sets; the rule is covered by the unit test
         await signInAs(u.email)
         const res = await call(deleteAccount, { body: { password: PASSWORD } })
         expect(res.status).toBe(400)
         expect((res.json?.blockers as string[]).join(" ")).toMatch(/Waiting Shop/)
-        await prisma.shop.deleteMany({ where: { userId: u.id } })
+        await prisma.shop.deleteMany({ where: { applicantId: u.id } })
     })
 
     test("the last Super admin must hand over first", async () => {

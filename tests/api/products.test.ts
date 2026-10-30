@@ -33,7 +33,7 @@ const fields = (over: Record<string, unknown> = {}) => ({ name: name(), price: 1
 /** A product made straight in the database. */
 async function aProduct(shopId = tunis.id, data: Record<string, unknown> = {}) {
     return prisma.product.create({
-        data: { providerId: shopId, name: name(), price: "10.000", stock: 5, unit: "PIECE", status: "ACTIVE", images: [], ...data } as never,
+        data: { shopId: shopId, name: name(), price: "10.000", stock: 5, unit: "PIECE", status: "ACTIVE", images: [], ...data } as never,
         select: { id: true, name: true },
     })
 }
@@ -76,7 +76,7 @@ describe("creating", () => {
         expect(res.status).toBe(201)
         const id = (res.json?.product as { id: string }).id
         const row = await prisma.product.findUniqueOrThrow({ where: { id } })
-        expect(row).toMatchObject({ providerId: tunis.id, name: body.name, status: "ACTIVE", stock: 3 })
+        expect(row).toMatchObject({ shopId: tunis.id, name: body.name, status: "ACTIVE", stock: 3 })
         expect(Number(row.price)).toBe(12.5)
         // the audit trigger logged the creation
         expect(await prisma.activityLog.count({ where: { entityType: "Product", entityId: id, action: "CREATE" } })).toBe(1)

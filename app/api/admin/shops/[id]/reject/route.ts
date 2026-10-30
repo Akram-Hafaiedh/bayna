@@ -18,52 +18,52 @@ export async function POST(
 
         const { id } = await params
 
-        const provider = await prisma.shop.findUnique({
+        const shop = await prisma.shop.findUnique({
             where: { id },
         })
 
-        if (!provider) {
+        if (!shop) {
             return NextResponse.json(
-                { error: "Provider not found" },
+                { error: "Shop not found" },
                 { status: 404 }
             )
         }
 
         // Only a waiting application can be rejected; an approved shop is closed another way
-        if (provider.status !== "PENDING" && provider.status !== "DRAFT") {
+        if (shop.status !== "PENDING" && shop.status !== "DRAFT") {
             return NextResponse.json({ error: "This shop is already approved" }, { status: 400 })
         }
 
         // Remove the application. The person goes back to CLIENT only when this was their only way
-        // in: someone who already runs another shop stays a provider.
+        // in: someone who already runs another shop keeps the company account type.
         await withAudit(guard.actor, async (tx) => {
             await tx.shop.delete({ where: { id } })
             // A business created only for this application goes with it
-            if (provider.businessId) {
+            if (shop.businessId) {
                 await tx.business.deleteMany({
-                    where: { id: provider.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
+                    where: { id: shop.businessId, shops: { none: {} }, accessAssignments: { none: {} } },
                 })
             }
-            // Still a provider if they work in another shop or belong to a business
+            // Still a company account if they work in another shop or belong to a business
             const otherShops = await tx.accessAssignment.count({
                 where: {
-                    userId: provider.userId,
+                    userId: shop.applicantId,
                     status: "ACTIVE",
-                    OR: [{ scope: "SHOP", providerId: { not: id } }, { scope: "BUSINESS" }],
+                    OR: [{ scope: "SHOP", shopId: { not: id } }, { scope: "BUSINESS" }],
                 },
             })
             if (otherShops === 0) {
                 await tx.user.update({
-                    where: { id: provider.userId },
+                    where: { id: shop.applicantId },
                     data: { role: Role.CLIENT },
                 })
             }
-            await notify(tx, provider.userId, notifications.applicationRejected())
+            await notify(tx, shop.applicantId, notifications.applicationRejected())
         })
 
-        return NextResponse.json({ message: "Provider application rejected" })
+        return NextResponse.json({ message: "Shop application rejected" })
     } catch (error) {
-        console.error("Reject provider error:", error)
+        console.error("Reject shop error:", error)
         return NextResponse.json(
             { error: "Something went wrong" },
             { status: 500 }

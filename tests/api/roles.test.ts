@@ -33,7 +33,7 @@ const body = (over: Record<string, unknown> = {}) => ({
 /** A role in the Tunis shop made straight in the database, to change or delete. */
 async function aRole(permissions: string[] = ["product.listing.view"]) {
     const r = await prisma.accessRole.create({
-        data: { name: roleName(), scope: "SHOP", providerId: tunis, permissions },
+        data: { name: roleName(), scope: "SHOP", shopId: tunis, permissions },
         select: { id: true, name: true },
     })
     roles.push(r.id)
@@ -70,9 +70,9 @@ describe("creating a role", () => {
         roles.push(id)
 
         const row = await prisma.accessRole.findUniqueOrThrow({ where: { id } })
-        expect(row).toMatchObject({ name: b.name, scope: "SHOP", providerId: tunis, businessId: null })
+        expect(row).toMatchObject({ name: b.name, scope: "SHOP", shopId: tunis, businessId: null })
         expect(row.permissions).toEqual(["product.listing.view"])
-        expect(await prisma.activityLog.count({ where: { action: "TEAM_ROLE_CREATED", entityId: id, providerId: tunis } })).toBe(1)
+        expect(await prisma.activityLog.count({ where: { action: "TEAM_ROLE_CREATED", entityId: id, shopId: tunis } })).toBe(1)
     })
 
     test("two roles of one shop cannot share a name", async () => {
@@ -139,7 +139,7 @@ describe("deleting a role", () => {
         const r = await aRole()
         const u = await createTarget("holder")
         users.push(u.id)
-        await prisma.accessAssignment.create({ data: { userId: u.id, roleId: r.id, scope: "SHOP", providerId: tunis, status: "ACTIVE" } })
+        await prisma.accessAssignment.create({ data: { userId: u.id, roleId: r.id, scope: "SHOP", shopId: tunis, status: "ACTIVE" } })
         await signInAs(OWNER)
         const res = await call(deleteRole, { method: "DELETE", params: { id: r.id } })
         expect(res.status).toBe(409)

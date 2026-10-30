@@ -131,7 +131,7 @@ export default function AdminCataloguePage() {
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Catalogue</h1>
                     <p className="mt-1 text-sm text-zinc-500">
-                        The shared items providers link their products to. Unit and category changes apply to every
+                        The shared items shops link their products to. Unit and category changes apply to every
                         linked product.
                     </p>
                 </div>

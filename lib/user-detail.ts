@@ -12,15 +12,15 @@ export type AssignmentLike = {
     scope: "PLATFORM" | "BUSINESS" | "SHOP"
     status: string
     expiresAt: Date | null
-    provider: { name: string } | null
+    shop: { name: string } | null
     business: { name: string } | null
 }
 
 /** Where a role applies: the shop, the business, or the platform. */
-export function assignmentPlace(a: Pick<AssignmentLike, "scope" | "provider" | "business">): string {
+export function assignmentPlace(a: Pick<AssignmentLike, "scope" | "shop" | "business">): string {
     if (a.scope === "PLATFORM") return "Bayna platform"
     if (a.scope === "BUSINESS") return a.business?.name ?? "A business"
-    return a.provider?.name ?? "A shop"
+    return a.shop?.name ?? "A shop"
 }
 
 /** "Active", "Suspended", "Invited", or "Expired" for a role past its end date. */

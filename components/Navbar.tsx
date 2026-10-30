@@ -7,23 +7,23 @@ import NotificationBell from "@/components/NotificationBell"
 import ModuleNav from "@/components/shop/ModuleNav"
 import { lastShopPath } from "@/lib/shop-paths"
 
-type Role = "CLIENT" | "PROVIDER" | "ADMIN"
+type Role = "CLIENT" | "COMPANY" | "ADMIN"
 
 function getDashboardHref(role?: string) {
     if (role === "ADMIN") return "/admin/dashboard"
-    if (role === "PROVIDER") return "/shop"
+    if (role === "COMPANY") return "/shop"
     return "/dashboard"
 }
 
 function getRoleLabel(role?: string) {
     if (role === "ADMIN") return "Admin"
-    if (role === "PROVIDER") return "Provider"
+    if (role === "COMPANY") return "Company"
     return "Client"
 }
 
 function getRoleBadgeClass(role?: string) {
     if (role === "ADMIN") return "bg-violet-50 text-violet-700"
-    if (role === "PROVIDER") return "bg-emerald-50 text-emerald-700"
+    if (role === "COMPANY") return "bg-emerald-50 text-emerald-700"
     return "bg-zinc-100 text-zinc-600"
 }
 
@@ -56,7 +56,7 @@ export default function Navbar() {
 
     // The "Business" entry is only for people who hold a business-level role (owner, accountant)
     useEffect(() => {
-        if (role !== "PROVIDER") return
+        if (role !== "COMPANY") return
         let cancelled = false
         fetch("/api/me/businesses", { cache: "no-store" })
             .then((r) => (r.ok ? r.json() : { businesses: [] }))
@@ -88,7 +88,7 @@ export default function Navbar() {
                             Bayna
                         </span>
                     </Link>
-                    {role === "PROVIDER" && (
+                    {role === "COMPANY" && (
                         <Suspense fallback={null}>
                             <ModuleNav />
                         </Suspense>
@@ -145,7 +145,7 @@ export default function Navbar() {
 
                                         {role === "CLIENT" && (
                                             <Link
-                                                href="/become-provider"
+                                                href="/become-shop"
                                                 onClick={() => setMenuOpen(false)}
                                                 className="block px-3.5 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
                                             >
@@ -153,7 +153,7 @@ export default function Navbar() {
                                             </Link>
                                         )}
 
-                                        {role === "PROVIDER" && (
+                                        {role === "COMPANY" && (
                                             <>
                                                 <Link
                                                     href={lastShopPath("products")}

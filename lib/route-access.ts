@@ -3,12 +3,12 @@
 // asks it for every page request. It is only the first gate: pages and routes still check permissions on the server.
 // The proxy cannot read the database, so it works from the role in the sign-in cookie.
 
-export type PageRole = "ADMIN" | "PROVIDER" | "CLIENT"
+export type PageRole = "ADMIN" | "COMPANY" | "CLIENT"
 
 /** The dashboard each role lands on. */
 export function homeFor(role?: string | null): string {
     if (role === "ADMIN") return "/admin/dashboard"
-    if (role === "PROVIDER") return "/shop"
+    if (role === "COMPANY") return "/shop"
     if (role === "CLIENT") return "/dashboard"
     return "/"
 }
@@ -16,11 +16,11 @@ export function homeFor(role?: string | null): string {
 // roles undefined = any signed-in person
 export const RULES: { prefix: string; roles?: PageRole[] }[] = [
     { prefix: "/admin", roles: ["ADMIN"] },
-    { prefix: "/shop", roles: ["PROVIDER"] },
-    { prefix: "/business", roles: ["PROVIDER"] },
+    { prefix: "/shop", roles: ["COMPANY"] },
+    { prefix: "/business", roles: ["COMPANY"] },
     { prefix: "/dashboard", roles: ["CLIENT"] },
     { prefix: "/profile" },
-    { prefix: "/become-provider" },
+    { prefix: "/become-shop" },
 ]
 
 export type RouteDecision = { type: "next" } | { type: "redirect"; to: string }

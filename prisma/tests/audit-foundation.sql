@@ -30,13 +30,13 @@ $$;
 SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test Admin","actorRole":"ADMIN","source":"WEB","requestId":"req-1","ip":"203.0.113.9","userAgent":"UA"}', true);
 
 INSERT INTO "User" (id, "publicUserId", email, name, password, role, "updatedAt")
-VALUES ('audit_test_owner', 'audit_test_owner_public', 'owner@audit.test', 'Owner', 'secret-hash', 'PROVIDER', now());
+VALUES ('audit_test_owner', 'audit_test_owner_public', 'owner@audit.test', 'Owner', 'secret-hash', 'COMPANY', now());
 INSERT INTO "Category" (id, name, slug, "updatedAt") VALUES ('audit_test_cat', 'Audit Cat', 'audit-cat', now());
 INSERT INTO "Business" (id, "publicBusinessId", name, "updatedAt")
 VALUES ('audit_test_biz', 'audit_test_biz_pub', 'Audit Business', now());
-INSERT INTO "Provider" (id, "publicShopId", "userId", "businessId", "businessName", city, "updatedAt")
+INSERT INTO "Shop" (id, "publicShopId", "applicantId", "businessId", name, city, "updatedAt")
 VALUES ('audit_test_prov', 'audit_test_prov_pub', 'audit_test_owner', 'audit_test_biz', 'Audit Shop', 'Tunis', now());
-INSERT INTO "Product" (id, "providerId", name, price, images, "updatedAt")
+INSERT INTO "Product" (id, "shopId", name, price, images, "updatedAt")
 VALUES ('audit_test_p1', 'audit_test_prov', 'P1', 12.500, '{}', now()),
        ('audit_test_p2', 'audit_test_prov', 'P2', 5.000, '{}', now());
 
@@ -51,10 +51,10 @@ BEGIN
   PERFORM pg_temp.expect(r."actorId" = 'audit_test_admin' AND r."actorName" = 'Test Admin' AND r."actorRole" = 'ADMIN'
     AND r.source = 'WEB' AND r."requestId" = 'req-1' AND r.ip = '203.0.113.9' AND r."userAgent" = 'UA',
     'create log row carries actor, snapshot, source and request metadata');
-  PERFORM pg_temp.expect(r."providerId" = 'audit_test_prov', 'product log row carries providerId');
+  PERFORM pg_temp.expect(r."shopId" = 'audit_test_prov', 'product log row carries shopId');
 
-  SELECT * INTO r FROM "ActivityLog" WHERE "entityType" = 'Provider' AND "entityId" = 'audit_test_prov';
-  PERFORM pg_temp.expect(r."providerId" = 'audit_test_prov', 'provider log row uses its own id as providerId');
+  SELECT * INTO r FROM "ActivityLog" WHERE "entityType" = 'Shop' AND "entityId" = 'audit_test_prov';
+  PERFORM pg_temp.expect(r."shopId" = 'audit_test_prov', 'shop log row uses its own id as shopId');
 END $$;
 
 -- ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test 
 
 DO $$
 BEGIN
-  UPDATE "Product" SET "status" = 'HIDDEN' WHERE "providerId" = 'audit_test_prov';
+  UPDATE "Product" SET "status" = 'HIDDEN' WHERE "shopId" = 'audit_test_prov';
   PERFORM pg_temp.expect(
     (SELECT count(*) FROM "ActivityLog" WHERE "entityType" = 'Product' AND "entityId" IN ('audit_test_p1', 'audit_test_p2')
         AND action = 'UPDATE' AND changes @> '[{"field":"status"}]'::jsonb) = 2,
@@ -209,14 +209,14 @@ RESET TIME ZONE;
 -- 10. Deleting a shop: cascaded product deletions are logged with the shop id
 -- ---------------------------------------------------------------------------
 SELECT set_config('app.audit', '{"actorId":"audit_test_admin","actorName":"Test Admin","actorRole":"ADMIN","source":"WEB"}', true);
-DELETE FROM "Provider" WHERE id = 'audit_test_prov';
+DELETE FROM "Shop" WHERE id = 'audit_test_prov';
 
 DO $$
 DECLARE r record;
 BEGIN
-  PERFORM pg_temp.expect(pg_temp.logs('Provider', 'audit_test_prov', 'DELETE') = 1, 'deleting a provider is logged');
+  PERFORM pg_temp.expect(pg_temp.logs('Shop', 'audit_test_prov', 'DELETE') = 1, 'deleting a shop is logged');
   SELECT * INTO r FROM "ActivityLog" WHERE "entityType" = 'Product' AND "entityId" = 'audit_test_p1' AND action = 'DELETE';
-  PERFORM pg_temp.expect(r.id IS NOT NULL AND r."providerId" = 'audit_test_prov' AND r."actorId" = 'audit_test_admin',
+  PERFORM pg_temp.expect(r.id IS NOT NULL AND r."shopId" = 'audit_test_prov' AND r."actorId" = 'audit_test_admin',
     'cascaded product deletions are logged with the shop id and the actor');
 END $$;
 

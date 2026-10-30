@@ -15,7 +15,7 @@
 
 export type AssignmentInput = {
     scope: "PLATFORM" | "BUSINESS" | "SHOP"
-    providerId: string | null
+    shopId: string | null
     /** The business, for BUSINESS scope. Optional so shop and platform rows need not carry it. */
     businessId?: string | null
     status: "INVITED" | "ACTIVE" | "SUSPENDED"
@@ -25,7 +25,7 @@ export type AssignmentInput = {
 
 export type CheckContext = {
     /** The shop the action targets. Leave out for platform-level actions. */
-    providerId?: string | null
+    shopId?: string | null
     /** The business that shop belongs to (or the business itself for business-level actions). */
     businessId?: string | null
 }
@@ -41,8 +41,8 @@ export function isLive(a: AssignmentInput, now: Date): boolean {
 }
 
 export function applies(a: AssignmentInput, ctx: CheckContext): boolean {
-    if (ctx.providerId) {
-        if (a.scope === "SHOP" && a.providerId === ctx.providerId) return true
+    if (ctx.shopId) {
+        if (a.scope === "SHOP" && a.shopId === ctx.shopId) return true
         // inherited from the business, only when the context says which business the shop is in
         return a.scope === "BUSINESS" && !!ctx.businessId && a.businessId === ctx.businessId
     }

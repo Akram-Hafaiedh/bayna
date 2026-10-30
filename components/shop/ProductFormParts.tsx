@@ -2,7 +2,7 @@
 
 // Building blocks shared by the product form (create and edit, linked and custom).
 import type { Unit } from "@/app/generated/prisma/enums"
-import type { CategoryTree } from "@/lib/provider-products"
+import type { CategoryTree } from "@/lib/shop-products"
 import { UNIT_OPTIONS } from "@/lib/units"
 import { PRODUCT_STATUS_LABEL, SHOP_CHOICES, type ProductStatusValue } from "@/lib/product-status"
 
@@ -72,7 +72,7 @@ export function Section({
     )
 }
 
-/** What the provider sets on any product: price, stock, ordering and visibility. */
+/** What the shop sets on any product: price, stock, ordering and visibility. */
 export function OfferFields({
     form,
     set,

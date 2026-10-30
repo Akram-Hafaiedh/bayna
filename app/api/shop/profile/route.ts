@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
-import { parseProfileFields } from "@/lib/provider-input"
+import { parseProfileFields } from "@/lib/shop-input"
 
 const SELECT = {
     id: true,
@@ -42,12 +42,12 @@ export async function GET(req: Request) {
         const guard = await requireShop("shop.profile.view", req)
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
-        const provider = await load(guard.provider.id)
-        if (!provider) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
+        const shop = await load(guard.shop.id)
+        if (!shop) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
 
-        return NextResponse.json({ provider: present(provider, guard.can("shop.profile.edit")) })
+        return NextResponse.json({ shop: present(shop, guard.can("shop.profile.edit")) })
     } catch (error) {
-        console.error("Get provider profile error:", error)
+        console.error("Get shop profile error:", error)
         return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
     }
 }
@@ -58,7 +58,7 @@ export async function PATCH(req: Request) {
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const body = await req.json().catch(() => null)
-        const current = await load(guard.provider.id)
+        const current = await load(guard.shop.id)
         if (!current) return NextResponse.json({ error: "Shop not found" }, { status: 404 })
 
         const parsed = parseProfileFields(body, current)
@@ -69,7 +69,7 @@ export async function PATCH(req: Request) {
         }
 
         if (changed.length === 0) {
-            return NextResponse.json({ provider: present(current, true), changed, flaggedForReview: false })
+            return NextResponse.json({ shop: present(current, true), changed, flaggedForReview: false })
         }
 
         const flag = current.status === "ACTIVE" && sensitive
@@ -81,9 +81,9 @@ export async function PATCH(req: Request) {
             })
         )
 
-        return NextResponse.json({ provider: present(updated, true), changed, flaggedForReview: flag })
+        return NextResponse.json({ shop: present(updated, true), changed, flaggedForReview: flag })
     } catch (error) {
-        console.error("Update provider profile error:", error)
+        console.error("Update shop profile error:", error)
         return NextResponse.json({ error: "Something went wrong" }, { status: 500 })
     }
 }

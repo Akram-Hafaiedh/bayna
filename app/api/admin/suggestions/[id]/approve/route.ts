@@ -3,7 +3,7 @@
 //   without catalogItemId: creates a new catalogue item. Fields default to the request's
 //   values; the admin can send corrected ones.
 //   with catalogItemId:    merges the request into that existing item
-// Either way the provider's product is linked to the item, so it joins price comparisons.
+// Either way the shop's product is linked to the item, so it joins price comparisons.
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requirePlatform } from "@/lib/access/guard"
@@ -41,10 +41,10 @@ export async function POST(
             if (!existing) return bad("Catalogue item not found", 404)
             item = existing
 
-            // The provider may already list the target item
+            // The shop may already list the target item
             const clash = await prisma.product.findFirst({
                 where: {
-                    providerId: suggestion.providerId,
+                    shopId: suggestion.shopId,
                     catalogItemId: existing.id,
                     NOT: { id: suggestion.productId ?? undefined },
                 },
@@ -59,7 +59,7 @@ export async function POST(
                 )
             }
         } else {
-            // Corrected fields from the admin win over what the provider typed
+            // Corrected fields from the admin win over what the shop typed
             const fields = await parseCatalogFields({
                 name: suggestion.name,
                 nameAr: suggestion.nameAr,
@@ -89,7 +89,7 @@ export async function POST(
         const product = suggestion.productId
             ? await prisma.product.findUnique({
                 where: { id: suggestion.productId },
-                select: { unit: true, providerId: true, deletedAt: true },
+                select: { unit: true, shopId: true, deletedAt: true },
             })
             : null
         const unitDiffers = !!product && product.unit !== approved.unit
@@ -112,13 +112,13 @@ export async function POST(
                     },
                 })
                 if (unitDiffers && product && !product.deletedAt) {
-                    const members = await loadShopMembersWith(tx, [product.providerId], "product.price.edit")
-                    const publicIds = await shopPublicIds(tx, [product.providerId])
+                    const members = await loadShopMembersWith(tx, [product.shopId], "product.price.edit")
+                    const publicIds = await shopPublicIds(tx, [product.shopId])
                     await notify(
                         tx,
-                        members.get(product.providerId) ?? [],
+                        members.get(product.shopId) ?? [],
                         notifications.priceReviewNeeded({
-                            shop: publicIds.get(product.providerId)!,
+                            shop: publicIds.get(product.shopId)!,
                             itemName: approved.name,
                             reason: unitChangeReason(product.unit, approved.unit),
                             count: 1,

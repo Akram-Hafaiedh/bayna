@@ -74,10 +74,10 @@ export default function InviteAccept({
                 await fetch("/api/me/active-shop", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ providerId: data.shopId }),
+                    body: JSON.stringify({ shopId: data.shopId }),
                 }).catch(() => undefined)
             }
-            // The account type may have changed (client to provider): refresh the sign-in before moving on
+            // The account type may have changed (client to company): refresh the sign-in before moving on
             await update()
             toast.success(`You joined ${data.where}`, { description: `Your role: ${data.role}` })
             router.push(typeof data.redirect === "string" ? data.redirect : "/shop")

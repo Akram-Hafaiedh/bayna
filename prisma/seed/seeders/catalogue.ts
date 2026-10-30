@@ -1,5 +1,5 @@
 // prisma/seed/seeders/catalogue.ts
-// The shared catalogue items (what providers pick from when they add a product): the data (two verticals,
+// The shared catalogue items (what shops pick from when they add a product): the data (two verticals,
 // their sub-categories and the items in each; to add a product to the catalogue add a line below) and the
 // seeder that upserts the items by slug. The `categories` seeder reads the same tree (ROOTS).
 import { Unit } from "../../../app/generated/prisma/enums"
@@ -391,7 +391,7 @@ const CONSTRUCTION_CATEGORIES: CategorySeed[] = [
 // ---------------------------------------------------------------------------
 // Auto parts
 // Generic part types only. Brands, OEM references (SKU) and vehicle fitment are
-// provider-level data, so they live on Product, not here.
+// shop-level data, so they live on Product, not here.
 // ---------------------------------------------------------------------------
 const AUTO_CATEGORIES: CategorySeed[] = [
     {

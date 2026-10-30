@@ -15,10 +15,10 @@ export type UserRow = {
     status: UserStatusValue
     suspendedReason: string | null
     createdAt: string
-    providers: { id: string; name: string; status: string }[]
+    shops: { id: string; name: string; status: string }[]
 }
 
-export const USER_ROLES = ["CLIENT", "PROVIDER", "ADMIN"] as const
+export const USER_ROLES = ["CLIENT", "COMPANY", "ADMIN"] as const
 export const USER_PAGE_SIZES = [10, 25, 50, 100] as const
 export const DEFAULT_USER_PAGE_SIZE = 25
 
@@ -88,7 +88,7 @@ export function userWhere(query: UserQuery): Prisma.UserWhereInput {
                 { name: { contains: w, mode: "insensitive" as const } },
                 { email: { contains: w, mode: "insensitive" as const } },
                 { phone: { contains: w, mode: "insensitive" as const } },
-                { providers: { some: { deletedAt: null, name: { contains: w, mode: "insensitive" as const } } } },
+                { appliedShops: { some: { deletedAt: null, name: { contains: w, mode: "insensitive" as const } } } },
             ],
         })),
     }

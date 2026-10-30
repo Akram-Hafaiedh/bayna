@@ -148,8 +148,8 @@ export const shops: Seeder = {
 
             const owner = await prisma.user.upsert({
                 where: { email: s.ownerEmail },
-                update: { name: s.ownerName, role: "PROVIDER" },
-                create: { email: s.ownerEmail, name: s.ownerName, password: passwordHash, role: "PROVIDER", emailVerified: new Date() },
+                update: { name: s.ownerName, role: "COMPANY" },
+                create: { email: s.ownerEmail, name: s.ownerName, password: passwordHash, role: "COMPANY", emailVerified: new Date() },
                 select: { id: true },
             })
 
@@ -165,9 +165,9 @@ export const shops: Seeder = {
                 longitude: s.longitude,
                 status: "ACTIVE" as const,
             }
-            const existing = await prisma.shop.findFirst({ where: { userId: owner.id, name: s.name }, select: { id: true } })
+            const existing = await prisma.shop.findFirst({ where: { applicantId: owner.id, name: s.name }, select: { id: true } })
             if (existing) await prisma.shop.update({ where: { id: existing.id }, data })
-            else await prisma.shop.create({ data: { userId: owner.id, ...data } })
+            else await prisma.shop.create({ data: { applicantId: owner.id, ...data } })
             log(`${s.name} (${s.city}) in ${s.company}`)
         }
         return `${SHOPS.length} shops, owners log in with password ${SEED_PASSWORD}`

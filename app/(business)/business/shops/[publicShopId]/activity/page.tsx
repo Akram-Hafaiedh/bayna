@@ -36,7 +36,7 @@ async function ShopActivityContent({ params, searchParams }: { params: Promise<{
     })
     if (!shop) notFound()
 
-    const eff = effective(access.assignments, { providerId: shop.id, businessId: business.id })
+    const eff = effective(access.assignments, { shopId: shop.id, businessId: business.id })
     if (!has(eff, "activity.log.view")) {
         return <p className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">The activity history is for owners and managers.</p>
     }

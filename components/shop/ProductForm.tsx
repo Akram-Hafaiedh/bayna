@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useToast } from "@/components/ui/Toast"
-import type { CategoryTree, ProductDetail } from "@/lib/provider-products"
+import type { CategoryTree, ProductDetail } from "@/lib/shop-products"
 import { UNIT_NAMES } from "@/lib/units"
 import CatalogPicker, { type CatalogResult } from "./CatalogPicker"
 import {
@@ -300,7 +300,7 @@ function SourceChoice({
         {
             id: "catalogue",
             title: "From the catalogue",
-            text: "Pick a known item. Clients can compare your price with other providers.",
+            text: "Pick a known item. Clients can compare your price with other shops.",
         },
         {
             id: "custom",
@@ -406,7 +406,7 @@ function SuggestBox({
                     <span className="font-medium text-zinc-900">Suggest this for the catalogue</span>
                     <span className="block text-zinc-500">
                         An admin reviews it. Once approved, your product is linked to the catalogue
-                        item and compared with other providers. Your listing stays live meanwhile.
+                        item and compared with other shops. Your listing stays live meanwhile.
                     </span>
                 </span>
             </label>

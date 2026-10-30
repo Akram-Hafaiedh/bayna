@@ -36,7 +36,7 @@ export function businessOwner(access: Access, business: { id: string; name: stri
     const eff = effective(access.assignments, { businessId: business.id })
     const keys = [...ALL_BUSINESS_KEYS]
     const viaShop =
-        !!via && via.businessId === business.id && has(effective(access.assignments, { providerId: via.id, businessId: business.id }), "team.role.view")
+        !!via && via.businessId === business.id && has(effective(access.assignments, { shopId: via.id, businessId: business.id }), "team.role.view")
     return {
         scope: "BUSINESS",
         id: business.id,
@@ -50,7 +50,7 @@ export function businessOwner(access: Access, business: { id: string; name: stri
 }
 
 export function shopOwner(access: Access, shop: { id: string; name: string }, businessId: string | null): OwnerOption {
-    const eff = effective(access.assignments, { providerId: shop.id, businessId })
+    const eff = effective(access.assignments, { shopId: shop.id, businessId })
     const keys = [...ALL_SHOP_KEYS]
     return {
         scope: "SHOP",
@@ -71,7 +71,7 @@ export async function loadRoleItems(owners: readonly OwnerOption[]): Promise<Rol
             .filter((o) => o.canView)
             .map(async (o) => {
                 const rows = await loadRoleRows(
-                    o.scope === "BUSINESS" ? { scope: "BUSINESS", businessId: o.id } : { scope: "SHOP", providerId: o.id },
+                    o.scope === "BUSINESS" ? { scope: "BUSINESS", businessId: o.id } : { scope: "SHOP", shopId: o.id },
                     (k) => o.canEverything || o.grantable.includes(k),
                     o.canManage
                 )
@@ -98,7 +98,7 @@ export async function loadEditorRole(access: Access, roleId: string, via?: ViaSh
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(roleId)) return null
     const role = await prisma.accessRole.findUnique({
         where: { id: roleId },
-        select: { id: true, name: true, description: true, permissions: true, businessId: true, providerId: true },
+        select: { id: true, name: true, description: true, permissions: true, businessId: true, shopId: true },
     })
     if (!role) return null
     const target = targetOfRole(role)
@@ -110,7 +110,7 @@ export async function loadEditorRole(access: Access, roleId: string, via?: ViaSh
         if (!b) return null
         owner = businessOwner(access, b, via)
     } else {
-        const s = await prisma.shop.findFirst({ where: { id: target.providerId, deletedAt: null }, select: { id: true, name: true, businessId: true } })
+        const s = await prisma.shop.findFirst({ where: { id: target.shopId, deletedAt: null }, select: { id: true, name: true, businessId: true } })
         if (!s) return null
         owner = shopOwner(access, s, s.businessId)
     }

@@ -16,7 +16,7 @@ import { USER_STATUS_LABEL, userActions, REASON_MAX, type UserStatusValue } from
 
 const ROLE_BADGE: Record<string, string> = {
     ADMIN: "bg-violet-50 text-violet-700",
-    PROVIDER: "bg-emerald-50 text-emerald-700",
+    COMPANY: "bg-emerald-50 text-emerald-700",
 }
 const STATUS_BADGE: Record<UserStatusValue, string> = {
     ACTIVE: "bg-emerald-50 text-emerald-700",
@@ -155,9 +155,9 @@ export default function UsersList({ users, me, canViewAs = false }: { users: Use
                                     )}
                                 </td>
                                 <td className="hidden px-3 py-3 text-zinc-700 sm:table-cell">
-                                    {u.providers.length > 0 ? (
+                                    {u.shops.length > 0 ? (
                                         <ul className="space-y-0.5">
-                                            {u.providers.map((p) => (
+                                            {u.shops.map((p) => (
                                                 <li key={p.id}>
                                                     {p.name}
                                                     {p.status === "PENDING" && <span className="ml-1 text-xs text-amber-600">(pending)</span>}

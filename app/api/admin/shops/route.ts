@@ -1,11 +1,11 @@
-// app/api/admin/providers/route.ts
+// app/api/admin/shops/route.ts
 import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { prisma } from "@/lib/prisma"
 
 export async function GET(req: Request) {
     try {
-        const guard = await requirePlatform("shop.provider.view", req)
+        const guard = await requirePlatform("shop.record.view", req)
         if (!guard.ok) {
             return NextResponse.json({ error: guard.error }, { status: guard.status })
         }
@@ -24,10 +24,10 @@ export async function GET(req: Request) {
                             ? { needsReview: true }
                             : {}
 
-        const providers = await prisma.shop.findMany({
+        const shops = await prisma.shop.findMany({
             where,
             include: {
-                user: {
+                applicant: {
                     select: {
                         id: true,
                         email: true,
@@ -40,9 +40,9 @@ export async function GET(req: Request) {
             orderBy: { createdAt: "desc" },
         })
 
-        return NextResponse.json({ providers })
+        return NextResponse.json({ shops })
     } catch (error) {
-        console.error("Admin list providers error:", error)
+        console.error("Admin list shops error:", error)
         return NextResponse.json(
             { error: "Something went wrong" },
             { status: 500 }

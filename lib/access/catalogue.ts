@@ -66,7 +66,7 @@ export const PLATFORM_PERMISSIONS = {
     "user.account": ["view", "create", "update", "suspend", "reinstate", "delete", "restore", "export"],
     "user.credential": ["reset_password", "revoke_sessions", "force_logout"],
     "shop.application": ["view", "approve", "reject", "request_changes"],
-    "shop.provider": ["view", "update", "verify", "suspend", "reinstate", "delete", "restore"],
+    "shop.record": ["view", "update", "verify", "suspend", "reinstate", "delete", "restore"],
     "catalog.item": ["view", "create", "update", "archive", "merge", "import", "export"],
     "catalog.category": ["view", "create", "update", "archive", "reorder"],
     "catalog.suggestion": ["view", "review"],

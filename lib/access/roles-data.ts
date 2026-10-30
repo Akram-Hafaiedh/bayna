@@ -15,10 +15,10 @@ export type RoleRow = {
     editable: boolean
 }
 
-export type RolesOwner = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; providerId: string }
+export type RolesOwner = { scope: "BUSINESS"; businessId: string } | { scope: "SHOP"; shopId: string }
 
 export async function loadRoleRows(owner: RolesOwner, can: (key: string) => boolean, canManage: boolean): Promise<RoleRow[]> {
-    const where = owner.scope === "BUSINESS" ? { scope: "BUSINESS" as const, businessId: owner.businessId } : { scope: "SHOP" as const, providerId: owner.providerId }
+    const where = owner.scope === "BUSINESS" ? { scope: "BUSINESS" as const, businessId: owner.businessId } : { scope: "SHOP" as const, shopId: owner.shopId }
     const roles = await prisma.accessRole.findMany({
         where,
         select: { id: true, name: true, description: true, permissions: true },

@@ -18,7 +18,7 @@ export default function ShopLandingPage({ searchParams }: { searchParams: Promis
 }
 
 async function Landing({ searchParams }: { searchParams: Promise<{ to?: string }> }) {
-    const user = await requireRole([Role.PROVIDER])
+    const user = await requireRole([Role.COMPANY])
     const { to } = await searchParams
     return redirectToMyShop(user.id, cleanSection(to) || "dashboard")
 }

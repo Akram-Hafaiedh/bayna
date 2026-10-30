@@ -85,7 +85,7 @@ export function timeLeft(expiresAt: Date | string, now: Date = new Date()): stri
 
 // --- the cookie the proxy reads -------------------------------------------------------------------------------
 
-export type ViewAsCookie = { mode: ImpersonationMode; role: "CLIENT" | "PROVIDER"; expiresAt: number }
+export type ViewAsCookie = { mode: ImpersonationMode; role: "CLIENT" | "COMPANY"; expiresAt: number }
 
 /** "ro.CLIENT.1793000000000": mode, role of the viewed person, and when the session ends (ms since 1970). */
 export const viewAsCookieValue = (mode: ImpersonationMode, role: string, expiresAt: Date) =>
@@ -93,11 +93,11 @@ export const viewAsCookieValue = (mode: ImpersonationMode, role: string, expires
 
 /** The cookie's content, or null when it is missing, malformed or past its end time. */
 export function parseViewAsCookie(value: string | null | undefined, now: Date = new Date()): ViewAsCookie | null {
-    const m = /^(ro|rw)\.(CLIENT|PROVIDER)\.(\d{10,15})$/.exec(value ?? "")
+    const m = /^(ro|rw)\.(CLIENT|COMPANY)\.(\d{10,15})$/.exec(value ?? "")
     if (!m) return null
     const expiresAt = Number(m[3])
     if (expiresAt <= now.getTime()) return null
-    return { mode: m[1] === "rw" ? "WRITE" : "READ_ONLY", role: m[2] as "CLIENT" | "PROVIDER", expiresAt }
+    return { mode: m[1] === "rw" ? "WRITE" : "READ_ONLY", role: m[2] as "CLIENT" | "COMPANY", expiresAt }
 }
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"])
@@ -114,4 +114,4 @@ export function viewAsBlock(method: string, pathname: string, cookie: ViewAsCook
 }
 
 /** Where to land after the session starts: the viewed person's own home. */
-export const homeForViewedRole = (role: string) => (role === "PROVIDER" ? "/shop" : "/dashboard")
+export const homeForViewedRole = (role: string) => (role === "COMPANY" ? "/shop" : "/dashboard")

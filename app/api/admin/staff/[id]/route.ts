@@ -41,7 +41,7 @@ async function run(req: Request, id: string, action: MemberAction) {
         action.type === "set_role"
             ? await prisma.accessRole.findUnique({
                 where: { id: action.roleId },
-                select: { id: true, name: true, permissions: true, businessId: true, providerId: true },
+                select: { id: true, name: true, permissions: true, businessId: true, shopId: true },
             })
             : null
     if (action.type === "set_role" && (!newRole || !isPlatformRole(newRole))) return NextResponse.json({ error: "Unknown role" }, { status: 400 })

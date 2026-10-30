@@ -63,7 +63,7 @@ export async function syncAccess(prisma: PrismaClient, opts: { dry?: boolean } =
             }
             const shops = await tx.shop.findMany({ select: { id: true, name: true } })
             for (const s of shops) {
-                if ((await tx.accessRole.count({ where: { scope: "SHOP", providerId: s.id } })) === 0) {
+                if ((await tx.accessRole.count({ where: { scope: "SHOP", shopId: s.id } })) === 0) {
                     log.push(`default roles for the shop "${s.name}"`)
                     if (!dry) await seedShopRoles(tx, s.id)
                 }
@@ -72,7 +72,7 @@ export async function syncAccess(prisma: PrismaClient, opts: { dry?: boolean } =
             // 4. Approved shops: the business gets its owner (the applicant)
             const needOwner = await tx.shop.findMany({
                 where: { status: "ACTIVE", deletedAt: null, business: { accessAssignments: { none: {} } } },
-                select: { userId: true, name: true, businessId: true },
+                select: { applicantId: true, name: true, businessId: true },
             })
             const done = new Set<string>()
             for (const shop of needOwner) {
@@ -86,7 +86,7 @@ export async function syncAccess(prisma: PrismaClient, opts: { dry?: boolean } =
                 log.push(`make the applicant of the shop "${shop.name}" the owner of its business (${role.name})`)
                 if (!dry) {
                     await tx.accessAssignment.create({
-                        data: { userId: shop.userId, roleId: role.id, scope: "BUSINESS", businessId: shop.businessId, status: "ACTIVE" },
+                        data: { userId: shop.applicantId, roleId: role.id, scope: "BUSINESS", businessId: shop.businessId, status: "ACTIVE" },
                     })
                 }
             }

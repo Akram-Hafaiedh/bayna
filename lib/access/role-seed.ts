@@ -9,14 +9,14 @@ import { templatesFor } from "./role-templates"
 type Owner =
     | { scope: "PLATFORM" }
     | { scope: "BUSINESS"; businessId: string }
-    | { scope: "SHOP"; providerId: string }
+    | { scope: "SHOP"; shopId: string }
 
 const ownerWhere = (o: Owner) =>
     o.scope === "PLATFORM"
-        ? { scope: "PLATFORM" as const, businessId: null, providerId: null }
+        ? { scope: "PLATFORM" as const, businessId: null, shopId: null }
         : o.scope === "BUSINESS"
-            ? { scope: "BUSINESS" as const, businessId: o.businessId, providerId: null }
-            : { scope: "SHOP" as const, businessId: null, providerId: o.providerId }
+            ? { scope: "BUSINESS" as const, businessId: o.businessId, shopId: null }
+            : { scope: "SHOP" as const, businessId: null, shopId: o.shopId }
 
 /**
  * Gives a new owner its default roles. Only does anything when the owner has no roles at all, so it is
@@ -34,7 +34,7 @@ export async function seedRoles(tx: Tx, owner: Owner): Promise<number> {
 }
 
 export const seedBusinessRoles = (tx: Tx, businessId: string) => seedRoles(tx, { scope: "BUSINESS", businessId })
-export const seedShopRoles = (tx: Tx, providerId: string) => seedRoles(tx, { scope: "SHOP", providerId })
+export const seedShopRoles = (tx: Tx, shopId: string) => seedRoles(tx, { scope: "SHOP", shopId })
 export const seedPlatformRoles = (tx: Tx) => seedRoles(tx, { scope: "PLATFORM" })
 
 /**
@@ -42,10 +42,10 @@ export const seedPlatformRoles = (tx: Tx) => seedRoles(tx, { scope: "PLATFORM" }
  * special "Owner" role, so this is the role that holds the ownership key with the most permissions
  * (a role with "*" wins), oldest first. null when the owner has deleted every such role.
  */
-export async function findOwnerRole(tx: Tx, target: { businessId: string } | { providerId: string }): Promise<{ id: string; name: string } | null> {
+export async function findOwnerRole(tx: Tx, target: { businessId: string } | { shopId: string }): Promise<{ id: string; name: string } | null> {
     const business = "businessId" in target
     const rows = await tx.accessRole.findMany({
-        where: business ? ownerWhere({ scope: "BUSINESS", businessId: target.businessId }) : ownerWhere({ scope: "SHOP", providerId: target.providerId }),
+        where: business ? ownerWhere({ scope: "BUSINESS", businessId: target.businessId }) : ownerWhere({ scope: "SHOP", shopId: target.shopId }),
         select: { id: true, name: true, permissions: true, createdAt: true },
         orderBy: { createdAt: "asc" },
     })

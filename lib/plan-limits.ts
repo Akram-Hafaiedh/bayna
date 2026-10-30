@@ -80,11 +80,11 @@ export async function usageFor(businessId: string, key: LimitKey): Promise<numbe
             // A closed shop gives its place back
             return prisma.shop.count({ where: { businessId, deletedAt: null, status: { not: "CLOSED" } } })
         case "products":
-            return prisma.product.count({ where: { deletedAt: null, provider: { businessId, deletedAt: null } } })
+            return prisma.product.count({ where: { deletedAt: null, shop: { businessId, deletedAt: null } } })
         case "teamSeats": {
             // One seat per person with a live role in the business or in any of its shops
             const rows = await prisma.accessAssignment.findMany({
-                where: { status: "ACTIVE", OR: [{ businessId }, { provider: { businessId } }] },
+                where: { status: "ACTIVE", OR: [{ businessId }, { shop: { businessId } }] },
                 distinct: ["userId"],
                 select: { userId: true },
             })
@@ -120,7 +120,7 @@ export async function limitBlock(businessId: string, key: LimitKey, adding = 1):
 /** Does this person already take a seat in the business (so inviting them again adds none)? */
 export async function holdsSeat(businessId: string, userId: string): Promise<boolean> {
     const n = await prisma.accessAssignment.count({
-        where: { userId, status: "ACTIVE", OR: [{ businessId }, { provider: { businessId } }] },
+        where: { userId, status: "ACTIVE", OR: [{ businessId }, { shop: { businessId } }] },
     })
     return n > 0
 }
