@@ -1,5 +1,5 @@
 // lib/users/user-detail.ts
-// Small pure helpers for the admin user detail page (unit tested). The page reads with lib/admin-user-detail.ts.
+// Small pure helpers for the admin user detail page (unit tested). The page reads with lib/admin/admin-user-detail.ts.
 
 export const userDetailPath = (publicUserId: string) => `/admin/users/${publicUserId}`
 

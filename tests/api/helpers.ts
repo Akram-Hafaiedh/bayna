@@ -92,6 +92,26 @@ export async function platformRoleId(name: string) {
     return (await prisma.accessRole.findFirstOrThrow({ where: { scope: "PLATFORM", name }, select: { id: true } })).id
 }
 
+/**
+ * Delete test products for good. Their stock history is append-only (a database trigger refuses to delete
+ * it), so the guard is lifted for this one transaction, the way the account-erasure job does.
+ */
+export async function purgeTestProducts(where: Record<string, unknown> = { name: { startsWith: "api-test-" } }) {
+    await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.audit_maintenance', 'on', true)`
+        await tx.product.deleteMany({ where })
+    })
+}
+
+/** Delete test warehouses (and the history in them) for good, with the same guard lifted. */
+export async function purgeTestWarehouses(where: Record<string, unknown>) {
+    await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.audit_maintenance', 'on', true)`
+        await tx.stockMovement.deleteMany({ where: { warehouse: where } as never })
+        await tx.warehouse.deleteMany({ where })
+    })
+}
+
 /** Delete everything the tests created (all addresses ending in @api-test.invalid). */
 export async function cleanUp() {
     await prisma.accessInvite.deleteMany({ where: { email: { endsWith: `@${TEST_MAIL_DOMAIN}` } } })

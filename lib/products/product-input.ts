@@ -3,7 +3,7 @@
 import { Unit } from "@/app/generated/prisma/enums"
 import { fail, isBlank, ok, parseText, type Parsed } from "@/lib/shared/parse"
 
-// Other files import these from here; they now live in lib/parse.ts.
+// Other files import these from here; they now live in lib/shared/parse.ts.
 export { parseText }
 export type { Parsed }
 

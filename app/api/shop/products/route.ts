@@ -7,6 +7,7 @@ import { withAudit } from "@/lib/audit/run"
 import { listProducts } from "@/lib/shops/shop-products"
 import { SHOP_CHOICES } from "@/lib/products/product-status"
 import { limitBlock } from "@/lib/plans/plan-limits"
+import { openingStock, StockError } from "@/lib/inventory/stock-actions"
 import { parseProductFilters } from "@/lib/products/product-filters"
 import {
     parseMinOrderQty,
@@ -158,8 +159,8 @@ export async function POST(req: Request) {
         const status = body.status === undefined ? "ACTIVE" : SHOP_CHOICES.find((s) => s === body.status)
         if (!status) return bad("Status must be draft, active or hidden")
 
-        const product = await withAudit(guard.actor, (tx) =>
-            tx.product.create({
+        const product = await withAudit(guard.actor, async (tx) => {
+            const created = await tx.product.create({
                 data: {
                     shopId,
                     catalogItemId: catalog?.id ?? null,
@@ -170,7 +171,8 @@ export async function POST(req: Request) {
                     sku: sku.ok ? sku.value : null,
                     unit,
                     price: price.ok ? price.value : "0.000",
-                    stock: stock.ok ? stock.value : 0,
+                    // Opening stock goes through the ledger below; Product.stock is the total of the warehouses
+                    stock: 0,
                     minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
                     categoryId,
                     status,
@@ -193,10 +195,16 @@ export async function POST(req: Request) {
                         : {}),
                 },
             })
-        )
+            if (stock.ok && stock.value > 0) {
+                await openingStock(tx, { shopId, productId: created.id, quantity: stock.value })
+                return tx.product.findUniqueOrThrow({ where: { id: created.id } })
+            }
+            return created
+        })
 
         return NextResponse.json({ product }, { status: 201 })
     } catch (error) {
+        if (error instanceof StockError) return bad(error.message, error.status)
         // Unique (shopId, catalogItemId) hit by a concurrent request
         if ((error as { code?: string })?.code === "P2002") {
             return bad("You already list this catalogue item", 409)

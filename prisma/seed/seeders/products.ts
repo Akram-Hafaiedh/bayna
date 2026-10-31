@@ -152,7 +152,9 @@ export const products: Seeder = {
             if (toCreate.length > 0) {
                 await prisma.product.createMany({ data: toCreate.map((o) => ({ shopId: shop.id, ...o })) })
             }
-            for (const o of toUpdate) {
+            // Stock is not rewritten on a re-run: it is the total of the warehouses (npm run seed inventory)
+            for (const { stock: _stock, ...o } of toUpdate) {
+                void _stock
                 await prisma.product.update({ where: { id: existingByItem.get(o.catalogItemId)! }, data: o })
             }
 
@@ -173,7 +175,11 @@ export const products: Seeder = {
                 where: { shopId: shop.id, catalogItemId: null, name: customName },
                 select: { id: true },
             })
-            if (existingCustom) await prisma.product.update({ where: { id: existingCustom.id }, data: custom })
+            if (existingCustom) {
+                const { stock: _customStock, ...rest } = custom
+                void _customStock
+                await prisma.product.update({ where: { id: existingCustom.id }, data: rest })
+            }
             else await prisma.product.create({ data: { shopId: shop.id, ...custom } })
 
             totalOffers += offers.length

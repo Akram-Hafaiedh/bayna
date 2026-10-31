@@ -6,6 +6,7 @@ import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import type { ShopPermission } from "@/lib/access/catalogue"
 import { priceEffect } from "@/lib/products/price-review"
+import { setTotalStock, StockError } from "@/lib/inventory/stock-actions"
 import {
     parseMinOrderQty,
     parsePrice,
@@ -61,6 +62,8 @@ export async function PATCH(
 
         const body = await req.json()
         const data: Prisma.ProductUncheckedUpdateInput = {}
+        // Stock is not a plain column: it is the total of the warehouses, changed through the ledger (lib/inventory)
+        let newStock: number | undefined
 
         if (body.name !== undefined) {
             const r = parseText(body.name, "Name", 200)
@@ -96,7 +99,7 @@ export async function PATCH(
         if (body.stock !== undefined) {
             const r = parseStock(body.stock)
             if (!r.ok) return bad(r.error)
-            data.stock = r.value
+            newStock = r.value
         }
         if (body.minOrderQty !== undefined) {
             const r = parseMinOrderQty(body.minOrderQty)
@@ -140,7 +143,7 @@ export async function PATCH(
         if (data.price !== undefined && Number(data.price) !== Number(current.price) && !result.guard.can("product.price.edit")) {
             return bad("You do not have permission to change prices", 403)
         }
-        if (data.stock !== undefined && data.stock !== current.stock && !result.guard.can("product.stock.edit")) {
+        if (newStock !== undefined && newStock !== current.stock && !result.guard.can("product.stock.edit")) {
             return bad("You do not have permission to change stock", 403)
         }
 
@@ -161,9 +164,17 @@ export async function PATCH(
             data.priceReviewReason = null
         }
 
-        const product = await withAudit(result.guard.actor, (tx) => tx.product.update({ where: { id }, data }))
+        const product = await withAudit(result.guard.actor, async (tx) => {
+            const updated = await tx.product.update({ where: { id }, data })
+            if (newStock !== undefined && newStock !== current.stock) {
+                await setTotalStock(tx, { shopId: current.shopId, productId: id, target: newStock })
+                return tx.product.findUniqueOrThrow({ where: { id } })
+            }
+            return updated
+        })
         return NextResponse.json({ product })
     } catch (error) {
+        if (error instanceof StockError) return bad(error.message, error.status)
         console.error("Update product error:", error)
         return bad("Something went wrong", 500)
     }

@@ -171,6 +171,8 @@ model Shop {
   accessAssignments AccessAssignment[]
   accessRoles       AccessRole[]
   invites           AccessInvite[]
+  warehouses        Warehouse[]
+  stockMovements    StockMovement[]
 
   @@index([applicantId])
   @@index([businessId])
@@ -302,6 +304,96 @@ model CatalogSuggestion {
   @@index([shopId])
 }
 
+// A place where a shop keeps stock. Every shop has one default warehouse (made from its address and pin);
+// more can be added within the plan limit. Stock itself is StockLevel; every change is a StockMovement.
+//   - one default per shop (a partial unique index, prisma/sql/inventory.sql)
+//   - deleted only if it never had a movement; otherwise archived, and only when its stock is 0
+model Warehouse {
+  id             String          @id @default(cuid())
+  shopId         String
+  shop           Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name           String
+  address        String?
+  city           String
+  governorate    String?
+  latitude       Float?
+  longitude      Float?
+  locationSource LocationSource?
+  isDefault      Boolean         @default(false)
+  // Set when archived: keeps its history, takes no new stock, does not count toward the plan limit
+  archivedAt     DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  stockLevels StockLevel[]
+  movements   StockMovement[]
+
+  @@index([shopId])
+}
+
+// How many of one product one warehouse holds. Never negative (a CHECK in prisma/sql/inventory.sql).
+model StockLevel {
+  id           String    @id @default(cuid())
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouseId  String
+  warehouse    Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  quantity     Int       @default(0)
+  // Below or at this the warehouse counts as low for this product; null = no alert level set
+  reorderPoint Int?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@unique([productId, warehouseId])
+  @@index([warehouseId])
+}
+
+enum StockMovementType {
+  RECEIVED // stock came in (delivery, opening stock)
+  SOLD // an order took stock out (orders are built later)
+  ADJUSTED // a manual correction, plus or minus
+  RETURNED // a customer return put stock back
+  COUNTED // a stocktake: the quantity was counted and the difference written
+  TRANSFER_IN // the receiving side of a transfer
+  TRANSFER_OUT // the sending side of a transfer
+}
+
+// The stock ledger: one row per change, never edited or deleted. `quantity` is the signed change and
+// `balanceAfter` what the warehouse held afterwards, so a history page reads without adding up.
+// Who and when come from the audit columns (createdById, createdAt). A transfer is two rows sharing transferId.
+model StockMovement {
+  id           String            @id @default(cuid())
+  shopId       String
+  shop         Shop              @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  warehouseId  String
+  warehouse    Warehouse         @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  productId    String
+  product      Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type         StockMovementType
+  quantity     Int
+  balanceAfter Int
+  reason       String?
+  transferId   String?
+  // The order that caused it, once orders exist (a plain id, like the audit columns)
+  orderId      String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([warehouseId, createdAt])
+  @@index([productId, createdAt])
+  @@index([shopId, createdAt])
+  @@index([transferId])
+}
+
 enum ProductStatus {
   DRAFT
   ACTIVE
@@ -348,6 +440,10 @@ model Product {
   images String[]
 
   suggestion CatalogSuggestion?
+
+  // Stock per warehouse. `stock` above is the total of these, kept in step by lib/inventory (never set it directly).
+  stockLevels StockLevel[]
+  movements   StockMovement[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

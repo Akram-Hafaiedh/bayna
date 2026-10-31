@@ -9,7 +9,7 @@ import { GET as getProduct, PATCH as updateProduct, DELETE as deleteProduct } fr
 import { POST as restoreProduct } from "@/app/api/shop/products/[id]/restore/route"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
 import { SHOP_HEADER } from "@/lib/shops/shop-paths"
-import { call, cleanUp, demo, prisma, signInAs, signOut } from "./helpers"
+import { call, cleanUp, demo, prisma, purgeTestProducts, signInAs, signOut } from "./helpers"
 
 const OWNER = "carthage@demo.bayna.test"
 let tunis = { id: "", publicShopId: "" }
@@ -22,7 +22,7 @@ beforeAll(async () => {
 
 afterEach(() => signOut())
 afterAll(async () => {
-    await prisma.product.deleteMany({ where: { name: { startsWith: "api-test-" } } })
+    await purgeTestProducts()
     await cleanUp()
 })
 

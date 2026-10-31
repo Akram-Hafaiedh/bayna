@@ -175,7 +175,7 @@ const DEFS: Def[] = [
         scope: "SHOP",
         include: [
             "shop.profile.view", "product.listing.view", "order.request.view_all",
-            "insight.dashboard.view", "team.member.view", "review.rating.view",
+            "insight.dashboard.view", "team.member.view", "review.rating.view", "inventory.movement.view",
         ],
     },
 

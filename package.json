@@ -13,6 +13,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:baseline": "npx tsx scripts/make-baseline.ts",
+    "db:backfill-inventory": "npx tsx scripts/backfill-inventory.ts",
     "access:sync": "npx tsx scripts/sync-access.ts",
     "db:set-plan": "npx tsx scripts/set-plan.ts",
     "db:create-admin": "npx tsx scripts/create-admin.ts",

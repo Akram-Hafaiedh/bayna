@@ -85,6 +85,7 @@ lib/                     # grouped by domain; the folder says where a rule lives
   ├── users/             # account status, deletion and erasure, user list and detail
   ├── shops/             # shop input, status, list, paths, products
   ├── businesses/        # business (company) input and choice
+  ├── inventory/         # warehouses, stock levels, the movement ledger (only this folder writes Product.stock)
   ├── products/          # product input, status, filters, restore, price review
   ├── catalogue/         # catalogue and category input, units
   ├── plans/             # plans, limits, assignment, prices
@@ -98,6 +99,8 @@ tests/
 proxy.ts                 # Route protection (auth + role gates)
 prisma/
   ├── schema.prisma
+  ├── audit.sql          # audit triggers (added to the baseline migration)
+  ├── sql/               # other SQL Prisma cannot express (inventory.sql: constraints, append-only ledger); added to the baseline and to the migration that creates those tables
   ├── seed/              # Main seeder (index.ts) + one seeder per kind of data (one file per seeder in seeders/, each with its own data)
   └── migrations/
 types/

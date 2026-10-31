@@ -90,10 +90,12 @@ export async function usageFor(businessId: string, key: LimitKey): Promise<numbe
             })
             return rows.length
         }
-        // Nothing to count yet: warehouses and custom taxes do not exist (R4, R7), and a role is not marked
-        // as custom, so custom roles cannot be told apart from the default copies
-        case "customRoles":
         case "warehouses":
+            // Every live (not archived) warehouse of the business's shops; the default one of each shop counts too
+            return prisma.warehouse.count({ where: { archivedAt: null, shop: { businessId, deletedAt: null } } })
+        // Nothing to count yet: custom taxes do not exist (R7), and a role is not marked as custom, so custom
+        // roles cannot be told apart from the default copies
+        case "customRoles":
         case "customTaxes":
             return 0
     }

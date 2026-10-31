@@ -34,6 +34,8 @@ export const SHOP_PERMISSIONS = {
     "pricing.delivery_fee": ["manage"],
     "inventory.location": ["manage"],
     "inventory.adjustment": ["create"],
+    "inventory.transfer": ["create"],
+    "inventory.movement": ["view"],
     "order.request": ["view_assigned", "view_all", "accept", "reject", "update_status", "cancel", "assign", "refund", "export"],
     "order.note": ["create"],
     "order.message": ["send"],

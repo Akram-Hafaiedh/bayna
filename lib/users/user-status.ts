@@ -9,7 +9,7 @@
 //   BANNED            cannot sign in; every open session is ended; the platform team can lift the ban. It is a
 //                     suspension that is meant to last: the email stays taken (the row is kept), so the person
 //                     cannot simply register again. Same permissions as suspend and reinstate for now.
-//   PENDING_DELETION  the person asked to delete their account (lib/account-deletion.ts). Not a block at sign-in:
+//   PENDING_DELETION  the person asked to delete their account (lib/users/account-deletion.ts). Not a block at sign-in:
 //                     signing in with the right password cancels the deletion. Until then the guards refuse it.
 
 export const USER_STATUSES = ["ACTIVE", "SUSPENDED", "BANNED", "PENDING_DELETION"] as const

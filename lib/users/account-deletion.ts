@@ -1,6 +1,6 @@
 // lib/users/account-deletion.ts
-// Deleting your own account. Pure (unit tested); the database side is lib/account-deletion-actions.ts and
-// lib/account-erasure.ts.
+// Deleting your own account. Pure (unit tested); the database side is lib/users/account-deletion-actions.ts and
+// lib/users/account-erasure.ts.
 //
 //   1. The person asks from their profile with their password. The account becomes PENDING_DELETION, every
 //      session ends, and the date it will be erased is shown.

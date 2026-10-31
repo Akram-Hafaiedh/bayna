@@ -276,9 +276,9 @@ BEGIN
   SELECT string_agg(c.relname, ', ') INTO missing
     FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
    WHERE n.nspname = 'public' AND c.relkind = 'r'
-     AND c.relname NOT IN ('_prisma_migrations', 'ActivityLog', 'Session', 'VerificationToken', 'Notification', 'RateLimit')
+     AND c.relname NOT IN ('_prisma_migrations', 'ActivityLog', 'Session', 'VerificationToken', 'Notification', 'RateLimit', 'StockLevel', 'StockMovement')
      AND NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = c.oid AND t.tgname = 'audit_log' AND NOT t.tgisinternal);
-  PERFORM pg_temp.expect(missing IS NULL, 'every table (except Session, VerificationToken, Notification, RateLimit) has the audit_log trigger' || coalesce(' (missing: ' || missing || ')', ''));
+  PERFORM pg_temp.expect(missing IS NULL, 'every table (except Session, VerificationToken, Notification, RateLimit, StockLevel, StockMovement) has the audit_log trigger' || coalesce(' (missing: ' || missing || ')', ''));
 END $$;
 
 ROLLBACK;

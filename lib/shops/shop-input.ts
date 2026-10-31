@@ -6,7 +6,7 @@
 // Rules
 //   - name 2..120 and city 2..80 are required when creating; when updating they are only
 //     checked if sent
-//   - governorate must be one of the 24 (lib/governorates.ts) and is stored with its canonical spelling
+//   - governorate must be one of the 24 (lib/shared/governorates.ts) and is stored with its canonical spelling
 //   - phone and WhatsApp are Tunisian numbers, stored as +216XXXXXXXX
 //   - the map pin is latitude + longitude together, inside Tunisia, and not absurdly far from the
 //     chosen governorate. Without a pin, the governorate centre is used (source LOOKUP)

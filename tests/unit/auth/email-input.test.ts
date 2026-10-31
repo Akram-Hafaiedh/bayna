@@ -1,4 +1,4 @@
-// lib/email-input.test.ts
+// tests/unit/auth/email-input.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

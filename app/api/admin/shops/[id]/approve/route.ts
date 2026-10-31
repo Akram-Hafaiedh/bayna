@@ -5,6 +5,7 @@ import { withAudit } from "@/lib/audit/run"
 import { notifications, notify, shopPublicIds } from "@/lib/notifications"
 import { prisma } from "@/lib/prisma"
 import { findOwnerRole } from "@/lib/access/role-seed"
+import { ensureDefaultWarehouse } from "@/lib/inventory/stock-actions"
 import { Role } from "@/app/generated/prisma/enums"
 
 export async function POST(
@@ -64,6 +65,8 @@ export async function POST(
                 where: { id },
                 data: { status: "ACTIVE" },
             })
+            // The shop starts with one warehouse, made from its address and pin
+            await ensureDefaultWarehouse(tx, id)
             await tx.user.update({
                 where: { id: shop.applicantId },
                 data: { role: Role.COMPANY },
