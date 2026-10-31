@@ -85,7 +85,7 @@ lib/                     # grouped by domain; the folder says where a rule lives
   ├── users/             # account status, deletion and erasure, user list and detail
   ├── shops/             # shop input, status, list, paths, products
   ├── businesses/        # business (company) input and choice
-  ├── inventory/         # warehouses, stock levels, the movement ledger (only this folder writes Product.stock)
+  ├── inventory/         # warehouses, stock levels, the movement ledger (only this folder writes Product.stock); the screens are in components/inventory/
   ├── products/          # product input, status, filters, restore, price review
   ├── catalogue/         # catalogue and category input, units
   ├── plans/             # plans, limits, assignment, prices

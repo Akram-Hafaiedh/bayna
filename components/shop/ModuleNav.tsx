@@ -19,6 +19,7 @@ const svg = (children: ReactNode) => (
 export const SHOP_MODULES: Module[] = [
     { href: "projects", label: "Projects", soon: true, icon: svg(<><rect x="3" y="4" width="5" height="16" rx="1.5" /><rect x="10" y="4" width="5" height="10" rx="1.5" /><rect x="17" y="4" width="4" height="6" rx="1.5" /></>) },
     { href: "statistics", label: "Statistics", soon: true, icon: svg(<><path d="M4 20V10" /><path d="M10 20V4" /><path d="M16 20v-7" /><path d="M22 20H2" /></>) },
+    { href: "inventory", label: "Inventory", icon: svg(<><path d="M3 9.5 12 4l9 5.5" /><path d="M5 8.5V20h14V8.5" /><path d="M9 20v-6h6v6" /></>) },
     { href: "team", label: "Team", icon: svg(<><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><path d="M16 5.2a3 3 0 0 1 0 5.6" /><path d="M18 14.4c1.9.9 3 2.8 3 5.6" /></>) },
     { href: "activity", label: "Activity", icon: svg(<><path d="M3 12h4l3-8 4 16 3-8h4" /></>) },
     { href: "taxes", label: "Taxes", soon: true, icon: svg(<><path d="M19 5 5 19" /><circle cx="7" cy="7" r="2.2" /><circle cx="17" cy="17" r="2.2" /></>) },

@@ -56,3 +56,9 @@ test("filters", () => {
     assert.equal(parseKind(undefined), "all")
     assert.equal(ACTIVITY_KINDS[0].key, "all")
 })
+
+test("a warehouse change reads as a warehouse and links to the warehouses page", () => {
+    const line = describeActivity(row({ entityType: "Warehouse", entityId: "w1", action: "CREATE" }), BASE)
+    assert.equal(line.title, "Added a warehouse")
+    assert.equal(line.href, "/shop/abc/inventory/warehouses")
+})

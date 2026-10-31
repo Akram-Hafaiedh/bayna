@@ -8,11 +8,14 @@ import { randomUUID } from "node:crypto"
 import { GET as listWarehouses, POST as createWarehouse } from "@/app/api/shop/warehouses/route"
 import { PATCH as updateWarehouse, DELETE as deleteWarehouse } from "@/app/api/shop/warehouses/[id]/route"
 import { POST as moveStock } from "@/app/api/shop/stock/route"
+import { PATCH as setReorder } from "@/app/api/shop/stock/reorder/route"
 import { POST as transfer } from "@/app/api/shop/stock/transfer/route"
 import { GET as listMovements } from "@/app/api/shop/stock/movements/route"
 import { POST as createProduct } from "@/app/api/shop/products/route"
 import { PATCH as updateProduct } from "@/app/api/shop/products/[id]/route"
 import { ensureDefaultWarehouse } from "@/lib/inventory/stock-actions"
+import { listInventory, inventoryCounts } from "@/lib/inventory/inventory-view"
+import { parseInventoryQuery } from "@/lib/inventory/inventory-query"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
 import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { call, cleanUp, demo, prisma, purgeTestProducts, purgeTestWarehouses, signInAs, signOut } from "./helpers"
@@ -360,5 +363,59 @@ describe("products and the ledger", () => {
         expect(await total(p)).toBe(7)
         // other fields of the same product still save
         expect((await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { price: 9 } })).status).toBe(200)
+    })
+})
+
+describe("reorder point and the stock view", () => {
+    const view = (over: Record<string, string> = {}) => listInventory(marsa.id, parseInventoryQuery({ pageSize: "100", ...over }))
+    const ids = (r: Awaited<ReturnType<typeof view>>) => r.items.map((i) => i.id)
+
+    test("a reorder point is saved per warehouse, cleared with null, and refused when negative", async () => {
+        const p = await aProduct(10)
+        const body = (reorderPoint: unknown) => ({ productId: p, warehouseId: main.id, reorderPoint })
+        expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(4) })).status).toBe(200)
+        expect((await prisma.stockLevel.findUniqueOrThrow({ where: { productId_warehouseId: { productId: p, warehouseId: main.id } } })).reorderPoint).toBe(4)
+        expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(null) })).status).toBe(200)
+        expect((await prisma.stockLevel.findUniqueOrThrow({ where: { productId_warehouseId: { productId: p, warehouseId: main.id } } })).reorderPoint).toBeNull()
+        expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(-1) })).status).toBe(400)
+        expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: "nope", reorderPoint: 1 } })).status).toBe(404)
+        await signInAs(demo("viewer"))
+        expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(2) })).status).toBe(403)
+    })
+
+    test("low means at or below the reorder point, and not out; out means none left", async () => {
+        const to = await aWarehouse()
+        const low = await aProduct(3)
+        const fine = await aProduct(30)
+        const none = await aProduct(0)
+        const unset = await aProduct(1) // never low: no reorder point
+        await signInAs(OWNER)
+        for (const [p, point] of [[low, 5], [fine, 5], [none, 5]] as const) {
+            await call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.id, reorderPoint: point } })
+        }
+        const lowIds = ids(await view({ stock: "low" }))
+        expect(lowIds).toContain(low)
+        expect(lowIds).not.toContain(fine)
+        expect(lowIds).not.toContain(none)
+        expect(lowIds).not.toContain(unset)
+
+        const outIds = ids(await view({ stock: "out" }))
+        expect(outIds).toContain(none)
+        expect(outIds).not.toContain(low)
+
+        // in a chosen warehouse the judgement is that warehouse's own
+        await call(transfer, { headers: asMarsa(), body: { productId: fine, fromId: main.id, toId: to, quantity: 30 } })
+        expect(ids(await view({ stock: "out", warehouse: main.id }))).toContain(fine)
+        expect(ids(await view({ stock: "out", warehouse: to }))).not.toContain(fine)
+        expect(ids(await view({ warehouse: to }))).toEqual([fine]) // only products that have a level there
+    })
+
+    test("search and the counts", async () => {
+        const p = await aProduct(0)
+        const row = await prisma.product.findUniqueOrThrow({ where: { id: p } })
+        expect(ids(await view({ q: row.name }))).toEqual([p])
+        const counts = await inventoryCounts(marsa.id)
+        expect(counts.products).toBeGreaterThan(0)
+        expect(counts.out).toBeGreaterThan(0)
     })
 })

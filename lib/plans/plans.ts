@@ -272,7 +272,7 @@ export const POPULAR_PLAN_KEY = "PRO"
  * a "Soon" tag. Remove a key from here when it works.
  */
 export const SOON_KEYS: ReadonlySet<string> = new Set([
-    "customRoles", "warehouses", "customTaxes",
+    "customRoles", "customTaxes",
     "advancedReports", "lowStockAlerts", "invoicing", "bulkImport", "apiAccess", "priorityPlacement", "prioritySupport",
 ])
 

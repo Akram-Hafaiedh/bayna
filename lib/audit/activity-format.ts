@@ -56,6 +56,7 @@ const ENTITY: Record<string, string> = {
     User: "the account",
     Product: "a product",
     Shop: "the shop profile",
+    Warehouse: "a warehouse",
     Business: "the business details",
     AccessAssignment: "a team member",
     AccessInvite: "an invitation",
@@ -114,6 +115,8 @@ export function describeActivity(row: ActivityRow, shopBase: string | null = nul
     let href: string | null = null
     if (row.entityType === "Product" && row.entityId) {
         href = row.action === "SOFT_DELETE" ? inShop("products/trash") : row.action === "DELETE" ? null : inShop(`products/${row.entityId}/edit`)
+    } else if (row.entityType === "Warehouse") {
+        href = inShop("inventory/warehouses")
     } else if (row.entityType === "Shop") {
         href = inShop("profile")
     } else if (row.entityType === "Business") {
