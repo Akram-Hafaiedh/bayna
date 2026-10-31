@@ -14,6 +14,8 @@ export const NOTIFICATION_TYPES = {
     applicationRejected: "shop.application.rejected",
     profileReviewed: "shop.profile.reviewed",
     priceReviewNeeded: "catalog.unit.changed",
+    stockLow: "stock.low",
+    stockOut: "stock.out",
     teamJoined: "team.member.joined",
     teamRoleChanged: "team.member.role_changed",
     teamSuspended: "team.member.suspended",
@@ -76,6 +78,20 @@ export const notifications = {
         title: `Price check needed: ${a.itemName}`,
         body: `${a.reason}. Confirm the price of ${a.count} product${a.count === 1 ? "" : "s"}; until then ${a.count === 1 ? "it is" : "they are"} left out of comparison.`,
         href: `${shopPath(a.shop, "products")}?review=yes`,
+    }),
+    /** A warehouse of the shop dropped to or below the reorder point of a product. */
+    stockLow: (a: { shop: string; product: string; warehouse: string; quantity: number; reorderPoint: number }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.stockLow,
+        title: `Low stock: ${a.product}`,
+        body: `${a.warehouse} holds ${a.quantity}, at or below its reorder point of ${a.reorderPoint}.`,
+        href: `${shopPath(a.shop, "inventory")}?q=${encodeURIComponent(a.product)}`,
+    }),
+    /** The last unit of a product, in every warehouse, is gone. */
+    stockOut: (a: { shop: string; product: string }): NotificationInput => ({
+        type: NOTIFICATION_TYPES.stockOut,
+        title: `Out of stock: ${a.product}`,
+        body: "No warehouse holds any more of it.",
+        href: `${shopPath(a.shop, "inventory")}?q=${encodeURIComponent(a.product)}`,
     }),
     /** To the person who sent the invite: `who` accepted it and now works in `where` (a shop or business name). */
     teamJoined: (a: { who: string; where: string; role: string; shop?: string | null }): NotificationInput => ({

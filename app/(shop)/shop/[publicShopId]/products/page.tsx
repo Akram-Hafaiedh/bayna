@@ -13,6 +13,7 @@ import {
     hasActiveFilters,
     parseProductFilters,
 } from "@/lib/products/product-filters"
+import { prisma } from "@/lib/prisma"
 import ProductsToolbar from "@/components/shop/ProductsToolbar"
 import ProductsTable from "@/components/shop/ProductsTable"
 import Pagination from "@/components/shop/Pagination"
@@ -87,11 +88,12 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
         )
     }
 
-    const [result, stats, categories, perms] = await Promise.all([
+    const [result, stats, categories, perms, warehouseCount] = await Promise.all([
         listProducts(shop.id, filters),
         getProductStats(shop.id),
         getFilterCategories(shop.id),
         shopCan(shop.id, ["product.price.edit", "product.stock.edit"] as const),
+        prisma.warehouse.count({ where: { shopId: shop.id, archivedAt: null } }),
     ])
 
     if (stats.total === 0) {
@@ -212,6 +214,7 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
                         filters={filters}
                         canEditPrice={perms["product.price.edit"]}
                         canEditStock={perms["product.stock.edit"]}
+                        stockPerWarehouse={warehouseCount > 1}
                         shopBase={base}
                     />
                     <Pagination

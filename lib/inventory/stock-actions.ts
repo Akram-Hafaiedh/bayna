@@ -7,8 +7,11 @@
 // Product.stock is the total of the product's StockLevel rows. Nothing else may write it.
 import { randomUUID } from "node:crypto"
 import type { Tx } from "@/lib/audit/run"
+import { loadShopMembersWith } from "@/lib/access/members"
+import { notifications, notify, shopPublicIds } from "@/lib/notifications"
+import { featureAllowed } from "@/lib/plans/plan-limits"
 import {
-    checkArchive, checkDelete, checkMakeDefault, checkTransfer, planMovement,
+    checkArchive, checkDelete, checkMakeDefault, checkTransfer, planMovement, stockAlert,
     type ManualType, type MovementType,
 } from "@/lib/inventory/stock-rules"
 import type { WarehouseData } from "@/lib/inventory/warehouse-input"
@@ -44,14 +47,14 @@ async function lockShop(tx: Tx, shopId: string): Promise<void> {
     await tx.$queryRaw`SELECT id FROM "Shop" WHERE id = ${shopId} FOR UPDATE`
 }
 
-async function lockLevel(tx: Tx, productId: string, warehouseId: string): Promise<{ id: string; quantity: number }> {
+async function lockLevel(tx: Tx, productId: string, warehouseId: string): Promise<{ id: string; quantity: number; reorderPoint: number | null }> {
     await tx.stockLevel.upsert({
         where: { productId_warehouseId: { productId, warehouseId } },
         create: { productId, warehouseId, quantity: 0 },
         update: {},
     })
-    const rows = await tx.$queryRaw<{ id: string; quantity: number }[]>`
-        SELECT id, quantity FROM "StockLevel" WHERE "productId" = ${productId} AND "warehouseId" = ${warehouseId} FOR UPDATE`
+    const rows = await tx.$queryRaw<{ id: string; quantity: number; reorderPoint: number | null }[]>`
+        SELECT id, quantity, "reorderPoint" FROM "StockLevel" WHERE "productId" = ${productId} AND "warehouseId" = ${warehouseId} FOR UPDATE`
     return rows[0]
 }
 
@@ -89,7 +92,7 @@ export async function applyMovement(tx: Tx, m: MovementInput): Promise<MovementR
     const warehouse = await tx.warehouse.findFirst({ where: { id: m.warehouseId, shopId: m.shopId }, select: { id: true, archivedAt: true } })
     if (!warehouse) throw new StockError("Warehouse not found", 404)
     if (warehouse.archivedAt) throw new StockError("This warehouse is archived. Restore it to change its stock.")
-    const product = await tx.product.findFirst({ where: { id: m.productId, shopId: m.shopId, deletedAt: null }, select: { id: true } })
+    const product = await tx.product.findFirst({ where: { id: m.productId, shopId: m.shopId, deletedAt: null }, select: { id: true, name: true, stock: true } })
     if (!product) throw new StockError("Product not found", 404)
 
     const level = await lockLevel(tx, m.productId, m.warehouseId)
@@ -112,8 +115,34 @@ export async function applyMovement(tx: Tx, m: MovementInput): Promise<MovementR
         },
         select: { id: true },
     })
-    await syncProductTotal(tx, m.productId)
+    const productAfter = await syncProductTotal(tx, m.productId)
+    const alert = stockAlert({
+        type: m.type, productBefore: product.stock, productAfter,
+        levelBefore: level.quantity, levelAfter: plan.value.after, reorderPoint: level.reorderPoint,
+    })
+    if (alert) await notifyStock(tx, { shopId: m.shopId, alert, productName: product.name, warehouseId: m.warehouseId, quantity: plan.value.after, reorderPoint: level.reorderPoint })
     return { movementId: row.id, delta: plan.value.delta, after: plan.value.after }
+}
+
+/** Tell the people who can edit stock that a product is low or out. Skipped when the shop's plan has no alerts. */
+async function notifyStock(
+    tx: Tx,
+    a: { shopId: string; alert: "out" | "low"; productName: string; warehouseId: string; quantity: number; reorderPoint: number | null }
+): Promise<void> {
+    const shop = await tx.shop.findUnique({ where: { id: a.shopId }, select: { businessId: true } })
+    if (shop?.businessId && !(await featureAllowed(shop.businessId, "lowStockAlerts"))) return
+    const recipients = (await loadShopMembersWith(tx, [a.shopId], "product.stock.edit")).get(a.shopId) ?? []
+    if (recipients.length === 0) return
+    const publicId = (await shopPublicIds(tx, [a.shopId])).get(a.shopId)
+    if (!publicId) return
+    if (a.alert === "out") {
+        await notify(tx, recipients, notifications.stockOut({ shop: publicId, product: a.productName }))
+        return
+    }
+    const warehouse = await tx.warehouse.findUnique({ where: { id: a.warehouseId }, select: { name: true } })
+    await notify(tx, recipients, notifications.stockLow({
+        shop: publicId, product: a.productName, warehouse: warehouse?.name ?? "A warehouse", quantity: a.quantity, reorderPoint: a.reorderPoint ?? 0,
+    }))
 }
 
 /** Stock came in: a delivery, or opening stock. */
@@ -221,7 +250,12 @@ export async function archiveWarehouse(tx: Tx, shopId: string, id: string): Prom
     const w = await ownWarehouse(tx, shopId, id)
     const sum = await tx.stockLevel.aggregate({ where: { warehouseId: id }, _sum: { quantity: true } })
     const check = checkArchive({ isDefault: w.isDefault, archived: w.archivedAt !== null, stockTotal: sum._sum.quantity ?? 0 })
-    if (!check.ok) throw new StockError(check.error)
+    if (!check.ok) {
+        // Stock of a product in the Trash still counts, and the person cannot see it in the lists: say so
+        const inTrash = await tx.stockLevel.aggregate({ where: { warehouseId: id, quantity: { gt: 0 }, product: { deletedAt: { not: null } } }, _sum: { quantity: true } })
+        const hidden = inTrash._sum.quantity ?? 0
+        throw new StockError(hidden > 0 ? `${check.error}. ${hidden} of them belong to products in the Trash: restore those products and move their stock first` : check.error)
+    }
     await tx.warehouse.update({ where: { id }, data: { archivedAt: new Date() } })
 }
 

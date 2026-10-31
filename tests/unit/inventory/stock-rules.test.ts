@@ -4,7 +4,7 @@ import { test } from "vitest"
 import assert from "node:assert/strict"
 import {
     checkArchive, checkDelete, checkMakeDefault, checkTransfer, isManualType, isMovementType, MAX_QUANTITY,
-    MOVEMENT_LABEL, MOVEMENT_TYPES, parseCount, parseDelta, parseQuantity, parseReason, planMovement, stockState,
+    MOVEMENT_LABEL, MOVEMENT_TYPES, parseCount, parseDelta, parseQuantity, parseReason, planMovement, stockAlert, stockState,
 } from "@/lib/inventory/stock-rules"
 
 const value = <T,>(r: { ok: true; value: T } | { ok: false; error: string }) => {
@@ -133,4 +133,35 @@ test("checkMakeDefault", () => {
     assert.equal(checkMakeDefault({ archived: false, isDefault: false }).ok, true)
     assert.match(error(checkMakeDefault({ archived: true, isDefault: false })), /Restore/)
     assert.match(error(checkMakeDefault({ archived: false, isDefault: true })), /already the default/)
+})
+
+test("stockAlert: only the crossing counts", () => {
+    const base = { type: "ADJUSTED" as const, productBefore: 10, productAfter: 10, levelBefore: 10, levelAfter: 10, reorderPoint: 5 as number | null }
+    // above the point: nothing
+    assert.equal(stockAlert(base), null)
+    // crossing down to the point, or below it, but not empty: low
+    assert.equal(stockAlert({ ...base, levelAfter: 5, productAfter: 5 }), "low")
+    assert.equal(stockAlert({ ...base, levelAfter: 2, productAfter: 2 }), "low")
+    // already low and getting lower: no second alert
+    assert.equal(stockAlert({ ...base, levelBefore: 4, levelAfter: 2, productBefore: 4, productAfter: 2 }), null)
+    // restocked above the point and then dropping again: alerts again
+    assert.equal(stockAlert({ ...base, levelBefore: 6, levelAfter: 5, productBefore: 6, productAfter: 5 }), "low")
+    // no reorder point: never low
+    assert.equal(stockAlert({ ...base, reorderPoint: null, levelAfter: 1, productAfter: 1 }), null)
+})
+
+test("stockAlert: out is about the whole product, and wins over low", () => {
+    const base = { type: "ADJUSTED" as const, productBefore: 3, productAfter: 0, levelBefore: 3, levelAfter: 0, reorderPoint: 5 as number | null }
+    assert.equal(stockAlert(base), "out")
+    assert.equal(stockAlert({ ...base, reorderPoint: null }), "out")
+    // one warehouse emptied while another still holds stock: not out
+    assert.equal(stockAlert({ ...base, productAfter: 4, productBefore: 7, reorderPoint: null }), null)
+    // it was already at 0: nothing new
+    assert.equal(stockAlert({ ...base, productBefore: 0, levelBefore: 0 }), null)
+})
+
+test("stockAlert: transfers never notify", () => {
+    const move = { productBefore: 10, productAfter: 10, levelBefore: 10, levelAfter: 0, reorderPoint: 5 as number | null }
+    assert.equal(stockAlert({ ...move, type: "TRANSFER_OUT" }), null)
+    assert.equal(stockAlert({ ...move, type: "TRANSFER_IN" }), null)
 })

@@ -4,7 +4,8 @@
 import type { Prisma } from "@/app/generated/prisma/client"
 import type { ProductStatus, SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
-import { LOW_STOCK_THRESHOLD, type ProductFilters } from "@/lib/products/product-filters"
+import type { ProductFilters } from "@/lib/products/product-filters"
+import { lowStockProductIds } from "@/lib/inventory/inventory-view"
 
 /** JSON-safe row (Decimal -> string, Date -> ISO) so it can cross into client components. */
 export type ProductRow = {
@@ -16,6 +17,10 @@ export type ProductRow = {
     unit: Unit
     price: string
     stock: number
+    /** At or below the reorder point in a warehouse (set from the Inventory page); false when no point is set */
+    low: boolean
+    /** Where the stock is, when it is in more than one place */
+    warehouses: { name: string; quantity: number }[]
     status: ProductStatus
     minOrderQty: number | null
     catalogItemId: string | null
@@ -47,6 +52,7 @@ const rowSelect = {
     unit: true,
     price: true,
     stock: true,
+    stockLevels: { where: { quantity: { gt: 0 }, warehouse: { archivedAt: null } }, select: { quantity: true, warehouse: { select: { name: true } } } },
     status: true,
     minOrderQty: true,
     catalogItemId: true,
@@ -59,9 +65,12 @@ const rowSelect = {
 
 type RowRecord = Prisma.ProductGetPayload<{ select: typeof rowSelect }>
 
-function toRow(p: RowRecord): ProductRow {
+function toRow(p: RowRecord, low: ReadonlySet<string>): ProductRow {
+    const { stockLevels, ...rest } = p
     return {
-        ...p,
+        ...rest,
+        low: low.has(p.id),
+        warehouses: stockLevels.map((l) => ({ name: l.warehouse.name, quantity: l.quantity })),
         price: p.price.toString(),
         updatedAt: p.updatedAt.toISOString(),
         priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null,
@@ -102,7 +111,7 @@ async function buildWhere(
     if (f.status !== "all") and.push({ status: f.status.toUpperCase() as ProductStatus })
 
     if (f.stock === "out") and.push({ stock: { lte: 0 } })
-    if (f.stock === "low") and.push({ stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } })
+    if (f.stock === "low") and.push({ id: { in: await lowStockProductIds(shopId, null) } })
 
     if (f.linked === "yes") and.push({ catalogItemId: { not: null } })
     if (f.linked === "no") and.push({ catalogItemId: null })
@@ -132,7 +141,8 @@ export async function listProducts(
         take: filters.pageSize,
     })
 
-    return { items: rows.map(toRow), total, page, pageSize: filters.pageSize, pageCount }
+    const low = new Set(await lowStockProductIds(shopId, null))
+    return { items: rows.map((r) => toRow(r, low)), total, page, pageSize: filters.pageSize, pageCount }
 }
 
 // ---------------------------------------------------------------------------
@@ -157,9 +167,7 @@ export async function getProductStats(shopId: string): Promise<ProductStats> {
         prisma.product.count({ where: { ...live, status: "HIDDEN" } }),
         prisma.product.count({ where: { ...live, status: "DRAFT" } }),
         prisma.product.count({ where: { ...live, status: "BLOCKED" } }),
-        prisma.product.count({
-            where: { ...live, stock: { gt: 0, lt: LOW_STOCK_THRESHOLD } },
-        }),
+        lowStockProductIds(shopId, null).then((ids) => ids.length),
         prisma.product.count({ where: { ...live, stock: { lte: 0 } } }),
         prisma.product.count({ where: { ...live, needsPriceReview: true } }),
         prisma.product.count({ where: { shopId, deletedAt: { not: null } } }),

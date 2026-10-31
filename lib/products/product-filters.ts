@@ -3,7 +3,6 @@
 // URL parsing and URL building. Safe to import from server AND client components.
 import { Unit } from "@/app/generated/prisma/enums"
 
-export const LOW_STOCK_THRESHOLD = 5
 export const PAGE_SIZES = [10, 25, 50, 100] as const
 export const DEFAULT_PAGE_SIZE = 25
 export const SORT_KEYS = ["updatedAt", "name", "price", "stock"] as const

@@ -273,7 +273,7 @@ export const POPULAR_PLAN_KEY = "PRO"
  */
 export const SOON_KEYS: ReadonlySet<string> = new Set([
     "customRoles", "customTaxes",
-    "advancedReports", "lowStockAlerts", "invoicing", "bulkImport", "apiAccess", "priorityPlacement", "prioritySupport",
+    "advancedReports", "invoicing", "bulkImport", "apiAccess", "priorityPlacement", "prioritySupport",
 ])
 
 export type ComparisonRow = { kind: "limit"; key: LimitKey } | { kind: "feature"; key: FeatureKey }

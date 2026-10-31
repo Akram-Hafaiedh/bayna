@@ -3,7 +3,6 @@ import type { ProductRow } from "@/lib/shops/shop-products"
 import {
     buildProductsHref,
     defaultDir,
-    LOW_STOCK_THRESHOLD,
     type ProductFilters,
     type SortKey,
 } from "@/lib/products/product-filters"
@@ -50,6 +49,7 @@ export default function ProductsTable({
     filters,
     canEditPrice,
     canEditStock,
+    stockPerWarehouse,
     shopBase,
 }: {
     /** the shop's address, "/shop/<publicShopId>" */
@@ -58,6 +58,8 @@ export default function ProductsTable({
     filters: ProductFilters
     canEditPrice: boolean
     canEditStock: boolean
+    /** With several warehouses the total cannot be typed over: stock is changed per warehouse on the Inventory page */
+    stockPerWarehouse: boolean
 }) {
     return (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
@@ -81,7 +83,7 @@ export default function ProductsTable({
                 <tbody className="divide-y divide-zinc-100">
                     {items.map((p) => {
                         const out = p.stock <= 0
-                        const low = !out && p.stock < LOW_STOCK_THRESHOLD
+                        const low = !out && p.low
                         return (
                             <tr key={p.id} className={p.needsPriceReview ? "bg-amber-50/40 hover:bg-amber-50/70" : "hover:bg-zinc-50/60"}>
                                 <td className="px-4 py-3">
@@ -135,9 +137,20 @@ export default function ProductsTable({
                                             : "text-zinc-700"
                                         }`}
                                 >
-                                    <InlineEdit productId={p.id} field="stock" value={p.stock} canEdit={canEditStock}>
+                                    <InlineEdit productId={p.id} field="stock" value={p.stock} canEdit={canEditStock && !stockPerWarehouse}>
                                         {out ? "Out of stock" : p.stock}
                                     </InlineEdit>
+                                    {low && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">Low</span>}
+                                    {p.warehouses.length > 1 && (
+                                        <div className="mt-0.5 text-xs font-normal text-zinc-400">
+                                            {p.warehouses.map((w) => `${w.name} ${w.quantity}`).join(" · ")}
+                                        </div>
+                                    )}
+                                    {stockPerWarehouse && (
+                                        <Link href={`${shopBase}/inventory?q=${encodeURIComponent(p.name)}`} className="mt-0.5 block text-xs font-normal text-zinc-500 underline">
+                                            Manage stock
+                                        </Link>
+                                    )}
                                 </td>
                                 <td className="hidden px-4 py-3 md:table-cell">
                                     <span

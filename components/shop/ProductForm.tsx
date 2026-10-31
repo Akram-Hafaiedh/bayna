@@ -64,10 +64,13 @@ export default function ProductForm({
     mode,
     categories,
     product,
+    stockManagedAt,
 }: {
     mode: "create" | "edit"
     categories: CategoryTree[]
     product?: ProductDetail
+    /** The Inventory page of this product, when its stock is in several warehouses */
+    stockManagedAt?: string
 }) {
     const router = useRouter()
     const shopHref = useShopHref()
@@ -218,7 +221,7 @@ export default function ProductForm({
                                 : undefined
                         }
                     />
-                    <OfferFields form={form} set={set} />
+                    <OfferFields form={form} set={set} stockManagedAt={stockManagedAt} />
                     <Section title="Details" description="Optional. Shown with your offer.">
                         <Field label="Description">
                             <textarea
@@ -235,7 +238,7 @@ export default function ProductForm({
             {!picking && !isLinked && (
                 <>
                     <CustomFields form={form} set={set} categories={categories} />
-                    <OfferFields form={form} set={set} />
+                    <OfferFields form={form} set={set} stockManagedAt={stockManagedAt} />
                     {mode === "create" && (
                         <SuggestBox
                             checked={suggest}

@@ -39,12 +39,13 @@ function searchClauses(q: string): Prisma.ProductWhereInput[] {
     }))
 }
 
-/** Ids of the shop's products that sit at or below their reorder point (and are not at 0) in a live warehouse. */
-async function lowStockProductIds(shopId: string, warehouseId: string | null): Promise<string[]> {
+/** Ids of the shop's live products that sit at or below their reorder point (and are not at 0) in a live warehouse. */
+export async function lowStockProductIds(shopId: string, warehouseId: string | null): Promise<string[]> {
     const rows = await prisma.$queryRaw<{ productId: string }[]>(Prisma.sql`
         SELECT DISTINCT sl."productId"
           FROM "StockLevel" sl
           JOIN "Warehouse" w ON w."id" = sl."warehouseId"
+          JOIN "Product" p ON p."id" = sl."productId" AND p."deletedAt" IS NULL
          WHERE w."shopId" = ${shopId}
            AND w."archivedAt" IS NULL
            AND sl."quantity" > 0

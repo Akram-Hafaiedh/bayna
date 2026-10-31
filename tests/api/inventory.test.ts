@@ -16,6 +16,8 @@ import { PATCH as updateProduct } from "@/app/api/shop/products/[id]/route"
 import { ensureDefaultWarehouse } from "@/lib/inventory/stock-actions"
 import { listInventory, inventoryCounts } from "@/lib/inventory/inventory-view"
 import { parseInventoryQuery } from "@/lib/inventory/inventory-query"
+import { getProductStats, listProducts } from "@/lib/shops/shop-products"
+import { parseProductFilters } from "@/lib/products/product-filters"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
 import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { call, cleanUp, demo, prisma, purgeTestProducts, purgeTestWarehouses, signInAs, signOut } from "./helpers"
@@ -449,5 +451,99 @@ describe("reorder point and the stock view", () => {
         const counts = await inventoryCounts(marsa.id)
         expect(counts.products).toBeGreaterThan(0)
         expect(counts.out).toBeGreaterThan(0)
+    })
+})
+
+describe("alerts, the products list and the Trash", () => {
+    /** The stock notifications a person received about this product */
+    const notes = async (email: string, productName: string) => {
+        const u = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } })
+        return prisma.notification.findMany({ where: { userId: u.id, type: { in: ["stock.low", "stock.out"] }, title: { contains: productName } }, select: { type: true, title: true, href: true, body: true } })
+    }
+    const nameOf = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { id } })).name
+    const point = (p: string, reorderPoint: number) => call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.id, reorderPoint } })
+    const adjust = (p: string, quantity: number, reasonCode = quantity < 0 ? "DAMAGED" : "FOUND") =>
+        call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity, reasonCode } })
+
+    test("crossing the reorder point notifies the people who can edit stock, once", async () => {
+        const p = await aProduct(10)
+        const name = await nameOf(p)
+        await point(p, 5)
+        await adjust(p, -3) // 7: still above
+        expect(await notes(OWNER, name)).toHaveLength(0)
+
+        await adjust(p, -3) // 4: crossed
+        const owner = await notes(OWNER, name)
+        expect(owner).toHaveLength(1)
+        expect(owner[0]).toMatchObject({ type: "stock.low" })
+        expect(owner[0].body).toMatch(/holds 4.*reorder point of 5/)
+        expect(owner[0].href).toContain(`/shop/${marsa.publicShopId}/inventory?q=`)
+        expect(await notes(demo("manager-marsa"), name)).toHaveLength(1)
+        expect(await notes(demo("viewer"), name)).toHaveLength(0) // cannot edit stock
+
+        await adjust(p, -1) // 3: already low, no second alert
+        expect(await notes(OWNER, name)).toHaveLength(1)
+
+        await adjust(p, 10) // 13: back above, then down again
+        await adjust(p, -9) // 4
+        expect(await notes(OWNER, name)).toHaveLength(2)
+    })
+
+    test("running out notifies once, and a transfer between warehouses never does", async () => {
+        const to = await aWarehouse()
+        const p = await aProduct(4)
+        const name = await nameOf(p)
+        await point(p, 2)
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4 } }) // main is empty, the product is not
+        expect(await notes(OWNER, name)).toHaveLength(0)
+
+        await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: to, type: "COUNTED", quantity: 0, reasonCode: "STOCKTAKE" } })
+        const out = await notes(OWNER, name)
+        expect(out.map((n) => n.type)).toEqual(["stock.out"])
+        expect(out[0].title).toBe(`Out of stock: ${name}`)
+    })
+
+    test("a product with no reorder point only notifies when it runs out", async () => {
+        const p = await aProduct(2)
+        const name = await nameOf(p)
+        await adjust(p, -1)
+        expect(await notes(OWNER, name)).toHaveLength(0)
+        await adjust(p, -1)
+        expect((await notes(OWNER, name)).map((n) => n.type)).toEqual(["stock.out"])
+    })
+
+    test("the products list and counts use the reorder points", async () => {
+        const low = await aProduct(3)
+        const fine = await aProduct(3) // same stock, no reorder point: not low any more
+        await point(low, 5)
+        const rows = await listProducts(marsa.id, parseProductFilters({ pageSize: "100" }))
+        expect(rows.items.find((r) => r.id === low)?.low).toBe(true)
+        expect(rows.items.find((r) => r.id === fine)?.low).toBe(false)
+        const filtered = await listProducts(marsa.id, parseProductFilters({ stock: "low", pageSize: "100" }))
+        expect(filtered.items.map((r) => r.id)).toContain(low)
+        expect(filtered.items.map((r) => r.id)).not.toContain(fine)
+        expect((await getProductStats(marsa.id)).lowStock).toBeGreaterThan(0)
+    })
+
+    test("the products list says where the stock is", async () => {
+        const to = await aWarehouse()
+        const p = await aProduct(10)
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4 } })
+        const rows = await listProducts(marsa.id, parseProductFilters({ pageSize: "100" }))
+        const row = rows.items.find((r) => r.id === p)!
+        expect(row.stock).toBe(10)
+        expect(row.warehouses.map((w) => w.quantity).sort()).toEqual([4, 6])
+    })
+
+    test("a warehouse holding stock of a product in the Trash says so when archiving", async () => {
+        const to = await aWarehouse()
+        const p = await aProduct(10)
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 3 } })
+        await prisma.product.update({ where: { id: p }, data: { deletedAt: new Date() } })
+        const res = await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(to), body: { archived: true } })
+        expect(res.status).toBe(409)
+        expect(String(res.json?.error)).toMatch(/3 of them belong to products in the Trash/)
+        // a trashed product does not show in the inventory view or count as low
+        expect((await listInventory(marsa.id, parseInventoryQuery({ pageSize: "100" }))).items.map((i) => i.id)).not.toContain(p)
     })
 })

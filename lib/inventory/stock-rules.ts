@@ -125,6 +125,29 @@ export function stockState(quantity: number, reorderPoint: number | null): Stock
     return "ok"
 }
 
+export type StockAlert = "out" | "low"
+
+/**
+ * Does a movement cross a line that deserves a notification? Only the crossing counts, so a product that
+ * stays low does not notify again until it has been restocked above its reorder point.
+ *   "out"  the product's total went from something to nothing
+ *   "low"  the warehouse went from above its reorder point to at or below it (and is not empty)
+ * Transfers move stock between a shop's own warehouses and never notify.
+ */
+export function stockAlert(a: {
+    type: MovementType
+    productBefore: number
+    productAfter: number
+    levelBefore: number
+    levelAfter: number
+    reorderPoint: number | null
+}): StockAlert | null {
+    if (a.type === "TRANSFER_IN" || a.type === "TRANSFER_OUT") return null
+    if (a.productAfter <= 0 && a.productBefore > 0) return "out"
+    if (a.reorderPoint !== null && a.levelAfter > 0 && a.levelAfter <= a.reorderPoint && a.levelBefore > a.reorderPoint) return "low"
+    return null
+}
+
 // ---- warehouses ------------------------------------------------------------------------------
 
 /** A warehouse made by mistake can be deleted; one with any history can only be archived. */

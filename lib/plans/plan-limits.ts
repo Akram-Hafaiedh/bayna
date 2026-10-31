@@ -119,6 +119,13 @@ export async function limitBlock(businessId: string, key: LimitKey, adding = 1):
     return check.allowed ? null : limitMessage(check, check.planName)
 }
 
+/** May this business use a plan feature? Always yes while limits are not switched on (PLAN_LIMITS), like the limits. */
+export async function featureAllowed(businessId: string, key: keyof Features): Promise<boolean> {
+    if (!limitsEnforced()) return true
+    const { plan } = await planForBusiness(businessId)
+    return plan.features[key] === true
+}
+
 /** Does this person already take a seat in the business (so inviting them again adds none)? */
 export async function holdsSeat(businessId: string, userId: string): Promise<boolean> {
     const n = await prisma.accessAssignment.count({

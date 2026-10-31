@@ -147,6 +147,7 @@ test("every default plan says something about every limit, and Business can do e
 test("things that are not built yet are marked Soon, things that work are not", () => {
     assert.equal(SOON_KEYS.has("customTaxes"), true)
     assert.equal(SOON_KEYS.has("warehouses"), false) // built with the inventory module
+    assert.equal(SOON_KEYS.has("lowStockAlerts"), false) // built with the stock notifications
     assert.equal(SOON_KEYS.has("invoicing"), true)
     assert.equal(SOON_KEYS.has("shops"), false)
     assert.equal(SOON_KEYS.has("products"), false)

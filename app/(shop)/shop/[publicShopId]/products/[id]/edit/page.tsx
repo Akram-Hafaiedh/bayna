@@ -7,6 +7,7 @@ import ConfirmPriceButton from "@/components/shop/ConfirmPriceButton"
 import { shopCan } from "@/lib/access/page"
 import { prisma } from "@/lib/prisma"
 import { timeAgo } from "@/lib/shared/time-ago"
+import { shopPath } from "@/lib/shops/shop-paths"
 
 export default function EditProductPage({
     params,
@@ -31,10 +32,11 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
     const shop = await requireShopPage(publicShopId)
     if (shop?.status !== "ACTIVE") notFound()
 
-    const [product, categories, perms] = await Promise.all([
+    const [product, categories, perms, warehouseCount] = await Promise.all([
         getShopProduct(shop.id, id),
         getCategoryTree(),
         shopCan(shop.id, ["product.price.edit"] as const),
+        prisma.warehouse.count({ where: { shopId: shop.id, archivedAt: null } }),
     ])
     if (!product) notFound()
 
@@ -69,7 +71,12 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
                     )}
                 </div>
             )}
-            <ProductForm mode="edit" categories={categories} product={product} />
+            <ProductForm
+                mode="edit"
+                categories={categories}
+                product={product}
+                stockManagedAt={warehouseCount > 1 ? `${shopPath(publicShopId, "inventory")}?q=${encodeURIComponent(product.name)}` : undefined}
+            />
         </div>
     )
 }

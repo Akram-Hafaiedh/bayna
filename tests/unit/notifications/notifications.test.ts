@@ -44,6 +44,8 @@ test("the ready-made messages are valid", () => {
         notifications.applicationRejected(),
         notifications.priceReviewNeeded(sample),
         notifications.profileReviewed({ shop: "abc" }),
+        notifications.stockLow({ shop: "abc", product: "Cement 50kg", warehouse: "Main warehouse", quantity: 3, reorderPoint: 5 }),
+        notifications.stockOut({ shop: "abc", product: "Cement 50kg" }),
         notifications.teamJoined({ who: "Sami", where: "Sfax BTP", role: "Manager" }),
         notifications.teamRoleChanged({ where: "Sfax BTP", role: "Viewer" }),
         notifications.teamSuspended({ where: "Sfax BTP" }),
@@ -58,6 +60,9 @@ test("the ready-made messages are valid", () => {
         const [row] = buildNotifications("u1", message)
         assert.ok(row.title.length > 0 && row.href?.startsWith("/"))
     }
+    // the link finds the product on the Inventory page, whatever characters its name has
+    assert.equal(notifications.stockOut({ shop: "abc", product: "Tile 30x30 & grout" }).href, "/shop/abc/inventory?q=Tile%2030x30%20%26%20grout")
+    assert.match(notifications.stockLow({ shop: "abc", product: "Cement", warehouse: "Depot", quantity: 3, reorderPoint: 5 }).body ?? "", /Depot holds 3.*reorder point of 5/)
     assert.match(notifications.priceReviewNeeded(sample).body ?? "", /2 products/)
     assert.match(notifications.priceReviewNeeded({ ...sample, count: 1 }).body ?? "", /1 product\b/)
 })

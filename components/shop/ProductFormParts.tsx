@@ -77,10 +77,13 @@ export function OfferFields({
     form,
     set,
     showSku = true,
+    stockManagedAt,
 }: {
     form: FormValues
     set: SetField
     showSku?: boolean
+    /** When set, the stock is kept in several warehouses: the field is read-only and points here (the Inventory page) */
+    stockManagedAt?: string
 }) {
     return (
         <Section title="Your offer" description="What you charge and have in stock.">
@@ -97,7 +100,7 @@ export function OfferFields({
                         className={inputClass}
                     />
                 </Field>
-                <Field label="Stock">
+                <Field label="Stock" hint={stockManagedAt ? "Kept per warehouse. Change it on the Inventory page." : undefined}>
                     <input
                         type="number"
                         inputMode="numeric"
@@ -105,8 +108,12 @@ export function OfferFields({
                         min="0"
                         value={form.stock}
                         onChange={(e) => set("stock", e.target.value)}
-                        className={inputClass}
+                        readOnly={!!stockManagedAt}
+                        className={`${inputClass}${stockManagedAt ? " bg-zinc-50 text-zinc-500" : ""}`}
                     />
+                    {stockManagedAt && (
+                        <a href={stockManagedAt} className="block text-xs text-zinc-600 underline">Manage stock</a>
+                    )}
                 </Field>
                 <Field label="Min. order">
                     <input

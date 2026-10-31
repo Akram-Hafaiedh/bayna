@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Link from "next/link"
 import { requireShopPage } from "@/lib/shops/shop-auth"
 import { shopPath } from "@/lib/shops/shop-paths"
+import { inventoryCounts } from "@/lib/inventory/inventory-view"
 
 export default function ShopDashboardPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
@@ -37,11 +38,8 @@ async function ShopStats({ params }: { params: Promise<{ publicShopId: string }>
     const productCount = shop
         ? await prisma.product.count({ where: { shopId: shop.id, ...live } })
         : 0
-    const lowStock = shop
-        ? await prisma.product.count({
-            where: { shopId: shop.id, ...live, stock: { lt: 5 } },
-        })
-        : 0
+    // Low = at or below a reorder point set on the Inventory page; out = nothing left in any warehouse
+    const counts = shop ? await inventoryCounts(shop.id) : { products: 0, out: 0, low: 0 }
     const needsReview = shop
         ? await prisma.product.count({
             where: { shopId: shop.id, ...live, needsPriceReview: true },
@@ -81,13 +79,18 @@ async function ShopStats({ params }: { params: Promise<{ publicShopId: string }>
                     <p className="mt-1 text-sm text-zinc-500">In your catalog</p>
                 </Link>
 
-                <div className="rounded-xl border border-zinc-200 bg-white p-5">
+                <Link
+                    href={`${shopPath(publicShopId, "inventory")}?stock=${counts.low > 0 || counts.out === 0 ? "low" : "out"}`}
+                    className="rounded-xl border border-zinc-200 bg-white p-5 hover:border-zinc-300 transition"
+                >
                     <h3 className="font-medium text-zinc-900">Low stock</h3>
                     <p className="mt-2 text-3xl font-semibold text-amber-600">
-                        {lowStock}
+                        {counts.low}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-500">Under 5 units</p>
-                </div>
+                    <p className="mt-1 text-sm text-zinc-500">
+                        {counts.out > 0 ? `${counts.out} out of stock` : "At or below the reorder point"}
+                    </p>
+                </Link>
 
                 <div className="rounded-xl border border-zinc-200 bg-white p-5">
                     <h3 className="font-medium text-zinc-900">Orders</h3>
