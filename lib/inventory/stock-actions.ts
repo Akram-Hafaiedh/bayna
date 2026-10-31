@@ -2,7 +2,7 @@
 // The database side of stock. Every function takes the transaction from withAudit, so the change, the
 // ledger row and the product total commit together (or not at all). The rules are in stock-rules.ts.
 //
-//   await withAudit(guard.actor, (tx) => adjustStock(tx, { shopId, productId, warehouseId, delta: -3, reason: "Damaged" }))
+//   await withAudit(guard.actor, (tx) => adjustStock(tx, { shopId, productId, warehouseId, delta: -3, reasonCode: "DAMAGED" }))
 //
 // Product.stock is the total of the product's StockLevel rows. Nothing else may write it.
 import { randomUUID } from "node:crypto"
@@ -30,6 +30,8 @@ type MovementInput = {
     type: MovementType
     /** See planMovement: a positive amount, a signed change (ADJUSTED) or a counted quantity (COUNTED) */
     amount: number
+    /** See stock-reasons.ts; null for a transfer, or a row written before reasons existed */
+    reasonCode?: string | null
     reason?: string | null
     transferId?: string | null
     orderId?: string | null
@@ -103,6 +105,7 @@ export async function applyMovement(tx: Tx, m: MovementInput): Promise<MovementR
             type: m.type,
             quantity: plan.value.delta,
             balanceAfter: plan.value.after,
+            reasonCode: m.reasonCode ?? null,
             reason: m.reason ?? null,
             transferId: m.transferId ?? null,
             orderId: m.orderId ?? null,
@@ -114,19 +117,19 @@ export async function applyMovement(tx: Tx, m: MovementInput): Promise<MovementR
 }
 
 /** Stock came in: a delivery, or opening stock. */
-export const receiveStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; quantity: number; reason?: string | null }) =>
+export const receiveStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; quantity: number; reasonCode?: string | null; reason?: string | null }) =>
     applyMovement(tx, { ...a, type: "RECEIVED", amount: a.quantity })
 
 /** A manual correction: `delta` is plus or minus. */
-export const adjustStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; delta: number; reason?: string | null }) =>
+export const adjustStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; delta: number; reasonCode?: string | null; reason?: string | null }) =>
     applyMovement(tx, { ...a, type: "ADJUSTED", amount: a.delta })
 
 /** A stocktake: the quantity counted on the shelf; the ledger records the difference. */
-export const countStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; counted: number; reason?: string | null }) =>
+export const countStock = (tx: Tx, a: { shopId: string; productId: string; warehouseId: string; counted: number; reasonCode?: string | null; reason?: string | null }) =>
     applyMovement(tx, { ...a, type: "COUNTED", amount: a.counted })
 
-/** Run one of the three manual kinds from a request. */
-export function manualMovement(tx: Tx, type: ManualType, a: { shopId: string; productId: string; warehouseId: string; amount: number; reason?: string | null }) {
+/** Run one of the manual kinds from a request. */
+export function manualMovement(tx: Tx, type: ManualType, a: { shopId: string; productId: string; warehouseId: string; amount: number; reasonCode?: string | null; reason?: string | null }) {
     return applyMovement(tx, { ...a, type })
 }
 
@@ -159,7 +162,7 @@ export async function transferStock(
 export async function openingStock(tx: Tx, a: { shopId: string; productId: string; quantity: number }): Promise<void> {
     if (a.quantity <= 0) return
     const wh = await ensureDefaultWarehouse(tx, a.shopId)
-    await receiveStock(tx, { shopId: a.shopId, productId: a.productId, warehouseId: wh.id, quantity: a.quantity, reason: "Opening stock" })
+    await receiveStock(tx, { shopId: a.shopId, productId: a.productId, warehouseId: wh.id, quantity: a.quantity, reasonCode: "OPENING_STOCK" })
 }
 
 /**
@@ -174,7 +177,7 @@ export async function setTotalStock(tx: Tx, a: { shopId: string; productId: stri
     const wh = live[0] ?? (await ensureDefaultWarehouse(tx, a.shopId))
     const level = await tx.stockLevel.findUnique({ where: { productId_warehouseId: { productId: a.productId, warehouseId: wh.id } }, select: { quantity: true } })
     if ((level?.quantity ?? 0) === a.target) return
-    await countStock(tx, { shopId: a.shopId, productId: a.productId, warehouseId: wh.id, counted: a.target, reason: "Stock edited on the product" })
+    await countStock(tx, { shopId: a.shopId, productId: a.productId, warehouseId: wh.id, counted: a.target, reasonCode: "PRODUCT_EDIT" })
 }
 
 export async function setReorderPoint(tx: Tx, a: { shopId: string; productId: string; warehouseId: string; reorderPoint: number | null }): Promise<void> {

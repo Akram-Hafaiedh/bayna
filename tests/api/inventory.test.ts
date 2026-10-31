@@ -156,14 +156,14 @@ describe("manual movements", () => {
         const p = await aProduct(10)
         expect(await total(p)).toBe(10)
 
-        const rec = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 5, reason: "Delivery" } })
+        const rec = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 5, reasonCode: "SUPPLIER_DELIVERY", reason: "Delivery" } })
         expect(rec.status).toBe(201)
         expect(await level(p, main.id)).toBe(15)
 
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -3, reason: "Broken" } })).status).toBe(201)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -3, reasonCode: "DAMAGED", reason: "Broken" } })).status).toBe(201)
         expect(await level(p, main.id)).toBe(12)
 
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 20 } })).status).toBe(201)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 20, reasonCode: "STOCKTAKE" } })).status).toBe(201)
         expect(await level(p, main.id)).toBe(20)
         expect(await total(p)).toBe(20)
 
@@ -176,16 +176,46 @@ describe("manual movements", () => {
 
     test("not enough stock is a 409 and nothing changes", async () => {
         const p = await aProduct(3)
-        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -4 } })
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -4, reasonCode: "LOST" } })
         expect(res.status).toBe(409)
         expect(String(res.json?.error)).toMatch(/Not enough stock/)
         expect(await level(p, main.id)).toBe(3)
         expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(1)
     })
 
+    test("a return can be recorded by hand: a Returned row with no order", async () => {
+        const p = await aProduct(5)
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RETURNED", quantity: 2, reasonCode: "CUSTOMER_RETURN", reason: "Wrong size" } })
+        expect(res.status).toBe(201)
+        expect(await level(p, main.id)).toBe(7)
+        const row = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p, type: "RETURNED" } })
+        expect(row).toMatchObject({ quantity: 2, balanceAfter: 7, reasonCode: "CUSTOMER_RETURN", reason: "Wrong size", orderId: null })
+    })
+
+    test("the reason is required, must fit the change, and Other needs a note", async () => {
+        const p = await aProduct(5)
+        const send = (body: Record<string, unknown>) => call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, ...body } })
+        const missing = await send({ type: "ADJUSTED", quantity: -1 })
+        expect(missing.status).toBe(400)
+        expect(String(missing.json?.error)).toMatch(/Choose a reason/)
+        // a reason for taking stock out cannot be used to put stock in, and a delivery is not a damage
+        expect((await send({ type: "ADJUSTED", quantity: 1, reasonCode: "DAMAGED" })).status).toBe(400)
+        expect((await send({ type: "ADJUSTED", quantity: -1, reasonCode: "FOUND" })).status).toBe(400)
+        expect((await send({ type: "RECEIVED", quantity: 1, reasonCode: "DAMAGED" })).status).toBe(400)
+        expect((await send({ type: "RECEIVED", quantity: 1, reasonCode: "OPENING_STOCK" })).status).toBe(400) // the system's own reason
+        expect((await send({ type: "RECEIVED", quantity: 1, reasonCode: "MADE_UP" })).status).toBe(400)
+        const other = await send({ type: "ADJUSTED", quantity: -1, reasonCode: "OTHER" })
+        expect(other.status).toBe(400)
+        expect(String(other.json?.error)).toMatch(/note/)
+        expect((await send({ type: "ADJUSTED", quantity: -1, reasonCode: "OTHER", reason: "Used for a display" })).status).toBe(201)
+        expect(await level(p, main.id)).toBe(4)
+        // nothing was written by the refused ones
+        expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(2)
+    })
+
     test("a count equal to the stock records nothing", async () => {
         const p = await aProduct(3)
-        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 3 } })
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 3, reasonCode: "STOCKTAKE" } })
         expect(res.status).toBe(409)
         expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(1)
     })
@@ -194,14 +224,14 @@ describe("manual movements", () => {
         const p = await aProduct(3)
         const base = { productId: p, warehouseId: main.id }
         for (const body of [
-            { ...base, type: "SOLD", quantity: 1 },
-            { ...base, type: "RECEIVED", quantity: 0 },
-            { ...base, type: "ADJUSTED", quantity: 0 },
-            { ...base, type: "COUNTED", quantity: -1 },
-            { ...base, type: "RECEIVED", quantity: 1.5 },
-            { ...base, type: "RECEIVED", quantity: 1, reason: "x".repeat(201) },
-            { warehouseId: main.id, type: "RECEIVED", quantity: 1 },
-            { productId: p, type: "RECEIVED", quantity: 1 },
+            { ...base, type: "SOLD", quantity: 1, reasonCode: "OTHER", reason: "x" },
+            { ...base, type: "RECEIVED", quantity: 0, reasonCode: "SUPPLIER_DELIVERY" },
+            { ...base, type: "ADJUSTED", quantity: 0, reasonCode: "CORRECTION" },
+            { ...base, type: "COUNTED", quantity: -1, reasonCode: "STOCKTAKE" },
+            { ...base, type: "RECEIVED", quantity: 1.5, reasonCode: "SUPPLIER_DELIVERY" },
+            { ...base, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY", reason: "x".repeat(201) },
+            { warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" },
+            { productId: p, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" },
         ]) {
             expect((await call(moveStock, { headers: asMarsa(), body })).status, JSON.stringify(body)).toBe(400)
         }
@@ -209,7 +239,7 @@ describe("manual movements", () => {
 
     test("who may: a viewer cannot, and neither can a clerk of another shop", async () => {
         const p = await aProduct(3)
-        const body = { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 1 }
+        const body = { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" }
         await signInAs(demo("viewer"))
         expect((await call(moveStock, { headers: asMarsa(), body })).status).toBe(403)
         await signInAs(demo("inventory")) // clerk of the Tunis shop only
@@ -222,7 +252,7 @@ describe("manual movements", () => {
         const wh = await prisma.$transaction((tx) => ensureDefaultWarehouse(tx, tunis.id))
         const product = await prisma.product.create({ data: { shopId: tunis.id, name: uniq(), price: "5.000", stock: 0, unit: "PIECE", status: "ACTIVE", images: [] } as never })
         await signInAs(demo("inventory"))
-        const res = await call(moveStock, { headers: { [SHOP_HEADER]: tunis.publicShopId }, body: { productId: product.id, warehouseId: wh.id, type: "RECEIVED", quantity: 2 } })
+        const res = await call(moveStock, { headers: { [SHOP_HEADER]: tunis.publicShopId }, body: { productId: product.id, warehouseId: wh.id, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
         expect(res.status).toBe(201)
         expect(await level(product.id, wh.id)).toBe(2)
     })
@@ -230,8 +260,8 @@ describe("manual movements", () => {
     test("a product or warehouse of another shop is a 404", async () => {
         const p = await aProduct(3)
         await signInAs(OWNER)
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: "nope", warehouseId: main.id, type: "RECEIVED", quantity: 1 } })).status).toBe(404)
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: "nope", type: "RECEIVED", quantity: 1 } })).status).toBe(404)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: "nope", warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" } })).status).toBe(404)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: "nope", type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" } })).status).toBe(404)
     })
 })
 
@@ -301,7 +331,7 @@ describe("the ledger", () => {
         const to = await aWarehouse()
         const p = await aProduct(10)
         await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 3 } })
-        await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 2 } })
+        await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
 
         const all = await call(listMovements, { method: "GET", headers: asMarsa(), url: `http://localhost/api/shop/stock/movements?product=${p}` })
         expect(all.status).toBe(200)
@@ -319,6 +349,8 @@ describe("the ledger", () => {
         expect((typed.json?.items as unknown[]).length).toBe(1)
         const inWarehouse = await call(listMovements, { method: "GET", headers: asMarsa(), url: `http://localhost/api/shop/stock/movements?product=${p}&warehouse=${to}` })
         expect((inWarehouse.json?.items as unknown[]).length).toBe(1)
+        const byReason = await call(listMovements, { method: "GET", headers: asMarsa(), url: `http://localhost/api/shop/stock/movements?product=${p}&reasonCode=OPENING_STOCK` })
+        expect((byReason.json?.items as { reasonCode: string }[]).map((r) => r.reasonCode)).toEqual(["OPENING_STOCK"])
         const paged = await call(listMovements, { method: "GET", headers: asMarsa(), url: `http://localhost/api/shop/stock/movements?product=${p}&pageSize=2&page=2` })
         expect((paged.json?.items as unknown[]).length).toBe(2)
         expect(paged.json).toMatchObject({ total: 4, page: 2, pageCount: 2 })
@@ -336,7 +368,7 @@ describe("products and the ledger", () => {
         expect(await level(p, main.id)).toBe(7)
         const rows = await prisma.stockMovement.findMany({ where: { productId: p } })
         expect(rows).toHaveLength(1)
-        expect(rows[0]).toMatchObject({ type: "RECEIVED", quantity: 7, balanceAfter: 7, reason: "Opening stock" })
+        expect(rows[0]).toMatchObject({ type: "RECEIVED", quantity: 7, balanceAfter: 7, reasonCode: "OPENING_STOCK", reason: null })
         // no stock, no row
         await signInAs(OWNER)
         const res = await call(createProduct, { headers: asMarsa(), body: { name: uniq(), price: 5, stock: 0 } })
@@ -351,7 +383,7 @@ describe("products and the ledger", () => {
         expect(await level(p, main.id)).toBe(12)
         expect(await total(p)).toBe(12)
         const last = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p }, orderBy: { createdAt: "desc" } })
-        expect(last).toMatchObject({ type: "COUNTED", quantity: 5, balanceAfter: 12 })
+        expect(last).toMatchObject({ type: "COUNTED", quantity: 5, balanceAfter: 12, reasonCode: "PRODUCT_EDIT" })
     })
 
     test("with several warehouses the product form cannot set the stock: 409, nothing changes", async () => {

@@ -8,13 +8,14 @@ import Modal from "@/components/ui/Modal"
 import { useToast } from "@/components/ui/Toast"
 import { shopFetch } from "@/lib/shops/shop-fetch"
 import { planMovement, type ManualType } from "@/lib/inventory/stock-rules"
+import { REASON_LABEL, reasonOptions, type ReasonCode } from "@/lib/inventory/stock-reasons"
 import type { InventoryItem } from "@/lib/inventory/inventory-view"
 
 export type DialogWarehouse = { id: string; name: string; isDefault: boolean }
 type Mode = ManualType | "TRANSFER" | "REORDER"
 
 const MODE_LABEL: Record<Mode, string> = {
-    RECEIVED: "Receive", ADJUSTED: "Adjust", COUNTED: "Count", TRANSFER: "Transfer", REORDER: "Low-stock alert",
+    RECEIVED: "Receive", RETURNED: "Return", ADJUSTED: "Adjust", COUNTED: "Count", TRANSFER: "Transfer", REORDER: "Low-stock alert",
 }
 
 const field = "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
@@ -39,7 +40,7 @@ export default function StockDialog({
     const router = useRouter()
     const toast = useToast()
     const modes: Mode[] = [
-        ...(canAdjust ? (["RECEIVED", "ADJUSTED", "COUNTED"] as const) : []),
+        ...(canAdjust ? (["RECEIVED", "RETURNED", "ADJUSTED", "COUNTED"] as const) : []),
         ...(canTransfer && warehouses.length > 1 ? (["TRANSFER"] as const) : []),
         ...(canAdjust ? (["REORDER"] as const) : []),
     ]
@@ -48,11 +49,18 @@ export default function StockDialog({
     const [toId, setToId] = useState(() => warehouses.find((w) => w.id !== startWarehouseId)?.id ?? "")
     const [amount, setAmount] = useState("")
     const [reorder, setReorder] = useState(() => String(item.levels[startWarehouseId]?.reorderPoint ?? ""))
-    const [reason, setReason] = useState("")
+    const [reasonCode, setReasonCode] = useState<ReasonCode | "">("")
+    const [note, setNote] = useState("")
     const [busy, setBusy] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     const here = item.levels[warehouseId]?.quantity ?? 0
+    const isManual = mode !== "REORDER" && mode !== "TRANSFER"
+    // The reasons depend on the kind of change, and for an adjustment on its sign (+ or -)
+    const signed = amount.trim() === "" ? null : Number(amount)
+    const options = isManual ? reasonOptions(mode, mode === "ADJUSTED" ? signed : 1) : []
+    const code: ReasonCode | "" = reasonCode && options.includes(reasonCode) ? reasonCode : ""
+    const needsNote = code === "OTHER"
     const name = (id: string) => warehouses.find((w) => w.id === id)?.name ?? ""
 
     // What the warehouse will hold, by the same rule as the server
@@ -85,12 +93,12 @@ export default function StockDialog({
             } else if (mode === "TRANSFER") {
                 res = await shopFetch("/api/shop/stock/transfer", {
                     method: "POST", headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ productId: item.id, fromId: warehouseId, toId, quantity: Number(amount), reason }),
+                    body: JSON.stringify({ productId: item.id, fromId: warehouseId, toId, quantity: Number(amount), reason: note }),
                 })
             } else {
                 res = await shopFetch("/api/shop/stock", {
                     method: "POST", headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ productId: item.id, warehouseId, type: mode, quantity: Number(amount), reason }),
+                    body: JSON.stringify({ productId: item.id, warehouseId, type: mode, quantity: Number(amount), reasonCode: code, reason: note }),
                 })
             }
             const data = await res.json().catch(() => ({}))
@@ -109,7 +117,7 @@ export default function StockDialog({
     }
 
     const amountLabel =
-        mode === "RECEIVED" ? "Quantity received" : mode === "ADJUSTED" ? "Change (a minus takes stock out)" : mode === "COUNTED" ? "Counted quantity" : "Quantity to move"
+        mode === "RECEIVED" ? "Quantity received" : mode === "RETURNED" ? "Quantity returned" : mode === "ADJUSTED" ? "Change (a minus takes stock out)" : mode === "COUNTED" ? "Counted quantity" : "Quantity to move"
 
     return (
         <Modal title={item.name} description={`${item.total} in total across the warehouses`} onClose={onClose}>
@@ -117,7 +125,7 @@ export default function StockDialog({
                 {modes.map((m) => (
                     <button
                         key={m} type="button" role="tab" aria-selected={mode === m}
-                        onClick={() => { setMode(m); setError(null); setAmount("") }}
+                        onClick={() => { setMode(m); setError(null); setAmount(""); setReasonCode(""); setNote("") }}
                         className={`rounded-full border px-3 py-1 text-sm ${mode === m ? "border-zinc-900 bg-zinc-900 text-white" : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300"}`}
                     >
                         {MODE_LABEL[m]}
@@ -159,9 +167,20 @@ export default function StockDialog({
                             <input id="sd-amount" type="number" step={1} inputMode="numeric" required value={amount} onChange={(e) => setAmount(e.target.value)} className={field} autoFocus />
                             {preview && <p className={`mt-1 text-xs ${preview.ok ? "text-zinc-500" : "text-red-600"}`}>{preview.text}</p>}
                         </div>
+                        {isManual && (
+                            <div>
+                                <label htmlFor="sd-why" className={label}>Reason</label>
+                                <select id="sd-why" value={code} onChange={(e) => setReasonCode(e.target.value as ReasonCode | "")} required disabled={options.length === 0} className={field}>
+                                    <option value="" disabled>
+                                        {options.length === 0 ? "Enter the change first" : "Choose a reason"}
+                                    </option>
+                                    {options.map((c) => <option key={c} value={c}>{REASON_LABEL[c]}</option>)}
+                                </select>
+                            </div>
+                        )}
                         <div>
-                            <label htmlFor="sd-reason" className={label}>Reason <span className="font-normal text-zinc-400">(optional)</span></label>
-                            <input id="sd-reason" type="text" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Delivery, damaged, stocktake" className={field} />
+                            <label htmlFor="sd-note" className={label}>Note {needsNote ? <span className="font-normal text-zinc-500">(required)</span> : <span className="font-normal text-zinc-400">(optional)</span>}</label>
+                            <input id="sd-note" type="text" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} required={needsNote} placeholder={mode === "TRANSFER" ? "Why you are moving it" : "Anything worth knowing later"} className={field} />
                         </div>
                     </>
                 )}
@@ -170,7 +189,7 @@ export default function StockDialog({
 
                 <div className="flex justify-end gap-2 pt-1">
                     <button type="button" onClick={onClose} className="h-10 rounded-lg border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 hover:border-zinc-300">Cancel</button>
-                    <button type="submit" disabled={busy || (preview !== null && !preview.ok)} className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
+                    <button type="submit" disabled={busy || (preview !== null && !preview.ok) || (isManual && (!code || (needsNote && !note.trim())))} className="h-10 rounded-lg bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50">
                         {busy ? "Saving..." : "Save"}
                     </button>
                 </div>

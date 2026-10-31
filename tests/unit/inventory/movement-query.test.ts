@@ -7,7 +7,7 @@ import { MOVEMENT_MAX_PAGE_SIZE, MOVEMENT_PAGE_SIZE, parseMovementQuery } from "
 const q = (s: string) => parseMovementQuery(new URLSearchParams(s))
 
 test("no filters: defaults", () => {
-    assert.deepEqual(q(""), { warehouseId: null, productId: null, type: null, from: null, to: null, page: 1, pageSize: MOVEMENT_PAGE_SIZE })
+    assert.deepEqual(q(""), { warehouseId: null, productId: null, type: null, reasonCode: null, from: null, to: null, page: 1, pageSize: MOVEMENT_PAGE_SIZE })
 })
 
 test("warehouse, product and type filters", () => {
@@ -16,6 +16,12 @@ test("warehouse, product and type filters", () => {
     assert.equal(r.productId, "p1")
     assert.equal(r.type, "SOLD")
     assert.equal(q("type=NOPE").type, null)
+})
+
+test("the reason filter takes only known reasons", () => {
+    assert.equal(q("reasonCode=DAMAGED").reasonCode, "DAMAGED")
+    assert.equal(q("reasonCode=NOPE").reasonCode, null)
+    assert.equal(q("reasonCode=toString").reasonCode, null)
 })
 
 test("the date range is inclusive: `to` is the start of the next day", () => {

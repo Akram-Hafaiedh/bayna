@@ -25,9 +25,9 @@ test("every movement type has a label and is recognised", () => {
     assert.equal(isMovementType(3), false)
 })
 
-test("only received, adjusted and counted are manual", () => {
-    assert.ok(isManualType("RECEIVED") && isManualType("ADJUSTED") && isManualType("COUNTED"))
-    for (const t of ["SOLD", "RETURNED", "TRANSFER_IN", "TRANSFER_OUT"]) assert.equal(isManualType(t), false)
+test("received, returned, adjusted and counted can be done by hand; sold and transfers cannot", () => {
+    for (const t of ["RECEIVED", "RETURNED", "ADJUSTED", "COUNTED"]) assert.ok(isManualType(t), t)
+    for (const t of ["SOLD", "TRANSFER_IN", "TRANSFER_OUT"]) assert.equal(isManualType(t), false)
 })
 
 test("parseQuantity: whole numbers from 1", () => {

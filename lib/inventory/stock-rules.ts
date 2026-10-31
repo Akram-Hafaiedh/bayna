@@ -7,8 +7,12 @@ import { fail, ok, type Parsed } from "@/lib/shared/parse"
 export const MOVEMENT_TYPES = ["RECEIVED", "SOLD", "ADJUSTED", "RETURNED", "COUNTED", "TRANSFER_IN", "TRANSFER_OUT"] as const
 export type MovementType = (typeof MOVEMENT_TYPES)[number]
 
-/** What a shop may do by hand. SOLD and RETURNED belong to orders, TRANSFER_* to the transfer action. */
-export const MANUAL_TYPES = ["RECEIVED", "ADJUSTED", "COUNTED"] as const
+/**
+ * What a shop may do by hand. RETURNED can be recorded by hand too (an order return that went wrong, a
+ * walk-in return); when orders exist they write the same type with the order attached. SOLD belongs to
+ * orders and TRANSFER_* to the transfer action.
+ */
+export const MANUAL_TYPES = ["RECEIVED", "RETURNED", "ADJUSTED", "COUNTED"] as const
 export type ManualType = (typeof MANUAL_TYPES)[number]
 
 export const MOVEMENT_LABEL: Record<MovementType, string> = {

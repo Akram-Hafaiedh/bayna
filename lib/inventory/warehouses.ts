@@ -61,6 +61,7 @@ export type MovementRow = {
     type: string
     quantity: number
     balanceAfter: number
+    reasonCode: string | null
     reason: string | null
     transferId: string | null
     orderId: string | null
@@ -76,6 +77,7 @@ export async function listMovements(shopId: string, q: MovementQuery): Promise<{
         ...(q.warehouseId ? { warehouseId: q.warehouseId } : {}),
         ...(q.productId ? { productId: q.productId } : {}),
         ...(q.type ? { type: q.type } : {}),
+        ...(q.reasonCode ? { reasonCode: q.reasonCode } : {}),
         ...(q.from || q.to ? { createdAt: { ...(q.from ? { gte: q.from } : {}), ...(q.to ? { lt: q.to } : {}) } } : {}),
     }
     const total = await prisma.stockMovement.count({ where })
@@ -100,6 +102,7 @@ export async function listMovements(shopId: string, q: MovementQuery): Promise<{
                 type: r.type,
                 quantity: r.quantity,
                 balanceAfter: r.balanceAfter,
+                reasonCode: r.reasonCode,
                 reason: r.reason,
                 transferId: r.transferId,
                 orderId: r.orderId,

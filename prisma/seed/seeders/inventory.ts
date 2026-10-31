@@ -64,7 +64,7 @@ export const inventory: Seeder = {
                         .filter((p) => p.stock > 0)
                         .map((p) => ({
                             shopId: shop.id, warehouseId: main!.id, productId: p.id, type: "RECEIVED" as const,
-                            quantity: p.stock, balanceAfter: p.stock, reason: "Opening stock",
+                            quantity: p.stock, balanceAfter: p.stock, reasonCode: "OPENING_STOCK",
                         })),
                 })
                 levels += products.length

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { listWarehouses, listMovements } from "@/lib/inventory/warehouses"
 import { parseMovementQuery, MOVEMENT_MAX_PAGE_SIZE } from "@/lib/inventory/movement-query"
 import { MOVEMENT_LABEL, MOVEMENT_TYPES } from "@/lib/inventory/stock-rules"
+import { REASON_CODES, REASON_LABEL, isReasonCode } from "@/lib/inventory/stock-reasons"
 import Pager from "@/components/ui/Pager"
 
 type Params = Promise<{ publicShopId: string }>
@@ -35,7 +36,7 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
 
     const raw = await searchParams
     const sp = new URLSearchParams()
-    for (const k of ["warehouse", "product", "type", "from", "to", "page", "pageSize"]) {
+    for (const k of ["warehouse", "product", "type", "reasonCode", "from", "to", "page", "pageSize"]) {
         const v = first(raw[k])
         if (v) sp.set(k, v)
     }
@@ -57,7 +58,7 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
     const href = (patch: Record<string, string | number | null>) => {
         const p = new URLSearchParams()
         const current: Record<string, string | number | null> = {
-            warehouse: query.warehouseId, product: query.productId, type: query.type,
+            warehouse: query.warehouseId, product: query.productId, type: query.type, reasonCode: query.reasonCode,
             from: sp.get("from"), to: sp.get("to"), pageSize: query.pageSize === 50 ? null : query.pageSize,
             page: null, ...patch,
         }
@@ -65,7 +66,7 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
         const s = p.toString()
         return s ? `${base}?${s}` : base
     }
-    const filtered = !!(query.warehouseId || query.productId || query.type || query.from || query.to)
+    const filtered = !!(query.warehouseId || query.productId || query.type || query.reasonCode || query.from || query.to)
     const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Tunis" })
 
     return (
@@ -79,6 +80,10 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
                 <select name="type" defaultValue={query.type ?? ""} aria-label="Type" className={selectClass}>
                     <option value="">Every type</option>
                     {MOVEMENT_TYPES.map((t) => <option key={t} value={t}>{MOVEMENT_LABEL[t]}</option>)}
+                </select>
+                <select name="reasonCode" defaultValue={query.reasonCode ?? ""} aria-label="Reason" className={selectClass}>
+                    <option value="">Any reason</option>
+                    {REASON_CODES.map((c) => <option key={c} value={c}>{REASON_LABEL[c]}</option>)}
                 </select>
                 <label className="flex items-center gap-1 text-sm text-zinc-500">From
                     <input type="date" name="from" defaultValue={sp.get("from") ?? ""} className={selectClass} />
@@ -129,7 +134,10 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
                                         <td className="px-4 py-3 text-zinc-700">{MOVEMENT_LABEL[m.type as keyof typeof MOVEMENT_LABEL] ?? m.type}</td>
                                         <td className={`px-4 py-3 text-right font-medium tabular-nums ${m.quantity > 0 ? "text-emerald-700" : "text-red-700"}`}>{m.quantity > 0 ? `+${m.quantity}` : m.quantity}</td>
                                         <td className="px-4 py-3 text-right tabular-nums text-zinc-900">{m.balanceAfter}</td>
-                                        <td className="px-4 py-3 text-zinc-600">{m.reason ?? ""}</td>
+                                        <td className="px-4 py-3 text-zinc-600">
+                                            {m.reasonCode && isReasonCode(m.reasonCode) && <span className="text-zinc-900">{REASON_LABEL[m.reasonCode]}</span>}
+                                            {m.reasonCode && m.reason ? " · " : ""}{m.reason ?? ""}
+                                        </td>
                                         <td className="px-4 py-3 text-zinc-600">{m.by?.name ?? "System"}</td>
                                     </tr>
                                 ))}

@@ -36,7 +36,7 @@ async function main() {
         await prisma.stockLevel.createMany({ data: products.map((p) => ({ productId: p.id, warehouseId, quantity: p.stock })) })
         await prisma.stockMovement.createMany({
             data: products.filter((p) => p.stock > 0).map((p) => ({
-                shopId: shop.id, warehouseId, productId: p.id, type: "RECEIVED" as const, quantity: p.stock, balanceAfter: p.stock, reason: "Opening stock",
+                shopId: shop.id, warehouseId, productId: p.id, type: "RECEIVED" as const, quantity: p.stock, balanceAfter: p.stock, reasonCode: "OPENING_STOCK",
             })),
         })
         levels += products.length

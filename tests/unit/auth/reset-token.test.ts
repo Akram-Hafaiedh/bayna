@@ -1,4 +1,4 @@
-// lib/reset-token.test.ts
+// tests/unit/auth/reset-token.test.ts
 // Run: npm run test:unit
 import { test } from "vitest"
 import assert from "node:assert/strict"

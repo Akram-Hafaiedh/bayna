@@ -271,7 +271,7 @@ model CatalogItem {
 // Created alongside a custom product; on approval the product is linked to the
 // resulting CatalogItem so it joins price comparisons.
 model CatalogSuggestion {
-  id         String @id @default(cuid())
+  id     String @id @default(cuid())
   shopId String
   shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
@@ -378,6 +378,8 @@ model StockMovement {
   type         StockMovementType
   quantity     Int
   balanceAfter Int
+  // Why, as a code (lib/inventory/stock-reasons.ts), and a free-text note; rows from before reasons existed have no code
+  reasonCode   String?
   reason       String?
   transferId   String?
   // The order that caused it, once orders exist (a plain id, like the audit columns)
@@ -402,7 +404,7 @@ enum ProductStatus {
 }
 
 model Product {
-  id         String @id @default(cuid())
+  id     String @id @default(cuid())
   shopId String
   shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
 
@@ -557,7 +559,7 @@ model ActivityLog {
 
   entityType String
   entityId   String?
-  shopId String? // set for shop-scoped records; powers the shop activity feed
+  shopId     String? // set for shop-scoped records; powers the shop activity feed
   action     String
   changes    Json? // [{ field, from, to }] with secrets redacted
   note       String?
@@ -596,8 +598,8 @@ model AccessRole {
   scope       AccessScope // follows the owner, kept for easy queries
   businessId  String?
   business    Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  shopId  String?
-  shop    Shop?       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId      String?
+  shop        Shop?       @relation(fields: [shopId], references: [id], onDelete: Cascade)
   permissions String[]
 
   createdAt   DateTime @default(now())
@@ -624,8 +626,8 @@ model AccessAssignment {
   roleId     String
   role       AccessRole       @relation(fields: [roleId], references: [id], onDelete: Restrict)
   scope      AccessScope
-  shopId String? // the shop, for SHOP scope; null otherwise
-  shop   Shop?            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId     String? // the shop, for SHOP scope; null otherwise
+  shop       Shop?            @relation(fields: [shopId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope; null otherwise
   business   Business?        @relation(fields: [businessId], references: [id], onDelete: Cascade)
   status     AssignmentStatus @default(ACTIVE)
@@ -652,8 +654,8 @@ model AccessAssignment {
 model AccessInvite {
   id         String      @id @default(cuid())
   scope      AccessScope // SHOP or BUSINESS (never PLATFORM)
-  shopId String? // the shop, for SHOP scope
-  shop   Shop?       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopId     String? // the shop, for SHOP scope
+  shop       Shop?       @relation(fields: [shopId], references: [id], onDelete: Cascade)
   businessId String? // the business, for BUSINESS scope
   business   Business?   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   roleId     String
