@@ -198,7 +198,8 @@ SELECT audit_attach('Business');
 SELECT audit_attach('Category');
 SELECT audit_attach('CatalogItem');
 SELECT audit_attach('CatalogSuggestion');
-SELECT audit_attach('Product');
+-- priceTtc is worked out from the price and the taxes: changing it alone (a tax rate changed) writes no log row
+SELECT audit_attach('Product', 'priceTtc');
 SELECT audit_attach('Account', 'expires_at', 'refresh_token,access_token,id_token');
 SELECT audit_attach('PasswordResetToken', '', 'token');
 SELECT audit_attach('LoginSession', 'lastActiveAt');

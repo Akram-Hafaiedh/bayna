@@ -7,6 +7,8 @@ import { withAudit } from "@/lib/audit/run"
 import type { ShopPermission } from "@/lib/access/catalogue"
 import { priceEffect } from "@/lib/products/price-review"
 import { setTotalStock, StockError } from "@/lib/inventory/stock-actions"
+import { PricingError, recomputeProducts, setProductTaxes } from "@/lib/pricing/price-actions"
+import { parseTaxChoice } from "@/lib/pricing/price-rules"
 import {
     parseMinOrderQty,
     parsePrice,
@@ -138,6 +140,18 @@ export async function PATCH(
             data.categoryId = categoryId
         }
 
+        // Which taxes the product carries is part of its price: same permission, and only a real change is checked
+        const taxChoice = parseTaxChoice(body)
+        if (!taxChoice.ok) return bad(taxChoice.error)
+        const carried = new Set((await prisma.productTax.findMany({ where: { productId: id }, select: { taxRateId: true } })).map((t) => t.taxRateId))
+        const wanted = taxChoice.value.taxIds
+        const taxesChanged =
+            (wanted !== undefined && (wanted.length !== carried.size || wanted.some((t) => !carried.has(t)))) ||
+            (taxChoice.value.taxExempt !== undefined && taxChoice.value.taxExempt !== current.taxExempt)
+        if (taxesChanged && !result.guard.can("product.price.edit")) {
+            return bad("You do not have permission to change taxes", 403)
+        }
+
         // Price and stock have their own permissions. Only a real change is checked, so an edit form
         // that resends the unchanged values still works for someone without them.
         if (data.price !== undefined && Number(data.price) !== Number(current.price) && !result.guard.can("product.price.edit")) {
@@ -166,15 +180,25 @@ export async function PATCH(
 
         const product = await withAudit(result.guard.actor, async (tx) => {
             const updated = await tx.product.update({ where: { id }, data })
+            let touched = false
+            if (data.price !== undefined && Number(data.price) !== Number(current.price)) {
+                await recomputeProducts(tx, current.shopId, [id]) // the price with tax follows the price
+                touched = true
+            }
+            if (taxesChanged) {
+                await setProductTaxes(tx, { shopId: current.shopId, productId: id, taxIds: taxChoice.value.taxIds, exempt: taxChoice.value.taxExempt })
+                touched = true
+            }
             if (newStock !== undefined && newStock !== current.stock) {
                 await setTotalStock(tx, { shopId: current.shopId, productId: id, target: newStock })
-                return tx.product.findUniqueOrThrow({ where: { id } })
+                touched = true
             }
-            return updated
+            return touched ? tx.product.findUniqueOrThrow({ where: { id } }) : updated
         })
         return NextResponse.json({ product })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
+        if (error instanceof PricingError) return bad(error.message, error.status)
         console.error("Update product error:", error)
         return bad("Something went wrong", 500)
     }

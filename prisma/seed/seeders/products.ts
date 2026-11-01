@@ -3,6 +3,7 @@
 // not in the catalogue. Prices are INVENTED (the price model below), never market data. Offers are matched by
 // (shop, catalogue item), so running twice updates in place and the ids stay stable.
 import { ProductStatus, Unit } from "../../../app/generated/prisma/enums"
+import { recomputeProducts } from "../../../lib/pricing/price-actions"
 import { SeedError, type Seeder } from "../core"
 import { SHOPS } from "./shops"
 
@@ -150,7 +151,8 @@ export const products: Seeder = {
             const toUpdate = offers.filter((o) => existingByItem.has(o.catalogItemId))
 
             if (toCreate.length > 0) {
-                await prisma.product.createMany({ data: toCreate.map((o) => ({ shopId: shop.id, ...o })) })
+                // No taxes yet, so the price with tax is the price (the taxes seeder works it out when it adds some)
+                await prisma.product.createMany({ data: toCreate.map((o) => ({ shopId: shop.id, ...o, priceTtc: o.price })) })
             }
             // Stock is not rewritten on a re-run: it is the total of the warehouses (npm run seed inventory)
             for (const { stock: _stock, ...o } of toUpdate) {
@@ -180,7 +182,9 @@ export const products: Seeder = {
                 void _customStock
                 await prisma.product.update({ where: { id: existingCustom.id }, data: rest })
             }
-            else await prisma.product.create({ data: { shopId: shop.id, ...custom } })
+            else await prisma.product.create({ data: { shopId: shop.id, ...custom, priceTtc: custom.price } })
+            // A price that was changed by hand and put back by this run must not leave the price with tax behind
+            await prisma.$transaction((tx) => recomputeProducts(tx, shop.id), { timeout: 120_000 })
 
             totalOffers += offers.length
             log(`${p.name}: ${offers.length} catalogue offers + 1 free-form`)

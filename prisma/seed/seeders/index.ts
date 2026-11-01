@@ -10,6 +10,7 @@ import { shops } from "./shops"
 import { access } from "./access"
 import { products } from "./products"
 import { inventory } from "./inventory"
+import { taxes } from "./taxes"
 import { users } from "./users"
 
-export const SEEDERS: Seeder[] = [platform, plans, categories, catalogue, businesses, shops, access, products, inventory, users]
+export const SEEDERS: Seeder[] = [platform, plans, categories, catalogue, businesses, shops, access, products, inventory, taxes, users]

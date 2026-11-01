@@ -173,6 +173,7 @@ model Shop {
   invites           AccessInvite[]
   warehouses        Warehouse[]
   stockMovements    StockMovement[]
+  taxRates          TaxRate[]
 
   @@index([applicantId])
   @@index([businessId])
@@ -403,6 +404,57 @@ enum ProductStatus {
   BLOCKED
 }
 
+enum TaxKind {
+  PERCENTAGE // a percentage of an amount
+  FIXED      // a fixed amount (TND) per unit sold
+}
+
+enum TaxAppliesOn {
+  BASE    // on the price before tax
+  RUNNING // on the price plus the taxes that come before it in the shop's order
+}
+
+// A tax the shop defines (lib/pricing). Taxes apply in `sortOrder`; each line is rounded to the millime.
+model TaxRate {
+  id        String       @id @default(cuid())
+  shopId    String
+  shop      Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name      String
+  kind      TaxKind
+  // A percentage (0 to 100) or an amount in TND; at most 4 decimals
+  value     Decimal      @db.Decimal(12, 4)
+  appliesOn TaxAppliesOn @default(BASE)
+  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
+
+  products ProductTax[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@unique([shopId, name])
+  @@index([shopId, sortOrder])
+}
+
+// Which taxes a product carries
+model ProductTax {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  taxRateId String
+  taxRate   TaxRate @relation(fields: [taxRateId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@unique([productId, taxRateId])
+  @@index([taxRateId])
+}
+
 model Product {
   id     String @id @default(cuid())
   shopId String
@@ -420,7 +472,11 @@ model Product {
   sku         String?
   unit        Unit    @default(PIECE)
 
+  // The price BEFORE tax (HT). What a buyer sees is `priceTtc`, kept in step by lib/pricing (never set it directly).
   price       Decimal       @db.Decimal(12, 3)
+  priceTtc    Decimal       @default(0) @db.Decimal(12, 3)
+  // The shop says this product carries no tax. A product with no taxes that is not marked exempt is "tax to set".
+  taxExempt   Boolean       @default(false)
   stock       Int           @default(0)
   // DRAFT, ACTIVE, HIDDEN or BLOCKED (by the platform team); see lib/product-status.ts
   status      ProductStatus @default(ACTIVE)
@@ -446,6 +502,8 @@ model Product {
   // Stock per warehouse. `stock` above is the total of these, kept in step by lib/inventory (never set it directly).
   stockLevels StockLevel[]
   movements   StockMovement[]
+
+  taxes ProductTax[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

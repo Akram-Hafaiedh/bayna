@@ -8,6 +8,8 @@ import { listProducts } from "@/lib/shops/shop-products"
 import { SHOP_CHOICES } from "@/lib/products/product-status"
 import { limitBlock } from "@/lib/plans/plan-limits"
 import { openingStock, StockError } from "@/lib/inventory/stock-actions"
+import { PricingError, setProductTaxes } from "@/lib/pricing/price-actions"
+import { parseTaxChoice } from "@/lib/pricing/price-rules"
 import { parseProductFilters } from "@/lib/products/product-filters"
 import {
     parseMinOrderQty,
@@ -97,6 +99,12 @@ export async function POST(req: Request) {
         const brand = parseText(body.brand, "Brand", 100)
         const sku = parseText(body.sku, "SKU", 100)
         const price = parsePrice(body.price)
+        const taxChoice = parseTaxChoice(body)
+        if (!taxChoice.ok) return bad(taxChoice.error)
+        // Choosing the taxes of a product is part of its price
+        if ((taxChoice.value.taxIds !== undefined || taxChoice.value.taxExempt !== undefined) && !guard.can("product.price.edit")) {
+            return bad("You do not have permission to set prices and taxes", 403)
+        }
         const stock = parseStock(body.stock)
         const minOrderQty = parseMinOrderQty(body.minOrderQty)
         for (const r of [name, nameAr, description, brand, sku, price, stock, minOrderQty]) {
@@ -171,6 +179,8 @@ export async function POST(req: Request) {
                     sku: sku.ok ? sku.value : null,
                     unit,
                     price: price.ok ? price.value : "0.000",
+                    // No taxes yet, so the price with tax is the price; setProductTaxes below works it out
+                    priceTtc: price.ok ? price.value : "0.000",
                     // Opening stock goes through the ledger below; Product.stock is the total of the warehouses
                     stock: 0,
                     minOrderQty: minOrderQty.ok ? minOrderQty.value : null,
@@ -195,16 +205,22 @@ export async function POST(req: Request) {
                         : {}),
                 },
             })
+            let touched = false
+            if (taxChoice.value.taxIds !== undefined || taxChoice.value.taxExempt !== undefined) {
+                await setProductTaxes(tx, { shopId, productId: created.id, taxIds: taxChoice.value.taxIds, exempt: taxChoice.value.taxExempt })
+                touched = true
+            }
             if (stock.ok && stock.value > 0) {
                 await openingStock(tx, { shopId, productId: created.id, quantity: stock.value })
-                return tx.product.findUniqueOrThrow({ where: { id: created.id } })
+                touched = true
             }
-            return created
+            return touched ? tx.product.findUniqueOrThrow({ where: { id: created.id } }) : created
         })
 
         return NextResponse.json({ product }, { status: 201 })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
+        if (error instanceof PricingError) return bad(error.message, error.status)
         // Unique (shopId, catalogItemId) hit by a concurrent request
         if ((error as { code?: string })?.code === "P2002") {
             return bad("You already list this catalogue item", 409)

@@ -4,6 +4,7 @@
 import type { Prisma } from "@/app/generated/prisma/client"
 import type { ProductStatus, SuggestionStatus, Unit } from "@/app/generated/prisma/enums"
 import { prisma } from "@/lib/prisma"
+import { taxState, type TaxState } from "@/lib/pricing/price-rules"
 import type { ProductFilters } from "@/lib/products/product-filters"
 import { lowStockProductIds } from "@/lib/inventory/inventory-view"
 
@@ -16,6 +17,9 @@ export type ProductRow = {
     sku: string | null
     unit: Unit
     price: string
+    /** The price with tax: what a buyer sees */
+    priceTtc: string
+    taxState: TaxState
     stock: number
     /** At or below the reorder point in a warehouse (set from the Inventory page); false when no point is set */
     low: boolean
@@ -51,6 +55,9 @@ const rowSelect = {
     sku: true,
     unit: true,
     price: true,
+    priceTtc: true,
+    taxExempt: true,
+    taxes: { where: { taxRate: { isActive: true } }, select: { taxRateId: true } },
     stock: true,
     stockLevels: { where: { quantity: { gt: 0 }, warehouse: { archivedAt: null } }, select: { quantity: true, warehouse: { select: { name: true } } } },
     status: true,
@@ -66,9 +73,11 @@ const rowSelect = {
 type RowRecord = Prisma.ProductGetPayload<{ select: typeof rowSelect }>
 
 function toRow(p: RowRecord, low: ReadonlySet<string>): ProductRow {
-    const { stockLevels, ...rest } = p
+    const { stockLevels, taxes, taxExempt, ...rest } = p
     return {
         ...rest,
+        priceTtc: p.priceTtc.toString(),
+        taxState: taxState({ taxExempt, activeTaxCount: taxes.length }),
         low: low.has(p.id),
         warehouses: stockLevels.map((l) => ({ name: l.warehouse.name, quantity: l.quantity })),
         price: p.price.toString(),
@@ -311,6 +320,10 @@ export type ProductDetail = {
     unit: Unit
     categoryId: string | null
     price: string
+    priceTtc: string
+    taxExempt: boolean
+    /** Ids of the taxes the product carries (active or not) */
+    taxIds: string[]
     stock: number
     minOrderQty: number | null
     status: ProductStatus
@@ -339,6 +352,9 @@ export async function getShopProduct(
             unit: true,
             categoryId: true,
             price: true,
+            priceTtc: true,
+            taxExempt: true,
+            taxes: { select: { taxRateId: true } },
             stock: true,
             minOrderQty: true,
             status: true,
@@ -349,7 +365,7 @@ export async function getShopProduct(
             suggestion: { select: { status: true, reviewNote: true } },
         },
     })
-    return p
-        ? { ...p, price: p.price.toString(), priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null }
-        : null
+    if (!p) return null
+    const { taxes, ...rest } = p
+    return { ...rest, taxIds: taxes.map((t) => t.taxRateId), price: p.price.toString(), priceTtc: p.priceTtc.toString(), priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null }
 }
