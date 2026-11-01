@@ -5,6 +5,7 @@ import { getCategoryTree, getShopProduct } from "@/lib/shops/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
 import ConfirmPriceButton from "@/components/shop/ConfirmPriceButton"
 import { shopCan } from "@/lib/access/page"
+import { listTaxes } from "@/lib/pricing/taxes"
 import { prisma } from "@/lib/prisma"
 import { timeAgo } from "@/lib/shared/time-ago"
 import { shopPath } from "@/lib/shops/shop-paths"
@@ -32,11 +33,12 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
     const shop = await requireShopPage(publicShopId)
     if (shop?.status !== "ACTIVE") notFound()
 
-    const [product, categories, perms, warehouseCount] = await Promise.all([
+    const [product, categories, perms, warehouseCount, taxes] = await Promise.all([
         getShopProduct(shop.id, id),
         getCategoryTree(),
         shopCan(shop.id, ["product.price.edit"] as const),
         prisma.warehouse.count({ where: { shopId: shop.id, archivedAt: null } }),
+        listTaxes(shop.id),
     ])
     if (!product) notFound()
 
@@ -75,6 +77,8 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
                 mode="edit"
                 categories={categories}
                 product={product}
+                taxes={taxes}
+                canEditTaxes={perms["product.price.edit"]}
                 stockManagedAt={warehouseCount > 1 ? `${shopPath(publicShopId, "inventory")}?q=${encodeURIComponent(product.name)}` : undefined}
             />
         </div>

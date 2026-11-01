@@ -57,7 +57,7 @@ export default function ProductsToolbar({
     function clearAll() {
         setQ("")
         setPushedQ("")
-        go({ q: "", categoryId: null, status: "all", stock: "all", linked: "all", review: "all", unit: null })
+        go({ q: "", categoryId: null, status: "all", stock: "all", linked: "all", review: "all", tax: "all", unit: null })
     }
 
     return (
@@ -121,6 +121,16 @@ export default function ProductsToolbar({
                     <option value="all">Any stock</option>
                     <option value="low">Low stock</option>
                     <option value="out">Out of stock</option>
+                </select>
+
+                <select
+                    aria-label="Tax"
+                    value={filters.tax}
+                    onChange={(e) => go({ tax: e.target.value as ProductFilters["tax"] })}
+                    className={selectClass}
+                >
+                    <option value="all">Any tax</option>
+                    <option value="unset">Tax to set</option>
                 </select>
 
                 <select

@@ -88,7 +88,7 @@ export function OfferFields({
     return (
         <Section title="Your offer" description="What you charge and have in stock.">
             <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Price (TND)" required>
+                <Field label="Price before tax (TND)" required>
                     <input
                         required
                         type="number"

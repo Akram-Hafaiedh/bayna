@@ -125,6 +125,10 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
             href: buildProductsHref(filters, { review: filters.review === "yes" ? "all" : "yes" })
         },
         {
+            label: "Tax to set", count: stats.taxToSet, active: filters.tax === "unset",
+            href: buildProductsHref(filters, { tax: filters.tax === "unset" ? "all" : "unset" })
+        },
+        {
             label: "Out of stock", count: stats.outOfStock, active: filters.stock === "out",
             href: buildProductsHref(filters, { stock: filters.stock === "out" ? "all" : "out" })
         },

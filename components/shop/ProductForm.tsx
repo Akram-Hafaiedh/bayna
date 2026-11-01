@@ -18,6 +18,8 @@ import {
 } from "./ProductFormParts"
 import { shopFetch } from "@/lib/shops/shop-fetch"
 import { useShopHref } from "@/lib/shops/use-shop"
+import type { TaxRow } from "@/lib/pricing/taxes"
+import TaxFields, { type TaxFormValue } from "./TaxFields"
 
 const EMPTY: FormValues = {
     name: "",
@@ -65,12 +67,18 @@ export default function ProductForm({
     categories,
     product,
     stockManagedAt,
+    taxes,
+    canEditTaxes,
 }: {
     mode: "create" | "edit"
     categories: CategoryTree[]
     product?: ProductDetail
     /** The Inventory page of this product, when its stock is in several warehouses */
     stockManagedAt?: string
+    /** The shop's taxes, in the order they apply */
+    taxes: TaxRow[]
+    /** Choosing taxes is part of the price: needs product.price.edit */
+    canEditTaxes: boolean
 }) {
     const router = useRouter()
     const shopHref = useShopHref()
@@ -82,6 +90,7 @@ export default function ProductForm({
     const [source, setSource] = useState<Source>(
         mode === "edit" && !product?.catalogItem ? "custom" : "catalogue"
     )
+    const [tax, setTax] = useState<TaxFormValue>({ taxIds: product?.taxIds ?? [], taxExempt: product?.taxExempt ?? false })
     const [suggest, setSuggest] = useState(true)
     const [suggestNote, setSuggestNote] = useState("")
     const [error, setError] = useState("")
@@ -136,10 +145,22 @@ export default function ProductForm({
         setLoading(true)
         try {
             const isEdit = mode === "edit" && product
+            // Taxes go with the price. Without the right to change prices nothing about them is sent, so the
+            // rest of the form still saves. A new product sends them only when something was chosen.
+            const taxPayload = !canEditTaxes
+                ? {}
+                : isEdit
+                    ? { taxIds: tax.taxExempt ? [] : tax.taxIds, taxExempt: tax.taxExempt }
+                    : tax.taxExempt
+                        ? { taxExempt: true }
+                        : tax.taxIds.length > 0
+                            ? { taxIds: tax.taxIds }
+                            : {}
             const payload = isEdit
-                ? form
+                ? { ...form, ...taxPayload }
                 : {
                     ...form,
+                    ...taxPayload,
                     catalogItemId: catalog?.id,
                     ...(source === "custom" && suggest
                         ? { suggestToCatalogue: true, suggestionNote: suggestNote }
@@ -222,6 +243,7 @@ export default function ProductForm({
                         }
                     />
                     <OfferFields form={form} set={set} stockManagedAt={stockManagedAt} />
+                    <TaxFields taxes={taxes} value={tax} onChange={setTax} price={form.price} canEdit={canEditTaxes} />
                     <Section title="Details" description="Optional. Shown with your offer.">
                         <Field label="Description">
                             <textarea
@@ -239,6 +261,7 @@ export default function ProductForm({
                 <>
                     <CustomFields form={form} set={set} categories={categories} />
                     <OfferFields form={form} set={set} stockManagedAt={stockManagedAt} />
+                    <TaxFields taxes={taxes} value={tax} onChange={setTax} price={form.price} canEdit={canEditTaxes} />
                     {mode === "create" && (
                         <SuggestBox
                             checked={suggest}

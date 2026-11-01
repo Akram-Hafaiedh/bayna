@@ -2,6 +2,8 @@ import { Suspense } from "react"
 import { requireShopPage } from "@/lib/shops/shop-auth"
 import { getCategoryTree } from "@/lib/shops/shop-products"
 import ProductForm from "@/components/shop/ProductForm"
+import { shopCan } from "@/lib/access/page"
+import { listTaxes } from "@/lib/pricing/taxes"
 
 export default function NewProductPage({ params }: { params: Promise<{ publicShopId: string }> }) {
     return (
@@ -33,6 +35,10 @@ async function NewProductContent({ params }: { params: Promise<{ publicShopId: s
             </div>
         )
     }
-    const categories = await getCategoryTree()
-    return <ProductForm mode="create" categories={categories} />
+    const [categories, taxes, perms] = await Promise.all([
+        getCategoryTree(),
+        listTaxes(shop.id),
+        shopCan(shop.id, ["product.price.edit"] as const),
+    ])
+    return <ProductForm mode="create" categories={categories} taxes={taxes} canEditTaxes={perms["product.price.edit"]} />
 }

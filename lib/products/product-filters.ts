@@ -13,6 +13,8 @@ export type StockFilter = "all" | "low" | "out"
 export type LinkedFilter = "all" | "yes" | "no"
 /** "yes" = only products whose price is waiting for the shop to confirm it */
 export type ReviewFilter = "all" | "yes"
+/** "unset" = only products with no tax chosen and not marked exempt ("tax to set") */
+export type TaxFilter = "all" | "unset"
 
 export type ProductFilters = {
     q: string
@@ -21,6 +23,7 @@ export type ProductFilters = {
     stock: StockFilter
     linked: LinkedFilter
     review: ReviewFilter
+    tax: TaxFilter
     unit: Unit | null
     sort: SortKey
     dir: "asc" | "desc"
@@ -65,6 +68,7 @@ export function parseProductFilters(raw: RawParams): ProductFilters {
         stock: oneOf(pick(raw, "stock"), ["all", "low", "out"] as const, "all"),
         linked: oneOf(pick(raw, "linked"), ["all", "yes", "no"] as const, "all"),
         review: oneOf(pick(raw, "review"), ["all", "yes"] as const, "all"),
+        tax: oneOf(pick(raw, "tax"), ["all", "unset"] as const, "all"),
         unit: unit && (Object.values(Unit) as string[]).includes(unit) ? (unit as Unit) : null,
         sort,
         dir: oneOf(pick(raw, "dir"), ["asc", "desc"] as const, defaultDir(sort)),
@@ -91,6 +95,7 @@ export function buildProductsHref(
     if (next.stock !== "all") p.set("stock", next.stock)
     if (next.linked !== "all") p.set("linked", next.linked)
     if (next.review !== "all") p.set("review", next.review)
+    if (next.tax !== "all") p.set("tax", next.tax)
     if (next.unit) p.set("unit", next.unit)
     if (next.sort !== "updatedAt") p.set("sort", next.sort)
     if (next.dir !== defaultDir(next.sort)) p.set("dir", next.dir)
@@ -105,6 +110,6 @@ export function buildProductsHref(
 
 export function hasActiveFilters(f: ProductFilters): boolean {
     return Boolean(
-        f.q || f.categoryId || f.unit || f.status !== "all" || f.stock !== "all" || f.linked !== "all" || f.review !== "all"
+        f.q || f.categoryId || f.unit || f.status !== "all" || f.stock !== "all" || f.linked !== "all" || f.review !== "all" || f.tax !== "all"
     )
 }

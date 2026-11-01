@@ -86,7 +86,7 @@ lib/                     # grouped by domain; the folder says where a rule lives
   ├── shops/             # shop input, status, list, paths, products
   ├── businesses/        # business (company) input and choice
   ├── inventory/         # warehouses, stock levels, the movement ledger (only this folder writes Product.stock); the screens are in components/inventory/
-  ├── pricing/           # taxes and the price with tax (computePrice is the only place that does the arithmetic; only this folder writes Product.priceTtc)
+  ├── pricing/           # taxes and the price with tax (computePrice is the only place that does the arithmetic; only this folder writes Product.priceTtc) ; the screens are in components/pricing/
   ├── products/          # product input, status, filters, restore, price review
   ├── catalogue/         # catalogue and category input, units
   ├── plans/             # plans, limits, assignment, prices

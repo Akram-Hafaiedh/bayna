@@ -70,7 +70,7 @@ export default function ProductsTable({
                         <th scope="col" className="hidden px-4 py-3 font-medium lg:table-cell">
                             Category
                         </th>
-                        <SortHeader label="Price" sortKey="price" filters={filters} />
+                        <SortHeader label="Price (before tax)" sortKey="price" filters={filters} />
                         <SortHeader label="Stock" sortKey="stock" filters={filters} />
                         <th scope="col" className="hidden px-4 py-3 font-medium md:table-cell">
                             Status
@@ -122,6 +122,16 @@ export default function ProductsTable({
                                         {Number(p.price).toFixed(3)} TND
                                         <span className="text-xs text-zinc-400"> / {UNIT_LABELS[p.unit]}</span>
                                     </InlineEdit>
+                                    <div className="text-xs text-zinc-500">
+                                        {p.taxState === "UNSET" ? (
+                                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800">Tax to set</span>
+                                        ) : (
+                                            <>
+                                                {Number(p.priceTtc).toFixed(3)} TND with tax
+                                                {p.taxState === "EXEMPT" && <span className="text-zinc-400"> · exempt</span>}
+                                            </>
+                                        )}
+                                    </div>
                                     {p.minOrderQty && (
                                         <div className="text-xs text-zinc-400">min. {p.minOrderQty}</div>
                                     )}

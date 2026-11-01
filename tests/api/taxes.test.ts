@@ -9,6 +9,8 @@ import { PATCH as updateTax, DELETE as deleteTax } from "@/app/api/shop/taxes/[i
 import { PATCH as reorderTaxes } from "@/app/api/shop/taxes/reorder/route"
 import { POST as createProduct } from "@/app/api/shop/products/route"
 import { PATCH as updateProduct } from "@/app/api/shop/products/[id]/route"
+import { getProductStats, listProducts } from "@/lib/shops/shop-products"
+import { parseProductFilters } from "@/lib/products/product-filters"
 import { SHOP_NAMES } from "@/prisma/seed/seeders/users"
 import { SHOP_HEADER } from "@/lib/shops/shop-paths"
 import { call, cleanUp, demo, prisma, purgeTestProducts, signInAs, signOut } from "./helpers"
@@ -199,5 +201,41 @@ describe("the price with tax follows the taxes", () => {
         await signInAs(demo("viewer"))
         const res = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxIds: [t] } })
         expect([403, 404]).toContain(res.status)
+    })
+})
+
+describe("tax to set", () => {
+    const unset = async () => (await listProducts(marsa.id, parseProductFilters(new URLSearchParams("tax=unset&q=api-test-&pageSize=100")))).items.map((p) => p.id)
+
+    test("a product with no tax chosen is listed, one with a tax or marked exempt is not", async () => {
+        const t = await aTax()
+        const none = await aProduct(10)
+        const taxed = await aProduct(10, { taxIds: [t] })
+        const exempt = await aProduct(10, { taxExempt: true })
+        const ids = await unset()
+        expect(ids).toContain(none)
+        expect(ids).not.toContain(taxed)
+        expect(ids).not.toContain(exempt)
+        const rows = (await listProducts(marsa.id, parseProductFilters(new URLSearchParams("q=api-test-&pageSize=100")))).items
+        const state = (id: string) => rows.find((r) => r.id === id)?.taxState
+        expect([state(none), state(taxed), state(exempt)]).toEqual(["UNSET", "TAXED", "EXEMPT"])
+    })
+
+    test("a product whose only tax is switched off is to set again, and the count follows", async () => {
+        const t = await aTax()
+        const p = await aProduct(10, { taxIds: [t] })
+        const before = (await getProductStats(marsa.id)).taxToSet
+        expect(await unset()).not.toContain(p)
+        await call(updateTax, { method: "PATCH", headers: asMarsa(), ...params(t), body: { isActive: false } })
+        expect(await unset()).toContain(p)
+        expect((await getProductStats(marsa.id)).taxToSet).toBe(before + 1)
+    })
+
+    test("leaving exempt with no tax makes it to set; the form sends both fields to do that", async () => {
+        const p = await aProduct(10, { taxExempt: true })
+        expect(await unset()).not.toContain(p)
+        const res = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxIds: [], taxExempt: false } })
+        expect(res.status).toBe(200)
+        expect(await unset()).toContain(p)
     })
 })

@@ -101,6 +101,9 @@ function searchClauses(q: string): Prisma.ProductWhereInput[] {
         }))
 }
 
+/** No active tax and not marked exempt: the shop has not said yet whether this product is taxed (see taxState) */
+const TAX_TO_SET = { taxExempt: false, taxes: { none: { taxRate: { isActive: true } } } } satisfies Prisma.ProductWhereInput
+
 async function buildWhere(
     shopId: string,
     f: ProductFilters
@@ -125,6 +128,7 @@ async function buildWhere(
     if (f.linked === "yes") and.push({ catalogItemId: { not: null } })
     if (f.linked === "no") and.push({ catalogItemId: null })
     if (f.review === "yes") and.push({ needsPriceReview: true })
+    if (f.tax === "unset") and.push(TAX_TO_SET)
 
     if (f.unit) and.push({ unit: f.unit })
 
@@ -165,13 +169,18 @@ export type ProductStats = {
     lowStock: number
     outOfStock: number
     needsReview: number
+    /** Products with no tax chosen and not marked exempt */
+    taxToSet: number
     /** Products in the trash */
     trashed: number
 }
 
+/** Products with no tax chosen and not marked exempt */
+export const countTaxToSet = (shopId: string) => prisma.product.count({ where: { shopId, deletedAt: null, ...TAX_TO_SET } })
+
 export async function getProductStats(shopId: string): Promise<ProductStats> {
     const live = { shopId, deletedAt: null }
-    const [total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed] = await Promise.all([
+    const [total, hidden, draft, blocked, lowStock, outOfStock, needsReview, taxToSet, trashed] = await Promise.all([
         prisma.product.count({ where: live }),
         prisma.product.count({ where: { ...live, status: "HIDDEN" } }),
         prisma.product.count({ where: { ...live, status: "DRAFT" } }),
@@ -179,9 +188,10 @@ export async function getProductStats(shopId: string): Promise<ProductStats> {
         lowStockProductIds(shopId, null).then((ids) => ids.length),
         prisma.product.count({ where: { ...live, stock: { lte: 0 } } }),
         prisma.product.count({ where: { ...live, needsPriceReview: true } }),
+        prisma.product.count({ where: { ...live, ...TAX_TO_SET } }),
         prisma.product.count({ where: { shopId, deletedAt: { not: null } } }),
     ])
-    return { total, hidden, draft, blocked, lowStock, outOfStock, needsReview, trashed }
+    return { total, hidden, draft, blocked, lowStock, outOfStock, needsReview, taxToSet, trashed }
 }
 
 // ---------------------------------------------------------------------------
