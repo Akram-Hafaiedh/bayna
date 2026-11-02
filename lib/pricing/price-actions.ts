@@ -7,6 +7,7 @@
 // below do it themselves.
 import type { Tx } from "@/lib/audit/run"
 import { computePrice, type TaxData, type TaxInput } from "@/lib/pricing/price-rules"
+import { recordPriceHistory } from "@/lib/pricing/price-history"
 
 /** A refusal the person can fix. The API turns it into a response with this status. */
 export class PricingError extends Error {
@@ -31,6 +32,7 @@ async function activeTaxes(tx: Tx, shopId: string): Promise<TaxInput[]> {
 /**
  * Work out and store the price with tax of some products of a shop (all of them when no ids are given).
  * Returns how many rows changed. Products in the Trash are kept in step too, so a restore needs nothing.
+ * Also adds the price history rows (lib/pricing/price-history.ts), so a change made through here is always recorded.
  */
 export async function recomputeProducts(tx: Tx, shopId: string, productIds?: string[]): Promise<number> {
     if (productIds && productIds.length === 0) return 0
@@ -49,6 +51,8 @@ export async function recomputeProducts(tx: Tx, shopId: string, productIds?: str
             changed++
         }
     }
+    // The price history follows: a row for each product whose price or price with tax now differs from its last row
+    await recordPriceHistory(tx, shopId, productIds)
     return changed
 }
 

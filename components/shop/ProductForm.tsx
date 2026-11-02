@@ -145,7 +145,7 @@ export default function ProductForm({
         setLoading(true)
         try {
             const isEdit = mode === "edit" && product
-            // Taxes go with the price. Without the right to change prices nothing about them is sent, so the
+            // Taxes go with the price. Without permission to change prices nothing about them is sent, so the
             // rest of the form still saves. A new product sends them only when something was chosen.
             const taxPayload = !canEditTaxes
                 ? {}

@@ -195,7 +195,7 @@ describe("the price with tax follows the taxes", () => {
         }
     })
 
-    test("someone without price rights cannot change taxes", async () => {
+    test("someone without permission to set prices cannot change taxes", async () => {
         const t = await aTax()
         const p = await aProduct(10)
         await signInAs(demo("viewer"))

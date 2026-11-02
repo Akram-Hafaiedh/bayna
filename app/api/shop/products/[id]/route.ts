@@ -181,8 +181,9 @@ export async function PATCH(
         const product = await withAudit(result.guard.actor, async (tx) => {
             const updated = await tx.product.update({ where: { id }, data })
             let touched = false
-            if (data.price !== undefined && Number(data.price) !== Number(current.price)) {
-                await recomputeProducts(tx, current.shopId, [id]) // the price with tax follows the price
+            // The price with tax follows the price; a tax change below does the same work, so one change is one history row
+            if (data.price !== undefined && Number(data.price) !== Number(current.price) && !taxesChanged) {
+                await recomputeProducts(tx, current.shopId, [id])
                 touched = true
             }
             if (taxesChanged) {

@@ -1,11 +1,24 @@
 "use client"
 // components/ui/RowMenu.tsx
 // The "..." menu of a list row: the less common actions, out of the way. An item is a button
-// (onClick) or a link (href). Shared by the team lists and the shops list.
+// (onClick) or a link (href), or it opens a submenu (children, one level). Shared by the team lists, the
+// shops list and the products list.
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 
-export type RowMenuItem = { label: string; onClick?: () => void; href?: string; danger?: boolean }
+export type RowMenuItem = {
+    label: string
+    onClick?: () => void
+    href?: string
+    danger?: boolean
+    /** A line above this item, to group the menu */
+    divider?: boolean
+    /** Marks the current choice in a submenu (a tick) */
+    checked?: boolean
+    disabled?: boolean
+    /** Opens a submenu to the left instead of acting. One level only */
+    children?: RowMenuItem[]
+}
 
 export default function RowMenu({
     label,
@@ -20,6 +33,7 @@ export default function RowMenu({
     buttonLabel?: string
 }) {
     const [open, setOpen] = useState(false)
+    const [sub, setSub] = useState<string | null>(null) // the label of the open submenu
     // Where the menu sits on screen. It is positioned against the window (not the row), so a table that
     // scrolls sideways or a card with hidden overflow cannot clip it or grow a scrollbar around it.
     const [pos, setPos] = useState<{ top: number; right: number } | null>(null)
@@ -33,6 +47,7 @@ export default function RowMenu({
             const flip = r.bottom + 4 + height > window.innerHeight && r.top - 4 - height > 0
             setPos({ top: flip ? r.top - 4 - height : r.bottom + 4, right: window.innerWidth - r.right })
         }
+        setSub(null)
         setOpen(true)
     }
     useEffect(() => {
@@ -87,27 +102,77 @@ export default function RowMenu({
                 <div
                     role="menu"
                     style={{ position: "fixed", top: pos.top, right: pos.right }}
-                    className="z-50 w-44 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
+                    className="z-50 w-44 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
                 >
                     {items.map((item) => {
-                        const cls = `block w-full px-3.5 py-2 text-left text-sm hover:bg-zinc-50 ${item.danger ? "text-red-600" : "text-zinc-800"}`
-                        return item.href ? (
-                            <Link key={item.label} href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cls}>
-                                {item.label}
-                            </Link>
-                        ) : (
-                            <button
-                                key={item.label}
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                    setOpen(false)
-                                    item.onClick?.()
-                                }}
-                                className={cls}
-                            >
-                                {item.label}
-                            </button>
+                        const cls = `flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left text-sm hover:bg-zinc-50 disabled:opacity-40 disabled:hover:bg-transparent ${item.danger ? "text-red-600" : "text-zinc-800"}`
+                        const line = item.divider ? <div role="separator" className="my-1 border-t border-zinc-100" /> : null
+                        if (item.children && item.children.length > 0) {
+                            const shown = sub === item.label
+                            return (
+                                <div key={item.label} className="relative" onMouseEnter={() => setSub(item.label)} onMouseLeave={() => setSub((s) => (s === item.label ? null : s))}>
+                                    {line}
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        aria-haspopup="menu"
+                                        aria-expanded={shown}
+                                        disabled={item.disabled}
+                                        onClick={() => setSub(shown ? null : item.label)}
+                                        className={cls}
+                                    >
+                                        {item.label}
+                                        <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                            <path d="M12 5l-5 5 5 5" />
+                                        </svg>
+                                    </button>
+                                    {shown && (
+                                        // Opens to the left: the menu sits at the right edge of the screen
+                                        <div role="menu" aria-label={item.label} className="absolute right-full top-0 z-50 mr-1 w-40 rounded-xl border border-zinc-200 bg-white py-1 shadow-lg">
+                                            {item.children.map((c) => (
+                                                <button
+                                                    key={c.label}
+                                                    type="button"
+                                                    role="menuitemradio"
+                                                    aria-checked={!!c.checked}
+                                                    disabled={c.disabled || c.checked}
+                                                    onClick={() => {
+                                                        setOpen(false)
+                                                        c.onClick?.()
+                                                    }}
+                                                    className="flex w-full items-center justify-between gap-2 px-3.5 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-50 disabled:hover:bg-transparent disabled:opacity-60"
+                                                >
+                                                    {c.label}
+                                                    {c.checked && <span aria-hidden className="text-xs text-zinc-500">✓</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+                        return (
+                            <div key={item.label}>
+                                {line}
+                                {item.href ? (
+                                    <Link href={item.href} role="menuitem" onClick={() => setOpen(false)} className={cls}>
+                                        {item.label}
+                                    </Link>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={item.disabled}
+                                        onClick={() => {
+                                            setOpen(false)
+                                            item.onClick?.()
+                                        }}
+                                        className={cls}
+                                    >
+                                        {item.label}
+                                    </button>
+                                )}
+                            </div>
                         )
                     })}
                 </div>

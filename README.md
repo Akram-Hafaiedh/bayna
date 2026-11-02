@@ -101,7 +101,7 @@ proxy.ts                 # Route protection (auth + role gates)
 prisma/
   ├── schema.prisma
   ├── audit.sql          # audit triggers (added to the baseline migration)
-  ├── sql/               # other SQL Prisma cannot express (inventory.sql: constraints, append-only ledger; pricing.sql: tax checks, audit, backfill); added to the baseline and to the migration that creates those tables
+  ├── sql/               # other SQL Prisma cannot express (inventory.sql: constraints, append-only ledger; pricing.sql: tax checks, audit, backfill; price-history.sql: append-only price history); added to the baseline and to the migration that creates those tables
   ├── seed/              # Main seeder (index.ts) + one seeder per kind of data (one file per seeder in seeders/, each with its own data)
   └── migrations/
 types/

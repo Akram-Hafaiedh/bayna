@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireShopPage } from "@/lib/shops/shop-auth"
 import { getCategoryTree, getShopProduct } from "@/lib/shops/shop-products"
@@ -54,6 +55,8 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
                 <p className="text-xs text-zinc-500">
                     Last changed {timeAgo(stamp.updatedAt)}
                     {changer ? ` by ${changer.name || changer.email}` : stamp.updatedById ? "" : " (no person recorded)"}
+                    {" · "}
+                    <Link href={`${shopPath(publicShopId, "products")}/${product.id}/history`} className="underline hover:text-zinc-700">Price history</Link>
                 </p>
             )}
             {product.needsPriceReview && (

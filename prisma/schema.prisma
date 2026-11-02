@@ -174,6 +174,7 @@ model Shop {
   warehouses        Warehouse[]
   stockMovements    StockMovement[]
   taxRates          TaxRate[]
+  priceHistory      PriceHistory[]
 
   @@index([applicantId])
   @@index([businessId])
@@ -438,6 +439,30 @@ model TaxRate {
   @@index([shopId, sortOrder])
 }
 
+// The price of a product over time: a row each time its price before tax or its price with tax changes
+// (lib/pricing/price-history.ts writes them, in the same transaction as the change). Append-only
+// (prisma/sql/price-history.sql); read it, never edit it.
+model PriceHistory {
+  id        String  @id @default(dbgenerated("(gen_random_uuid())::text"))
+  shopId    String
+  shop      Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Price before tax (HT) and price with tax (TTC) after the change
+  price     Decimal @db.Decimal(12, 3)
+  priceTtc  Decimal @db.Decimal(12, 3)
+  // INITIAL (the first price), PRICE (the price changed) or TAX (only the price with tax changed)
+  reason    String
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  updatedById String?
+
+  @@index([productId, createdAt])
+  @@index([shopId, createdAt])
+}
+
 // Which taxes a product carries
 model ProductTax {
   id        String  @id @default(cuid())
@@ -504,6 +529,7 @@ model Product {
   movements   StockMovement[]
 
   taxes ProductTax[]
+  priceHistory PriceHistory[]
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

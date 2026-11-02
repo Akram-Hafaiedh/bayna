@@ -92,7 +92,7 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
         listProducts(shop.id, filters),
         getProductStats(shop.id),
         getFilterCategories(shop.id),
-        shopCan(shop.id, ["product.price.edit", "product.stock.edit"] as const),
+        shopCan(shop.id, ["product.price.edit", "product.stock.edit", "product.listing.edit", "product.listing.create", "product.listing.delete"] as const),
         prisma.warehouse.count({ where: { shopId: shop.id, archivedAt: null } }),
     ])
 
@@ -220,6 +220,11 @@ async function ProductsContent({ params, searchParams }: { params: Params; searc
                         canEditStock={perms["product.stock.edit"]}
                         stockPerWarehouse={warehouseCount > 1}
                         shopBase={base}
+                        actions={{
+                            edit: perms["product.listing.edit"],
+                            clone: perms["product.listing.create"] && perms["product.price.edit"],
+                            remove: perms["product.listing.delete"],
+                        }}
                     />
                     <Pagination
                         filters={filters}

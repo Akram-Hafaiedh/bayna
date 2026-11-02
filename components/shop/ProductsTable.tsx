@@ -9,7 +9,7 @@ import {
 import { UNIT_LABELS } from "@/lib/catalogue/units"
 import { timeAgo } from "@/lib/shared/time-ago"
 import { PRODUCT_STATUS_LABEL } from "@/lib/products/product-status"
-import DeleteProductButton from "./DeleteProductButton"
+import ProductRowActions, { type ProductActions } from "./ProductRowActions"
 import InlineEdit from "./InlineEdit"
 
 function SortHeader({
@@ -51,6 +51,7 @@ export default function ProductsTable({
     canEditStock,
     stockPerWarehouse,
     shopBase,
+    actions,
 }: {
     /** the shop's address, "/shop/<publicShopId>" */
     shopBase: string
@@ -60,6 +61,8 @@ export default function ProductsTable({
     canEditStock: boolean
     /** With several warehouses the total cannot be typed over: stock is changed per warehouse on the Inventory page */
     stockPerWarehouse: boolean
+    /** Which actions the row menu offers: what the person may do */
+    actions: ProductActions
 }) {
     return (
         <div className="overflow-x-auto rounded-xl border border-zinc-200 bg-white">
@@ -177,14 +180,8 @@ export default function ProductsTable({
                                     </span>
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                                    <div className="flex items-center justify-end gap-4">
-                                        <Link
-                                            href={`${shopBase}/products/${p.id}/edit`}
-                                            className="text-sm text-zinc-600 hover:text-zinc-900"
-                                        >
-                                            Edit
-                                        </Link>
-                                        <DeleteProductButton id={p.id} name={p.name} />
+                                    <div className="flex justify-end">
+                                        <ProductRowActions id={p.id} name={p.name} status={p.status} shopBase={shopBase} actions={actions} />
                                     </div>
                                 </td>
                             </tr>

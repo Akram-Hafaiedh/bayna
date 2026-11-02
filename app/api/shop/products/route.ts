@@ -9,6 +9,7 @@ import { SHOP_CHOICES } from "@/lib/products/product-status"
 import { limitBlock } from "@/lib/plans/plan-limits"
 import { openingStock, StockError } from "@/lib/inventory/stock-actions"
 import { PricingError, setProductTaxes } from "@/lib/pricing/price-actions"
+import { recordPriceHistory } from "@/lib/pricing/price-history"
 import { parseTaxChoice } from "@/lib/pricing/price-rules"
 import { parseProductFilters } from "@/lib/products/product-filters"
 import {
@@ -210,6 +211,8 @@ export async function POST(req: Request) {
                 await setProductTaxes(tx, { shopId, productId: created.id, taxIds: taxChoice.value.taxIds, exempt: taxChoice.value.taxExempt })
                 touched = true
             }
+            // The first price, with the price with tax the taxes above give it: one row, not an untaxed one then a taxed one
+            await recordPriceHistory(tx, shopId, [created.id])
             if (stock.ok && stock.value > 0) {
                 await openingStock(tx, { shopId, productId: created.id, quantity: stock.value })
                 touched = true
