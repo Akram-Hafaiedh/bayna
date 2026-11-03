@@ -24,11 +24,12 @@ import { call, cleanUp, demo, prisma, purgeTestProducts, purgeTestWarehouses, si
 
 const OWNER = "carthage@demo.bayna.test"
 let marsa = { id: "", publicShopId: "" }
-let main = { id: "" } // the default warehouse of the shop
+let main = { id: "", publicWarehouseId: "" } // the default warehouse of the shop
 
 beforeAll(async () => {
     marsa = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES.marsa }, select: { id: true, publicShopId: true } })
-    main = await prisma.$transaction((tx) => ensureDefaultWarehouse(tx, marsa.id))
+    const made = await prisma.$transaction((tx) => ensureDefaultWarehouse(tx, marsa.id))
+    main = await prisma.warehouse.findUniqueOrThrow({ where: { id: made.id }, select: { id: true, publicWarehouseId: true } })
 })
 
 afterEach(async () => {
@@ -61,9 +62,10 @@ async function aProduct(stock = 10) {
     return (res.json?.product as { id: string }).id
 }
 
+// Ids in these tests are public ids, as the routes give and take them; the database ids stay in here
 const level = async (productId: string, warehouseId: string) =>
-    (await prisma.stockLevel.findUnique({ where: { productId_warehouseId: { productId, warehouseId } } }))?.quantity ?? 0
-const total = async (productId: string) => (await prisma.product.findUniqueOrThrow({ where: { id: productId } })).stock
+    (await prisma.stockLevel.findFirst({ where: { product: { publicProductId: productId }, warehouse: { publicWarehouseId: warehouseId } } }))?.quantity ?? 0
+const total = async (productId: string) => (await prisma.product.findUniqueOrThrow({ where: { publicProductId: productId } })).stock
 
 describe("warehouses", () => {
     test("the list needs someone who works in the shop; a viewer may read it", async () => {
@@ -82,10 +84,10 @@ describe("warehouses", () => {
         await signInAs(demo("viewer"))
         expect((await call(createWarehouse, { headers: asMarsa(), body: place() })).status).toBe(403)
         const id = await aWarehouse()
-        const row = await prisma.warehouse.findUniqueOrThrow({ where: { id } })
+        const row = await prisma.warehouse.findUniqueOrThrow({ where: { publicWarehouseId: id } })
         expect(row).toMatchObject({ shopId: marsa.id, isDefault: false, archivedAt: null })
         expect(row.latitude).not.toBeNull() // the governorate centre
-        expect(await prisma.activityLog.count({ where: { entityType: "Warehouse", entityId: id, action: "CREATE" } })).toBe(1)
+        expect(await prisma.activityLog.count({ where: { entityType: "Warehouse", entityId: row.id, action: "CREATE" } })).toBe(1)
     })
 
     test("bad fields are a 400", async () => {
@@ -100,22 +102,22 @@ describe("warehouses", () => {
         const res = await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(id), body: { makeDefault: true } })
         expect(res.status).toBe(200)
         const rows = await prisma.warehouse.findMany({ where: { shopId: marsa.id, isDefault: true, archivedAt: null } })
-        expect(rows.map((w) => w.id)).toEqual([id])
+        expect(rows.map((w) => w.publicWarehouseId)).toEqual([id])
         // give it back, so the other tests find the default where they expect it
-        await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(main.id), body: { makeDefault: true } })
-        expect((await prisma.warehouse.findUniqueOrThrow({ where: { id: main.id } })).isDefault).toBe(true)
+        await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(main.publicWarehouseId), body: { makeDefault: true } })
+        expect((await prisma.warehouse.findUniqueOrThrow({ where: { publicWarehouseId: main.publicWarehouseId } })).isDefault).toBe(true)
     })
 
     test("the database itself refuses a second default", async () => {
         const id = await aWarehouse()
-        await expect(prisma.warehouse.update({ where: { id }, data: { isDefault: true } })).rejects.toThrow()
+        await expect(prisma.warehouse.update({ where: { publicWarehouseId: id }, data: { isDefault: true } })).rejects.toThrow()
     })
 
     test("a warehouse with no history can be deleted; the default cannot", async () => {
         const id = await aWarehouse()
         expect((await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(id) })).status).toBe(200)
-        expect(await prisma.warehouse.count({ where: { id } })).toBe(0)
-        const res = await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(main.id) })
+        expect(await prisma.warehouse.count({ where: { publicWarehouseId: id } })).toBe(0)
+        const res = await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(main.publicWarehouseId) })
         expect(res.status).toBe(409)
         expect(String(res.json?.error)).toMatch(/default/)
     })
@@ -123,7 +125,7 @@ describe("warehouses", () => {
     test("a warehouse with history is archived, not deleted, and only when empty", async () => {
         const id = await aWarehouse()
         const p = await aProduct(10)
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: id, quantity: 4 } })
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: id, quantity: 4 } })
 
         const del = await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(id) })
         expect(del.status).toBe(409)
@@ -133,11 +135,11 @@ describe("warehouses", () => {
         expect(full.status).toBe(409)
         expect(String(full.json?.error)).toMatch(/Move its 4 items/)
 
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: id, toId: main.id, quantity: 4 } })
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: id, toId: main.publicWarehouseId, quantity: 4 } })
         expect((await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(id), body: { archived: true } })).status).toBe(200)
-        expect((await prisma.warehouse.findUniqueOrThrow({ where: { id } })).archivedAt).not.toBeNull()
+        expect((await prisma.warehouse.findUniqueOrThrow({ where: { publicWarehouseId: id } })).archivedAt).not.toBeNull()
         // an archived warehouse takes no stock
-        const into = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: id, quantity: 1 } })
+        const into = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: id, quantity: 1 } })
         expect(into.status).toBe(409)
         // and can come back
         expect((await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(id), body: { archived: false } })).status).toBe(200)
@@ -147,8 +149,8 @@ describe("warehouses", () => {
         const other = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES.tunis }, select: { id: true } })
         const w = await prisma.warehouse.create({ data: { shopId: other.id, name: uniq(), city: "Tunis", isDefault: false } })
         await signInAs(OWNER)
-        expect((await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(w.id), body: { name: "Mine now" } })).status).toBe(404)
-        expect((await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(w.id) })).status).toBe(404)
+        expect((await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(w.publicWarehouseId), body: { name: "Mine now" } })).status).toBe(404)
+        expect((await call(deleteWarehouse, { method: "DELETE", headers: asMarsa(), ...params(w.publicWarehouseId) })).status).toBe(404)
         await prisma.warehouse.delete({ where: { id: w.id } })
     })
 })
@@ -158,18 +160,18 @@ describe("manual movements", () => {
         const p = await aProduct(10)
         expect(await total(p)).toBe(10)
 
-        const rec = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 5, reasonCode: "SUPPLIER_DELIVERY", reason: "Delivery" } })
+        const rec = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "RECEIVED", quantity: 5, reasonCode: "SUPPLIER_DELIVERY", reason: "Delivery" } })
         expect(rec.status).toBe(201)
-        expect(await level(p, main.id)).toBe(15)
+        expect(await level(p, main.publicWarehouseId)).toBe(15)
 
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -3, reasonCode: "DAMAGED", reason: "Broken" } })).status).toBe(201)
-        expect(await level(p, main.id)).toBe(12)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "ADJUSTED", quantity: -3, reasonCode: "DAMAGED", reason: "Broken" } })).status).toBe(201)
+        expect(await level(p, main.publicWarehouseId)).toBe(12)
 
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 20, reasonCode: "STOCKTAKE" } })).status).toBe(201)
-        expect(await level(p, main.id)).toBe(20)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "COUNTED", quantity: 20, reasonCode: "STOCKTAKE" } })).status).toBe(201)
+        expect(await level(p, main.publicWarehouseId)).toBe(20)
         expect(await total(p)).toBe(20)
 
-        const rows = await prisma.stockMovement.findMany({ where: { productId: p }, orderBy: { createdAt: "asc" } })
+        const rows = await prisma.stockMovement.findMany({ where: { product: { publicProductId: p } }, orderBy: { createdAt: "asc" } })
         expect(rows.map((r) => [r.type, r.quantity, r.balanceAfter])).toEqual([
             ["RECEIVED", 10, 10], ["RECEIVED", 5, 15], ["ADJUSTED", -3, 12], ["COUNTED", 8, 20],
         ])
@@ -178,25 +180,25 @@ describe("manual movements", () => {
 
     test("not enough stock is a 409 and nothing changes", async () => {
         const p = await aProduct(3)
-        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity: -4, reasonCode: "LOST" } })
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "ADJUSTED", quantity: -4, reasonCode: "LOST" } })
         expect(res.status).toBe(409)
         expect(String(res.json?.error)).toMatch(/Not enough stock/)
-        expect(await level(p, main.id)).toBe(3)
-        expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(1)
+        expect(await level(p, main.publicWarehouseId)).toBe(3)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: p } } })).toBe(1)
     })
 
     test("a return can be recorded by hand: a Returned row with no order", async () => {
         const p = await aProduct(5)
-        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RETURNED", quantity: 2, reasonCode: "CUSTOMER_RETURN", reason: "Wrong size" } })
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "RETURNED", quantity: 2, reasonCode: "CUSTOMER_RETURN", reason: "Wrong size" } })
         expect(res.status).toBe(201)
-        expect(await level(p, main.id)).toBe(7)
-        const row = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p, type: "RETURNED" } })
+        expect(await level(p, main.publicWarehouseId)).toBe(7)
+        const row = await prisma.stockMovement.findFirstOrThrow({ where: { product: { publicProductId: p }, type: "RETURNED" } })
         expect(row).toMatchObject({ quantity: 2, balanceAfter: 7, reasonCode: "CUSTOMER_RETURN", reason: "Wrong size", orderId: null })
     })
 
     test("the reason is required, must fit the change, and Other needs a note", async () => {
         const p = await aProduct(5)
-        const send = (body: Record<string, unknown>) => call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, ...body } })
+        const send = (body: Record<string, unknown>) => call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, ...body } })
         const missing = await send({ type: "ADJUSTED", quantity: -1 })
         expect(missing.status).toBe(400)
         expect(String(missing.json?.error)).toMatch(/Choose a reason/)
@@ -210,21 +212,21 @@ describe("manual movements", () => {
         expect(other.status).toBe(400)
         expect(String(other.json?.error)).toMatch(/note/)
         expect((await send({ type: "ADJUSTED", quantity: -1, reasonCode: "OTHER", reason: "Used for a display" })).status).toBe(201)
-        expect(await level(p, main.id)).toBe(4)
+        expect(await level(p, main.publicWarehouseId)).toBe(4)
         // nothing was written by the refused ones
-        expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(2)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: p } } })).toBe(2)
     })
 
     test("a count equal to the stock records nothing", async () => {
         const p = await aProduct(3)
-        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "COUNTED", quantity: 3, reasonCode: "STOCKTAKE" } })
+        const res = await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "COUNTED", quantity: 3, reasonCode: "STOCKTAKE" } })
         expect(res.status).toBe(409)
-        expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(1)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: p } } })).toBe(1)
     })
 
     test("bad requests are a 400", async () => {
         const p = await aProduct(3)
-        const base = { productId: p, warehouseId: main.id }
+        const base = { productId: p, warehouseId: main.publicWarehouseId }
         for (const body of [
             { ...base, type: "SOLD", quantity: 1, reasonCode: "OTHER", reason: "x" },
             { ...base, type: "RECEIVED", quantity: 0, reasonCode: "SUPPLIER_DELIVERY" },
@@ -232,7 +234,7 @@ describe("manual movements", () => {
             { ...base, type: "COUNTED", quantity: -1, reasonCode: "STOCKTAKE" },
             { ...base, type: "RECEIVED", quantity: 1.5, reasonCode: "SUPPLIER_DELIVERY" },
             { ...base, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY", reason: "x".repeat(201) },
-            { warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" },
+            { warehouseId: main.publicWarehouseId, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" },
             { productId: p, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" },
         ]) {
             expect((await call(moveStock, { headers: asMarsa(), body })).status, JSON.stringify(body)).toBe(400)
@@ -241,28 +243,29 @@ describe("manual movements", () => {
 
     test("who may: a viewer cannot, and neither can a clerk of another shop", async () => {
         const p = await aProduct(3)
-        const body = { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" }
+        const body = { productId: p, warehouseId: main.publicWarehouseId, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" }
         await signInAs(demo("viewer"))
         expect((await call(moveStock, { headers: asMarsa(), body })).status).toBe(403)
         await signInAs(demo("inventory")) // clerk of the Tunis shop only
         expect((await call(moveStock, { headers: asMarsa(), body })).status).toBe(403)
-        expect(await level(p, main.id)).toBe(3)
+        expect(await level(p, main.publicWarehouseId)).toBe(3)
     })
 
     test("an inventory clerk can move stock in their own shop", async () => {
         const tunis = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES.tunis }, select: { id: true, publicShopId: true } })
-        const wh = await prisma.$transaction((tx) => ensureDefaultWarehouse(tx, tunis.id))
+        const madeWh = await prisma.$transaction((tx) => ensureDefaultWarehouse(tx, tunis.id))
+        const wh = await prisma.warehouse.findUniqueOrThrow({ where: { id: madeWh.id }, select: { id: true, publicWarehouseId: true } })
         const product = await prisma.product.create({ data: { shopId: tunis.id, name: uniq(), price: "5.000", stock: 0, unit: "PIECE", status: "ACTIVE", images: [] } as never })
         await signInAs(demo("inventory"))
-        const res = await call(moveStock, { headers: { [SHOP_HEADER]: tunis.publicShopId }, body: { productId: product.id, warehouseId: wh.id, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
+        const res = await call(moveStock, { headers: { [SHOP_HEADER]: tunis.publicShopId }, body: { productId: product.publicProductId, warehouseId: wh.publicWarehouseId, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
         expect(res.status).toBe(201)
-        expect(await level(product.id, wh.id)).toBe(2)
+        expect(await level(product.publicProductId, wh.publicWarehouseId)).toBe(2)
     })
 
     test("a product or warehouse of another shop is a 404", async () => {
         const p = await aProduct(3)
         await signInAs(OWNER)
-        expect((await call(moveStock, { headers: asMarsa(), body: { productId: "nope", warehouseId: main.id, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" } })).status).toBe(404)
+        expect((await call(moveStock, { headers: asMarsa(), body: { productId: "nope", warehouseId: main.publicWarehouseId, type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" } })).status).toBe(404)
         expect((await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: "nope", type: "RECEIVED", quantity: 1, reasonCode: "SUPPLIER_DELIVERY" } })).status).toBe(404)
     })
 })
@@ -271,45 +274,46 @@ describe("transfers", () => {
     test("move stock between two warehouses: two linked rows, the total does not change", async () => {
         const to = await aWarehouse()
         const p = await aProduct(10)
-        const res = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4, reason: "Closer to clients" } })
+        const res = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 4, reason: "Closer to clients" } })
         expect(res.status).toBe(201)
-        expect(await level(p, main.id)).toBe(6)
+        expect(await level(p, main.publicWarehouseId)).toBe(6)
         expect(await level(p, to)).toBe(4)
         expect(await total(p)).toBe(10)
 
+        const toRow = await prisma.warehouse.findUniqueOrThrow({ where: { publicWarehouseId: to }, select: { id: true } })
         const transferId = (res.json?.transfer as { transferId: string }).transferId
         const rows = await prisma.stockMovement.findMany({ where: { transferId }, orderBy: { quantity: "asc" } })
         expect(rows.map((r) => [r.type, r.warehouseId, r.quantity, r.balanceAfter])).toEqual([
-            ["TRANSFER_OUT", main.id, -4, 6], ["TRANSFER_IN", to, 4, 4],
+            ["TRANSFER_OUT", main.id, -4, 6], ["TRANSFER_IN", toRow.id, 4, 4],
         ])
     })
 
     test("more than the warehouse holds is a 409 and nothing moves", async () => {
         const to = await aWarehouse()
         const p = await aProduct(2)
-        const res = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 3 } })
+        const res = await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 3 } })
         expect(res.status).toBe(409)
-        expect(await level(p, main.id)).toBe(2)
+        expect(await level(p, main.publicWarehouseId)).toBe(2)
         expect(await level(p, to)).toBe(0)
-        expect(await prisma.stockMovement.count({ where: { productId: p } })).toBe(1)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: p } } })).toBe(1)
     })
 
     test("same warehouse, zero, or a viewer: refused", async () => {
         const to = await aWarehouse()
         const p = await aProduct(5)
-        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: main.id, quantity: 1 } })).status).toBe(409)
-        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 0 } })).status).toBe(400)
+        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: main.publicWarehouseId, quantity: 1 } })).status).toBe(409)
+        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 0 } })).status).toBe(400)
         await signInAs(demo("viewer"))
-        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 1 } })).status).toBe(403)
+        expect((await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 1 } })).status).toBe(403)
     })
 
     test("two transfers at once cannot take more than is there", async () => {
         const to = await aWarehouse()
         const p = await aProduct(5)
         await signInAs(OWNER)
-        const results = await Promise.all([1, 2].map(() => call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4 } })))
+        const results = await Promise.all([1, 2].map(() => call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 4 } })))
         expect(results.map((r) => r.status).sort()).toEqual([201, 409])
-        expect(await level(p, main.id)).toBe(1)
+        expect(await level(p, main.publicWarehouseId)).toBe(1)
         expect(await level(p, to)).toBe(4)
         expect(await total(p)).toBe(5)
     })
@@ -318,22 +322,22 @@ describe("transfers", () => {
 describe("the ledger", () => {
     test("is append-only: rows cannot be edited or deleted", async () => {
         const p = await aProduct(5)
-        const row = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p } })
+        const row = await prisma.stockMovement.findFirstOrThrow({ where: { product: { publicProductId: p } } })
         await expect(prisma.stockMovement.update({ where: { id: row.id }, data: { quantity: 99 } })).rejects.toThrow(/append-only/)
         await expect(prisma.stockMovement.delete({ where: { id: row.id } })).rejects.toThrow(/append-only/)
     })
 
     test("the database refuses negative stock and an empty movement", async () => {
         const p = await aProduct(5)
-        await expect(prisma.stockLevel.update({ where: { productId_warehouseId: { productId: p, warehouseId: main.id } }, data: { quantity: -1 } })).rejects.toThrow()
-        await expect(prisma.stockMovement.create({ data: { shopId: marsa.id, warehouseId: main.id, productId: p, type: "ADJUSTED", quantity: 0, balanceAfter: 5 } })).rejects.toThrow()
+        await expect(prisma.stockLevel.updateMany({ where: { product: { publicProductId: p }, warehouseId: main.id }, data: { quantity: -1 } })).rejects.toThrow()
+        await expect(prisma.stockMovement.create({ data: { shopId: marsa.id, warehouseId: main.id, productId: (await prisma.product.findUniqueOrThrow({ where: { publicProductId: p } })).id, type: "ADJUSTED", quantity: 0, balanceAfter: 5 } })).rejects.toThrow()
     })
 
     test("the history lists newest first, with filters and paging", async () => {
         const to = await aWarehouse()
         const p = await aProduct(10)
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 3 } })
-        await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 3 } })
+        await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "RECEIVED", quantity: 2, reasonCode: "SUPPLIER_DELIVERY" } })
 
         const all = await call(listMovements, { method: "GET", headers: asMarsa(), url: `http://localhost/api/shop/stock/movements?product=${p}` })
         expect(all.status).toBe(200)
@@ -367,24 +371,24 @@ describe("the ledger", () => {
 describe("products and the ledger", () => {
     test("a new product's stock is an opening RECEIVED row in the default warehouse", async () => {
         const p = await aProduct(7)
-        expect(await level(p, main.id)).toBe(7)
-        const rows = await prisma.stockMovement.findMany({ where: { productId: p } })
+        expect(await level(p, main.publicWarehouseId)).toBe(7)
+        const rows = await prisma.stockMovement.findMany({ where: { product: { publicProductId: p } } })
         expect(rows).toHaveLength(1)
         expect(rows[0]).toMatchObject({ type: "RECEIVED", quantity: 7, balanceAfter: 7, reasonCode: "OPENING_STOCK", reason: null })
         // no stock, no row
         await signInAs(OWNER)
         const res = await call(createProduct, { headers: asMarsa(), body: { name: uniq(), price: 5, stock: 0 } })
         const id = (res.json?.product as { id: string }).id
-        expect(await prisma.stockMovement.count({ where: { productId: id } })).toBe(0)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: id } } })).toBe(0)
     })
 
     test("editing the stock of a product (one warehouse) is a COUNTED row", async () => {
         const p = await aProduct(7)
         const res = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { stock: 12 } })
         expect(res.status).toBe(200)
-        expect(await level(p, main.id)).toBe(12)
+        expect(await level(p, main.publicWarehouseId)).toBe(12)
         expect(await total(p)).toBe(12)
-        const last = await prisma.stockMovement.findFirstOrThrow({ where: { productId: p }, orderBy: { createdAt: "desc" } })
+        const last = await prisma.stockMovement.findFirstOrThrow({ where: { product: { publicProductId: p } }, orderBy: { createdAt: "desc" } })
         expect(last).toMatchObject({ type: "COUNTED", quantity: 5, balanceAfter: 12, reasonCode: "PRODUCT_EDIT" })
     })
 
@@ -406,11 +410,11 @@ describe("reorder point and the stock view", () => {
 
     test("a reorder point is saved per warehouse, cleared with null, and refused when negative", async () => {
         const p = await aProduct(10)
-        const body = (reorderPoint: unknown) => ({ productId: p, warehouseId: main.id, reorderPoint })
+        const body = (reorderPoint: unknown) => ({ productId: p, warehouseId: main.publicWarehouseId, reorderPoint })
         expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(4) })).status).toBe(200)
-        expect((await prisma.stockLevel.findUniqueOrThrow({ where: { productId_warehouseId: { productId: p, warehouseId: main.id } } })).reorderPoint).toBe(4)
+        expect((await prisma.stockLevel.findFirstOrThrow({ where: { product: { publicProductId: p }, warehouseId: main.id } })).reorderPoint).toBe(4)
         expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(null) })).status).toBe(200)
-        expect((await prisma.stockLevel.findUniqueOrThrow({ where: { productId_warehouseId: { productId: p, warehouseId: main.id } } })).reorderPoint).toBeNull()
+        expect((await prisma.stockLevel.findFirstOrThrow({ where: { product: { publicProductId: p }, warehouseId: main.id } })).reorderPoint).toBeNull()
         expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: body(-1) })).status).toBe(400)
         expect((await call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: "nope", reorderPoint: 1 } })).status).toBe(404)
         await signInAs(demo("viewer"))
@@ -425,7 +429,7 @@ describe("reorder point and the stock view", () => {
         const unset = await aProduct(1) // never low: no reorder point
         await signInAs(OWNER)
         for (const [p, point] of [[low, 5], [fine, 5], [none, 5]] as const) {
-            await call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.id, reorderPoint: point } })
+            await call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, reorderPoint: point } })
         }
         const lowIds = ids(await view({ stock: "low" }))
         expect(lowIds).toContain(low)
@@ -438,15 +442,15 @@ describe("reorder point and the stock view", () => {
         expect(outIds).not.toContain(low)
 
         // in a chosen warehouse the judgement is that warehouse's own
-        await call(transfer, { headers: asMarsa(), body: { productId: fine, fromId: main.id, toId: to, quantity: 30 } })
-        expect(ids(await view({ stock: "out", warehouse: main.id }))).toContain(fine)
+        await call(transfer, { headers: asMarsa(), body: { productId: fine, fromId: main.publicWarehouseId, toId: to, quantity: 30 } })
+        expect(ids(await view({ stock: "out", warehouse: main.publicWarehouseId }))).toContain(fine)
         expect(ids(await view({ stock: "out", warehouse: to }))).not.toContain(fine)
         expect(ids(await view({ warehouse: to }))).toEqual([fine]) // only products that have a level there
     })
 
     test("search and the counts", async () => {
         const p = await aProduct(0)
-        const row = await prisma.product.findUniqueOrThrow({ where: { id: p } })
+        const row = await prisma.product.findUniqueOrThrow({ where: { publicProductId: p } })
         expect(ids(await view({ q: row.name }))).toEqual([p])
         const counts = await inventoryCounts(marsa.id)
         expect(counts.products).toBeGreaterThan(0)
@@ -460,10 +464,10 @@ describe("alerts, the products list and the Trash", () => {
         const u = await prisma.user.findUniqueOrThrow({ where: { email }, select: { id: true } })
         return prisma.notification.findMany({ where: { userId: u.id, type: { in: ["stock.low", "stock.out"] }, title: { contains: productName } }, select: { type: true, title: true, href: true, body: true } })
     }
-    const nameOf = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { id } })).name
-    const point = (p: string, reorderPoint: number) => call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.id, reorderPoint } })
+    const nameOf = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { publicProductId: id } })).name
+    const point = (p: string, reorderPoint: number) => call(setReorder, { method: "PATCH", headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, reorderPoint } })
     const adjust = (p: string, quantity: number, reasonCode = quantity < 0 ? "DAMAGED" : "FOUND") =>
-        call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.id, type: "ADJUSTED", quantity, reasonCode } })
+        call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: main.publicWarehouseId, type: "ADJUSTED", quantity, reasonCode } })
 
     test("crossing the reorder point notifies the people who can edit stock, once", async () => {
         const p = await aProduct(10)
@@ -494,7 +498,7 @@ describe("alerts, the products list and the Trash", () => {
         const p = await aProduct(4)
         const name = await nameOf(p)
         await point(p, 2)
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4 } }) // main is empty, the product is not
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 4 } }) // main is empty, the product is not
         expect(await notes(OWNER, name)).toHaveLength(0)
 
         await call(moveStock, { headers: asMarsa(), body: { productId: p, warehouseId: to, type: "COUNTED", quantity: 0, reasonCode: "STOCKTAKE" } })
@@ -528,7 +532,7 @@ describe("alerts, the products list and the Trash", () => {
     test("the products list says where the stock is", async () => {
         const to = await aWarehouse()
         const p = await aProduct(10)
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 4 } })
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 4 } })
         const rows = await listProducts(marsa.id, parseProductFilters({ pageSize: "100" }))
         const row = rows.items.find((r) => r.id === p)!
         expect(row.stock).toBe(10)
@@ -538,8 +542,8 @@ describe("alerts, the products list and the Trash", () => {
     test("a warehouse holding stock of a product in the Trash says so when archiving", async () => {
         const to = await aWarehouse()
         const p = await aProduct(10)
-        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.id, toId: to, quantity: 3 } })
-        await prisma.product.update({ where: { id: p }, data: { deletedAt: new Date() } })
+        await call(transfer, { headers: asMarsa(), body: { productId: p, fromId: main.publicWarehouseId, toId: to, quantity: 3 } })
+        await prisma.product.update({ where: { publicProductId: p }, data: { deletedAt: new Date() } })
         const res = await call(updateWarehouse, { method: "PATCH", headers: asMarsa(), ...params(to), body: { archived: true } })
         expect(res.status).toBe(409)
         expect(String(res.json?.error)).toMatch(/3 of them belong to products in the Trash/)

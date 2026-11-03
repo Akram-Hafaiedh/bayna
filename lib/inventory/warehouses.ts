@@ -39,7 +39,7 @@ export async function listWarehouses(shopId: string, opts: { includeArchived?: b
     ])
     const byId = new Map(sums.map((s) => [s.warehouseId, s]))
     return rows.map((w) => ({
-        id: w.id,
+        id: w.publicWarehouseId,
         name: w.name,
         address: w.address,
         city: w.city,
@@ -74,8 +74,9 @@ export type MovementRow = {
 export async function listMovements(shopId: string, q: MovementQuery): Promise<{ items: MovementRow[]; total: number; page: number; pageSize: number; pageCount: number }> {
     const where: Prisma.StockMovementWhereInput = {
         shopId,
-        ...(q.warehouseId ? { warehouseId: q.warehouseId } : {}),
-        ...(q.productId ? { productId: q.productId } : {}),
+        // the query carries public ids
+        ...(q.warehouseId ? { warehouse: { publicWarehouseId: q.warehouseId } } : {}),
+        ...(q.productId ? { product: { publicProductId: q.productId } } : {}),
         ...(q.type ? { type: q.type } : {}),
         ...(q.reasonCode ? { reasonCode: q.reasonCode } : {}),
         ...(q.from || q.to ? { createdAt: { ...(q.from ? { gte: q.from } : {}), ...(q.to ? { lt: q.to } : {}) } } : {}),
@@ -88,10 +89,10 @@ export async function listMovements(shopId: string, q: MovementQuery): Promise<{
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         skip: (page - 1) * q.pageSize,
         take: q.pageSize,
-        include: { warehouse: { select: { id: true, name: true } }, product: { select: { id: true, name: true } } },
+        include: { warehouse: { select: { publicWarehouseId: true, name: true } }, product: { select: { publicProductId: true, name: true } } },
     })
     const userIds = [...new Set(rows.map((r) => r.createdById).filter((x): x is string => !!x))]
-    const users = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true } }) : []
+    const users = userIds.length ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, publicUserId: true, name: true, email: true } }) : []
     const who = new Map(users.map((u) => [u.id, u]))
     return {
         items: rows.map((r) => {
@@ -106,9 +107,9 @@ export async function listMovements(shopId: string, q: MovementQuery): Promise<{
                 reason: r.reason,
                 transferId: r.transferId,
                 orderId: r.orderId,
-                warehouse: r.warehouse,
-                product: r.product,
-                by: u ? { id: u.id, name: u.name ?? u.email } : null,
+                warehouse: { id: r.warehouse.publicWarehouseId, name: r.warehouse.name },
+                product: { id: r.product.publicProductId, name: r.product.name },
+                by: u ? { id: u.publicUserId, name: u.name ?? u.email } : null,
             }
         }),
         total,

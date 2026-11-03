@@ -46,7 +46,7 @@ async function aProduct(price: number, extra: Record<string, unknown> = {}) {
 }
 const patch = (id: string, body: Record<string, unknown>) => call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(id), body })
 const rows = async (productId: string) =>
-    (await prisma.priceHistory.findMany({ where: { productId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] })).map((r) => ({
+    (await prisma.priceHistory.findMany({ where: { product: { publicProductId: productId } }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] })).map((r) => ({
         price: r.price.toFixed(3), ttc: r.priceTtc.toFixed(3), reason: r.reason,
     }))
 
@@ -111,7 +111,7 @@ describe("what is recorded", () => {
         const owner = await prisma.user.findUniqueOrThrow({ where: { email: OWNER }, select: { id: true } })
         const p = await aProduct(100)
         await patch(p, { price: 110 })
-        const last = await prisma.priceHistory.findFirstOrThrow({ where: { productId: p }, orderBy: { createdAt: "desc" } })
+        const last = await prisma.priceHistory.findFirstOrThrow({ where: { product: { publicProductId: p } }, orderBy: { createdAt: "desc" } })
         expect(last.createdById).toBe(owner.id)
     })
 })
@@ -119,10 +119,10 @@ describe("what is recorded", () => {
 describe("the history is append-only", () => {
     test("a row cannot be edited or deleted", async () => {
         const p = await aProduct(100)
-        const row = await prisma.priceHistory.findFirstOrThrow({ where: { productId: p } })
+        const row = await prisma.priceHistory.findFirstOrThrow({ where: { product: { publicProductId: p } } })
         await expect(prisma.priceHistory.update({ where: { id: row.id }, data: { reason: "TAX" } })).rejects.toThrow(/append-only/)
         await expect(prisma.priceHistory.delete({ where: { id: row.id } })).rejects.toThrow(/append-only/)
-        expect(await prisma.priceHistory.count({ where: { productId: p } })).toBe(1)
+        expect(await prisma.priceHistory.count({ where: { product: { publicProductId: p } } })).toBe(1)
     })
 
     test("a reason the app does not know is refused by the database", async () => {

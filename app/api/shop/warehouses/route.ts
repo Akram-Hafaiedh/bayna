@@ -7,6 +7,7 @@ import { withAudit } from "@/lib/audit/run"
 import { limitBlock } from "@/lib/plans/plan-limits"
 import { createWarehouse, ensureDefaultWarehouse, StockError } from "@/lib/inventory/stock-actions"
 import { parseWarehouseFields } from "@/lib/inventory/warehouse-input"
+import { warehouseDto } from "@/lib/inventory/warehouse-dto"
 import { listWarehouses } from "@/lib/inventory/warehouses"
 
 const bad = (error: string, status = 400, extra?: Record<string, unknown>) => NextResponse.json({ error, ...extra }, { status })
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
         const warehouse = await withAudit(guard.actor, (tx) =>
             createWarehouse(tx, guard.shop.id, { ...d, name: d.name!, city: d.city! })
         )
-        return NextResponse.json({ warehouse }, { status: 201 })
+        return NextResponse.json({ warehouse: warehouseDto(warehouse) }, { status: 201 })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
         console.error("Create warehouse error:", error)

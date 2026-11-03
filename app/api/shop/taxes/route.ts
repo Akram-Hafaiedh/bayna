@@ -7,7 +7,7 @@ import { withAudit } from "@/lib/audit/run"
 import { limitBlock } from "@/lib/plans/plan-limits"
 import { createTax, PricingError } from "@/lib/pricing/price-actions"
 import { parseTaxFields } from "@/lib/pricing/price-rules"
-import { listTaxes } from "@/lib/pricing/taxes"
+import { listTaxes, taxDto } from "@/lib/pricing/taxes"
 
 const bad = (error: string, status = 400, extra?: Record<string, unknown>) => NextResponse.json({ error, ...extra }, { status })
 
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         if (!parsed.ok) return bad(parsed.error)
         const d = parsed.value
         const tax = await withAudit(guard.actor, (tx) => createTax(tx, guard.shop.id, { ...d, name: d.name!, kind: d.kind!, value: d.value! }))
-        return NextResponse.json({ tax: { ...tax, value: tax.value.toString() } }, { status: 201 })
+        return NextResponse.json({ tax: taxDto(tax) }, { status: 201 })
     } catch (error) {
         if (error instanceof PricingError) return bad(error.message, error.status)
         console.error("Create tax error:", error)

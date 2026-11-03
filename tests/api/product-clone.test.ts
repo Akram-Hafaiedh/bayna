@@ -22,7 +22,7 @@ beforeAll(async () => {
 afterEach(async () => {
     signOut()
     await prisma.taxRate.deleteMany({ where: { shopId: marsa.id, name: { startsWith: "api-test-" } } })
-    if (toPurge.length) await purgeTestProducts({ id: { in: toPurge.splice(0) } })
+    if (toPurge.length) await purgeTestProducts({ publicProductId: { in: toPurge.splice(0) } })
 })
 afterAll(async () => {
     await purgeTestProducts()
@@ -51,9 +51,9 @@ async function copyOf(id: string) {
 describe("make a copy", () => {
     test("is a draft with the same offer, and none of the stock, SKU or catalogue link", async () => {
         const source = await aProduct()
-        const before = await prisma.product.findUniqueOrThrow({ where: { id: source } })
+        const before = await prisma.product.findUniqueOrThrow({ where: { publicProductId: source } })
         const copy = await copyOf(source)
-        const row = await prisma.product.findUniqueOrThrow({ where: { id: copy.id } })
+        const row = await prisma.product.findUniqueOrThrow({ where: { publicProductId: copy.id } })
         expect(copy.name).toBe(`${before.name} (copy)`)
         expect(row).toMatchObject({
             shopId: marsa.id, status: "DRAFT", brand: "Acme", description: "Grey", minOrderQty: 5, unit: before.unit,
@@ -62,10 +62,10 @@ describe("make a copy", () => {
         expect(row.price.toFixed(3)).toBe("100.000")
         expect(row.priceUpdatedAt).not.toBeNull()
         // the original is untouched
-        const after = await prisma.product.findUniqueOrThrow({ where: { id: source } })
+        const after = await prisma.product.findUniqueOrThrow({ where: { publicProductId: source } })
         expect(after).toMatchObject({ stock: 7, sku: "REF-1", status: before.status })
         // no stock history for the copy
-        expect(await prisma.stockMovement.count({ where: { productId: copy.id } })).toBe(0)
+        expect(await prisma.stockMovement.count({ where: { product: { publicProductId: copy.id } } })).toBe(0)
     })
 
     test("carries the same taxes, and has its own price history starting at its price with tax", async () => {
@@ -74,18 +74,19 @@ describe("make a copy", () => {
         const taxId = (t.json?.tax as { id: string }).id
         const source = await aProduct({ taxIds: [taxId] })
         const copy = await copyOf(source)
-        const row = await prisma.product.findUniqueOrThrow({ where: { id: copy.id }, include: { taxes: true } })
-        expect(row.taxes.map((x) => x.taxRateId)).toEqual([taxId])
+        const row = await prisma.product.findUniqueOrThrow({ where: { publicProductId: copy.id }, include: { taxes: true } })
+        const tax = await prisma.taxRate.findUniqueOrThrow({ where: { publicTaxId: taxId } })
+        expect(row.taxes.map((x) => x.taxRateId)).toEqual([tax.id])
         expect(row.priceTtc.toFixed(3)).toBe("110.000")
-        const history = await prisma.priceHistory.findMany({ where: { productId: copy.id } })
+        const history = await prisma.priceHistory.findMany({ where: { product: { publicProductId: copy.id } } })
         expect(history.map((h) => [h.reason, h.price.toFixed(3), h.priceTtc.toFixed(3)])).toEqual([["INITIAL", "100.000", "110.000"]])
     })
 
     test("a tax-exempt product gives a tax-exempt copy; one with no tax chosen stays to set", async () => {
         const exempt = await aProduct({ taxExempt: true })
         const unset = await aProduct()
-        const a = await prisma.product.findUniqueOrThrow({ where: { id: (await copyOf(exempt)).id }, include: { taxes: true } })
-        const b = await prisma.product.findUniqueOrThrow({ where: { id: (await copyOf(unset)).id }, include: { taxes: true } })
+        const a = await prisma.product.findUniqueOrThrow({ where: { publicProductId: (await copyOf(exempt)).id }, include: { taxes: true } })
+        const b = await prisma.product.findUniqueOrThrow({ where: { publicProductId: (await copyOf(unset)).id }, include: { taxes: true } })
         expect([a.taxExempt, a.taxes.length]).toEqual([true, 0])
         expect([b.taxExempt, b.taxes.length]).toEqual([false, 0])
     })
@@ -93,8 +94,8 @@ describe("make a copy", () => {
     test("a copy of a catalogue product is a custom product, since a shop lists a catalogue item once", async () => {
         const linked = await prisma.product.findFirst({ where: { shopId: marsa.id, catalogItemId: { not: null }, deletedAt: null, price: { gt: 0 } } })
         if (!linked) return // the demo shop has no catalogue product: nothing to check
-        const copy = await copyOf(linked.id)
-        const row = await prisma.product.findUniqueOrThrow({ where: { id: copy.id } })
+        const copy = await copyOf(linked.publicProductId)
+        const row = await prisma.product.findUniqueOrThrow({ where: { publicProductId: copy.id } })
         expect(row.catalogItemId).toBeNull()
         expect(row.unit).toBe(linked.unit)
         expect(row.categoryId).toBe(linked.categoryId)
@@ -120,11 +121,11 @@ describe("who can copy", () => {
     test("someone who cannot set prices cannot copy a priced product", async () => {
         // the inventory clerk of the Tunis shop may create listings but not set prices
         const tunis = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES.tunis }, select: { id: true, publicShopId: true } })
-        const priced = await prisma.product.findFirst({ where: { shopId: tunis.id, deletedAt: null, price: { gt: 0 } }, select: { id: true } })
+        const priced = await prisma.product.findFirst({ where: { shopId: tunis.id, deletedAt: null, price: { gt: 0 } }, select: { publicProductId: true } })
         if (!priced) return
         await signInAs(demo("inventory"))
         const before = await prisma.product.count({ where: { shopId: tunis.id } })
-        expect((await call(cloneProduct, { headers: { [SHOP_HEADER]: tunis.publicShopId }, ...params(priced.id) })).status).toBe(403)
+        expect((await call(cloneProduct, { headers: { [SHOP_HEADER]: tunis.publicShopId }, ...params(priced.publicProductId) })).status).toBe(403)
         expect(await prisma.product.count({ where: { shopId: tunis.id } })).toBe(before)
     })
 
@@ -133,7 +134,7 @@ describe("who can copy", () => {
         const other = await prisma.shop.findFirstOrThrow({ where: { name: SHOP_NAMES.tunis }, select: { publicShopId: true } })
         await signInAs(OWNER)
         expect((await call(cloneProduct, { headers: { [SHOP_HEADER]: other.publicShopId }, ...params(source) })).status).toBe(404)
-        await prisma.product.update({ where: { id: source }, data: { deletedAt: new Date() } })
+        await prisma.product.update({ where: { publicProductId: source }, data: { deletedAt: new Date() } })
         expect((await call(cloneProduct, { headers: asMarsa(), ...params(source) })).status).toBe(404)
     })
 })

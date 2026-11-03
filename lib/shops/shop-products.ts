@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { taxState, type TaxState } from "@/lib/pricing/price-rules"
 import type { ProductFilters } from "@/lib/products/product-filters"
 import { lowStockProductIds } from "@/lib/inventory/inventory-view"
+import { isPublicId } from "@/lib/shared/public-id"
 
 /** JSON-safe row (Decimal -> string, Date -> ISO) so it can cross into client components. */
 export type ProductRow = {
@@ -49,6 +50,7 @@ export type ProductPage = {
 // ---------------------------------------------------------------------------
 const rowSelect = {
     id: true,
+    publicProductId: true,
     name: true,
     nameAr: true,
     brand: true,
@@ -73,9 +75,10 @@ const rowSelect = {
 type RowRecord = Prisma.ProductGetPayload<{ select: typeof rowSelect }>
 
 function toRow(p: RowRecord, low: ReadonlySet<string>): ProductRow {
-    const { stockLevels, taxes, taxExempt, ...rest } = p
+    const { stockLevels, taxes, taxExempt, publicProductId, ...rest } = p
     return {
         ...rest,
+        id: publicProductId, // the database id stays on the server
         priceTtc: p.priceTtc.toString(),
         taxState: taxState({ taxExempt, activeTaxCount: taxes.length }),
         low: low.has(p.id),
@@ -223,7 +226,7 @@ export async function listTrash(shopId: string): Promise<{ items: TrashRow[]; to
             orderBy: [{ deletedAt: "desc" }, { id: "asc" }],
             take: TRASH_LIMIT,
             select: {
-                id: true,
+                publicProductId: true,
                 name: true,
                 brand: true,
                 sku: true,
@@ -247,7 +250,7 @@ export async function listTrash(shopId: string): Promise<{ items: TrashRow[]; to
     return {
         total,
         items: rows.map((r) => ({
-            id: r.id,
+            id: r.publicProductId,
             name: r.name,
             brand: r.brand,
             sku: r.sku,
@@ -348,12 +351,13 @@ export type ProductDetail = {
 /** Returns null when the product does not exist or belongs to another shop. */
 export async function getShopProduct(
     shopId: string,
-    id: string
+    publicProductId: string
 ): Promise<ProductDetail | null> {
+    if (!isPublicId(publicProductId)) return null
     const p = await prisma.product.findFirst({
-        where: { id, shopId, deletedAt: null },
+        where: { publicProductId, shopId, deletedAt: null },
         select: {
-            id: true,
+            publicProductId: true,
             name: true,
             nameAr: true,
             description: true,
@@ -364,7 +368,7 @@ export async function getShopProduct(
             price: true,
             priceTtc: true,
             taxExempt: true,
-            taxes: { select: { taxRateId: true } },
+            taxes: { select: { taxRate: { select: { publicTaxId: true } } } },
             stock: true,
             minOrderQty: true,
             status: true,
@@ -376,6 +380,6 @@ export async function getShopProduct(
         },
     })
     if (!p) return null
-    const { taxes, ...rest } = p
-    return { ...rest, taxIds: taxes.map((t) => t.taxRateId), price: p.price.toString(), priceTtc: p.priceTtc.toString(), priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null }
+    const { taxes, publicProductId: id, ...rest } = p
+    return { ...rest, id, taxIds: taxes.map((t) => t.taxRate.publicTaxId), price: p.price.toString(), priceTtc: p.priceTtc.toString(), priceUpdatedAt: p.priceUpdatedAt ? p.priceUpdatedAt.toISOString() : null }
 }

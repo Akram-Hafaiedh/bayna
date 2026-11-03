@@ -6,6 +6,7 @@
 // change it makes, so one change is one row: the price and the taxes of a product edited together are one row.
 import { prisma } from "@/lib/prisma"
 import type { Tx } from "@/lib/audit/run"
+import { isPublicId } from "@/lib/shared/public-id"
 import { isPriceReason, priceChange, type PriceChange, type PriceReason } from "@/lib/pricing/price-history-rules"
 
 /**
@@ -47,17 +48,20 @@ export type PriceHistoryRow = {
 export const PRICE_HISTORY_LIMIT = 200
 
 /** A product's history, newest first. Null when the product does not exist in this shop. */
-export async function listPriceHistory(shopId: string, productId: string): Promise<{ product: { id: string; name: string; unit: string }; rows: PriceHistoryRow[]; total: number } | null> {
-    const product = await prisma.product.findFirst({ where: { id: productId, shopId }, select: { id: true, name: true, unit: true } })
-    if (!product) return null
+export async function listPriceHistory(shopId: string, publicProductId: string): Promise<{ product: { id: string; name: string; unit: string }; rows: PriceHistoryRow[]; total: number } | null> {
+    if (!isPublicId(publicProductId)) return null
+    const found = await prisma.product.findFirst({ where: { publicProductId: publicProductId, shopId }, select: { id: true, publicProductId: true, name: true, unit: true } })
+    if (!found) return null
+    const productId = found.id
+    const product = { id: found.publicProductId, name: found.name, unit: found.unit }
     const [total, recent] = await Promise.all([
         prisma.priceHistory.count({ where: { productId } }),
         // one more than shown, so the oldest row shown can say how it moved
         prisma.priceHistory.findMany({ where: { productId }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: PRICE_HISTORY_LIMIT + 1 }),
     ])
     const people = [...new Set(recent.map((r) => r.createdById).filter((v): v is string => !!v))]
-    const users = people.length ? await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, name: true, email: true } }) : []
-    const names = new Map(users.map((u) => [u.id, u.name || u.email]))
+    const users = people.length ? await prisma.user.findMany({ where: { id: { in: people } }, select: { id: true, publicUserId: true, name: true, email: true } }) : []
+    const authors = new Map(users.map((u) => [u.id, { id: u.publicUserId, name: u.name || u.email }]))
     const rows: PriceHistoryRow[] = recent.slice(0, PRICE_HISTORY_LIMIT).map((r, i) => {
         const before = recent[i + 1]
         return {
@@ -68,7 +72,7 @@ export async function listPriceHistory(shopId: string, productId: string): Promi
             reason: isPriceReason(r.reason) ? r.reason : "PRICE",
             change: priceChange(before ? before.price.toFixed(3) : null, r.price.toFixed(3)),
             changeTtc: priceChange(before ? before.priceTtc.toFixed(3) : null, r.priceTtc.toFixed(3)),
-            by: r.createdById ? { id: r.createdById, name: names.get(r.createdById) ?? "Someone" } : null,
+            by: r.createdById ? (authors.get(r.createdById) ?? { id: "", name: "Someone" }) : null,
         }
     })
     return { product, rows, total }

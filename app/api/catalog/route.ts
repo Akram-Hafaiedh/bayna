@@ -51,15 +51,15 @@ export async function GET(req: Request) {
                 category: { select: { id: true, name: true } },
                 // Lets the UI say "already in your products" or "in your trash" instead of failing on save
                 // (unique per shop and item, so at most one row)
-                products: { where: { shopId }, select: { id: true, deletedAt: true }, take: 1 },
+                products: { where: { shopId }, select: { publicProductId: true, deletedAt: true }, take: 1 },
             },
         })
 
         return NextResponse.json({
             items: items.map(({ products, ...item }) => ({
                 ...item,
-                listedProductId: products[0] && !products[0].deletedAt ? products[0].id : null,
-                trashedProductId: products[0]?.deletedAt ? products[0].id : null,
+                listedProductId: products[0] && !products[0].deletedAt ? products[0].publicProductId : null,
+                trashedProductId: products[0]?.deletedAt ? products[0].publicProductId : null,
             })),
         })
     } catch (error) {

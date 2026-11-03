@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
+import { isPublicId } from "@/lib/shared/public-id"
 import { planRestore } from "@/lib/products/product-restore"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -17,10 +18,12 @@ export async function POST(
         const guard = await requireShop("product.listing.restore", req)
         if (!guard.ok) return bad(guard.error, guard.status)
 
+        if (!isPublicId(id)) return bad("This product is not in your trash", 404)
         const product = await prisma.product.findFirst({
-            where: { id, shopId: guard.shop.id, deletedAt: { not: null } },
+            where: { publicProductId: id, shopId: guard.shop.id, deletedAt: { not: null } },
             select: {
                 id: true,
+                publicProductId: true,
                 name: true,
                 unit: true,
                 catalogItemId: true,
@@ -34,13 +37,13 @@ export async function POST(
 
         await withAudit(guard.actor, (tx) =>
             tx.product.update({
-                where: { id },
+                where: { id: product.id },
                 data: { deletedAt: null, deletedById: null, ...plan.changes },
             })
         )
 
         return NextResponse.json({
-            product: { id: product.id, name: product.name },
+            product: { id: product.publicProductId, name: product.name },
             needsPriceReview: plan.changes.needsPriceReview === true,
         })
     } catch (error) {

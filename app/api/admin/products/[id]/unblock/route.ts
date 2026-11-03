@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { requirePlatform } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { prisma } from "@/lib/prisma"
+import { isPublicId } from "@/lib/shared/public-id"
 import { platformMove } from "@/lib/products/product-status"
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,14 +14,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status })
 
         const { id } = await params
-        const product = await prisma.product.findFirst({ where: { id, deletedAt: null }, select: { id: true, status: true } })
+        if (!isPublicId(id)) return NextResponse.json({ error: "Product not found" }, { status: 404 })
+        const product = await prisma.product.findFirst({ where: { publicProductId: id, deletedAt: null }, select: { id: true, status: true } })
         if (!product) return NextResponse.json({ error: "Product not found" }, { status: 404 })
 
         const next = platformMove("unblock", product.status)
         if (!next) return NextResponse.json({ error: "This product is not blocked" }, { status: 400 })
 
         const changed = await withAudit(guard.actor, (tx) =>
-            tx.product.updateMany({ where: { id, status: product.status }, data: { status: next } })
+            tx.product.updateMany({ where: { id: product.id, status: product.status }, data: { status: next } })
         )
         if (changed.count === 0) return NextResponse.json({ error: "The product was just changed by someone else. Refresh and try again." }, { status: 409 })
 

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { StockError, transferStock } from "@/lib/inventory/stock-actions"
+import { productIdOf, warehouseIdOf } from "@/lib/shared/resolve-public"
 import { parseQuantity, parseReason } from "@/lib/inventory/stock-rules"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -24,12 +25,18 @@ export async function POST(req: Request) {
         const reason = parseReason(b.reason)
         if (!reason.ok) return bad(reason.error)
 
+        const productId = await productIdOf(guard.shop.id, b.productId)
+        if (!productId) return bad("Product not found", 404)
+        const fromId = await warehouseIdOf(guard.shop.id, b.fromId)
+        const toId = await warehouseIdOf(guard.shop.id, b.toId)
+        if (!fromId || !toId) return bad("Warehouse not found", 404)
+
         const result = await withAudit(guard.actor, (tx) =>
             transferStock(tx, {
                 shopId: guard.shop.id,
-                productId: b.productId as string,
-                fromId: b.fromId as string,
-                toId: b.toId as string,
+                productId,
+                fromId,
+                toId,
                 quantity: quantity.value,
                 reason: reason.value,
             })

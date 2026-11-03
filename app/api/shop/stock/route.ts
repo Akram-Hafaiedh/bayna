@@ -11,6 +11,7 @@ import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { manualMovement, StockError } from "@/lib/inventory/stock-actions"
 import { isManualType, type ManualType, parseCount, parseDelta, parseQuantity, parseReason } from "@/lib/inventory/stock-rules"
+import { productIdOf, warehouseIdOf } from "@/lib/shared/resolve-public"
 import { parseReasonChoice } from "@/lib/inventory/stock-reasons"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -33,11 +34,16 @@ export async function POST(req: Request) {
         const why = parseReasonChoice(b.type, amount.value, b.reasonCode, note.value)
         if (!why.ok) return bad(why.error)
 
+        const productId = await productIdOf(guard.shop.id, b.productId)
+        if (!productId) return bad("Product not found", 404)
+        const warehouseId = await warehouseIdOf(guard.shop.id, b.warehouseId)
+        if (!warehouseId) return bad("Warehouse not found", 404)
+
         const result = await withAudit(guard.actor, (tx) =>
             manualMovement(tx, b.type as ManualType, {
                 shopId: guard.shop.id,
-                productId: b.productId as string,
-                warehouseId: b.warehouseId as string,
+                productId,
+                warehouseId,
                 amount: amount.value,
                 reasonCode: why.value.reasonCode,
                 reason: why.value.reason,

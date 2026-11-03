@@ -48,7 +48,7 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
     // Only this shop's own warehouse and product are used as filters
     if (query.warehouseId && !warehouses.some((w) => w.id === query.warehouseId)) query.warehouseId = null
     const product = query.productId
-        ? await prisma.product.findFirst({ where: { id: query.productId, shopId: shop.id }, select: { id: true, name: true } })
+        ? await prisma.product.findFirst({ where: { publicProductId: query.productId, shopId: shop.id }, select: { publicProductId: true, name: true } })
         : null
     if (!product) query.productId = null
 
@@ -72,7 +72,7 @@ async function Content({ params, searchParams }: { params: Params; searchParams:
     return (
         <div className="space-y-4">
             <form method="get" action={base} className="flex flex-wrap items-center gap-2">
-                {product && <input type="hidden" name="product" value={product.id} />}
+                {product && <input type="hidden" name="product" value={product.publicProductId} />}
                 <select name="warehouse" defaultValue={query.warehouseId ?? ""} aria-label="Warehouse" className={selectClass}>
                     <option value="">All warehouses</option>
                     {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}{w.archivedAt ? " (archived)" : ""}</option>)}

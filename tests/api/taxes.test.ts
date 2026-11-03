@@ -48,7 +48,7 @@ async function aProduct(price: number, extra: Record<string, unknown> = {}) {
     return (res.json?.product as { id: string }).id
 }
 
-const ttc = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { id }, select: { priceTtc: true } })).priceTtc.toFixed(3)
+const ttc = async (id: string) => (await prisma.product.findUniqueOrThrow({ where: { publicProductId: id }, select: { priceTtc: true } })).priceTtc.toFixed(3)
 
 describe("the taxes routes", () => {
     test("a viewer can read the taxes but not change them", async () => {
@@ -60,11 +60,11 @@ describe("the taxes routes", () => {
     test("an owner creates a tax: it goes last, and the name is unique ignoring case", async () => {
         const a = await aTax()
         const b = await aTax()
-        const [ra, rb] = await Promise.all([a, b].map((id) => prisma.taxRate.findUniqueOrThrow({ where: { id } })))
+        const [ra, rb] = await Promise.all([a, b].map((id) => prisma.taxRate.findUniqueOrThrow({ where: { publicTaxId: id } })))
         expect(rb.sortOrder).toBeGreaterThan(ra.sortOrder)
         const dup = await call(createTax, { headers: asMarsa(), body: { name: ra.name.toUpperCase(), kind: "PERCENTAGE", value: 5 } })
         expect(dup.status).toBe(409)
-        expect(await prisma.activityLog.count({ where: { entityType: "TaxRate", entityId: a, action: "CREATE" } })).toBe(1)
+        expect(await prisma.activityLog.count({ where: { entityType: "TaxRate", entityId: ra.id, action: "CREATE" } })).toBe(1)
     })
 
     test("bad fields are a 400", async () => {
@@ -94,22 +94,22 @@ describe("the taxes routes", () => {
         const foreign = await prisma.taxRate.create({ data: { shopId: other.id, name: uniq(), kind: "PERCENTAGE", value: 5 } })
         try {
             await signInAs(OWNER)
-            expect((await call(updateTax, { method: "PATCH", headers: asMarsa(), ...params(foreign.id), body: { name: uniq() } })).status).toBe(404)
-            expect((await call(deleteTax, { method: "DELETE", headers: asMarsa(), ...params(foreign.id) })).status).toBe(404)
+            expect((await call(updateTax, { method: "PATCH", headers: asMarsa(), ...params(foreign.publicTaxId), body: { name: uniq() } })).status).toBe(404)
+            expect((await call(deleteTax, { method: "DELETE", headers: asMarsa(), ...params(foreign.publicTaxId) })).status).toBe(404)
         } finally {
             await prisma.taxRate.delete({ where: { id: foreign.id } })
         }
     })
 
     test("reordering needs every tax once", async () => {
-        const all = await prisma.taxRate.findMany({ where: { shopId: marsa.id }, select: { id: true } })
+        const all = await prisma.taxRate.findMany({ where: { shopId: marsa.id }, select: { publicTaxId: true } })
         const a = await aTax()
         const b = await aTax()
-        const ids = [...all.map((t) => t.id), a, b]
+        const ids = [...all.map((t) => t.publicTaxId), a, b]
         expect((await call(reorderTaxes, { method: "PATCH", headers: asMarsa(), body: { ids: [a] } })).status).toBe(400)
         const ok = await call(reorderTaxes, { method: "PATCH", headers: asMarsa(), body: { ids: [b, a, ...ids.filter((i) => i !== a && i !== b)] } })
         expect(ok.status).toBe(200)
-        const [ra, rb] = await Promise.all([a, b].map((id) => prisma.taxRate.findUniqueOrThrow({ where: { id } })))
+        const [ra, rb] = await Promise.all([a, b].map((id) => prisma.taxRate.findUniqueOrThrow({ where: { publicTaxId: id } })))
         expect(rb.sortOrder).toBeLessThan(ra.sortOrder)
     })
 })
@@ -132,7 +132,7 @@ describe("the price with tax follows the taxes", () => {
         const p = await aProduct(100, { taxIds: [base, running] })
         // the order is the shop's: base first (sortOrder), then running
         expect(await ttc(p)).toBe("121.000")
-        const all = (await prisma.taxRate.findMany({ where: { shopId: marsa.id, isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true } })).map((t) => t.id)
+        const all = (await prisma.taxRate.findMany({ where: { shopId: marsa.id, isActive: true }, orderBy: { sortOrder: "asc" }, select: { publicTaxId: true } })).map((t) => t.publicTaxId)
         const rest = all.filter((i) => i !== base && i !== running)
         await call(reorderTaxes, { method: "PATCH", headers: asMarsa(), body: { ids: [...rest, running, base] } })
         expect(await ttc(p)).toBe("120.000")
@@ -174,11 +174,11 @@ describe("the price with tax follows the taxes", () => {
         expect(both.status).toBe(400)
         const ex = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxExempt: true } })
         expect(ex.status).toBe(200)
-        expect(await prisma.productTax.count({ where: { productId: p } })).toBe(0)
+        expect(await prisma.productTax.count({ where: { product: { publicProductId: p } } })).toBe(0)
         expect(await ttc(p)).toBe("100.000")
         // choosing a tax again lifts the exemption
         await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxIds: [t] } })
-        expect((await prisma.product.findUniqueOrThrow({ where: { id: p } })).taxExempt).toBe(false)
+        expect((await prisma.product.findUniqueOrThrow({ where: { publicProductId: p } })).taxExempt).toBe(false)
         expect(await ttc(p)).toBe("110.000")
     })
 
@@ -187,7 +187,7 @@ describe("the price with tax follows the taxes", () => {
         const foreign = await prisma.taxRate.create({ data: { shopId: other.id, name: uniq(), kind: "PERCENTAGE", value: 5 } })
         try {
             const p = await aProduct(10)
-            const res = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxIds: [foreign.id] } })
+            const res = await call(updateProduct, { method: "PATCH", headers: asMarsa(), ...params(p), body: { taxIds: [foreign.publicTaxId] } })
             expect(res.status).toBe(404)
             expect(await ttc(p)).toBe("10.000")
         } finally {

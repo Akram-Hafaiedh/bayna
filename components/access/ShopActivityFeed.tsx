@@ -40,6 +40,11 @@ export default async function ShopActivityFeed({
     })
     const hasNext = rows.length > PAGE_SIZE
     const shown = rows.slice(0, PAGE_SIZE)
+    // A link to a product uses its public id, never the database id the log row holds
+    const productIds = [...new Set(shown.filter((r) => r.entityType === "Product" && r.entityId).map((r) => r.entityId as string))]
+    const publicOf = new Map(
+        (productIds.length ? await prisma.product.findMany({ where: { id: { in: productIds }, shopId }, select: { id: true, publicProductId: true } }) : []).map((p) => [p.id, p.publicProductId])
+    )
     const href = (p: number, k = kind) => `${listPath}?${new URLSearchParams({ ...(k === "all" ? {} : { type: k }), ...(p > 1 ? { page: String(p) } : {}) })}`
     const link = "inline-flex h-9 items-center rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-700 hover:border-zinc-300"
 
@@ -62,7 +67,7 @@ export default async function ShopActivityFeed({
             ) : (
                 <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white">
                     {shown.map((r) => {
-                        const line = describeActivity(r, shopBase)
+                        const line = describeActivity(r.entityType === "Product" ? { ...r, entityId: (r.entityId && publicOf.get(r.entityId)) || null } : r, shopBase)
                         const who = r.actorName ?? (r.source === "SYSTEM" ? "System" : "Someone")
                         return (
                             <li key={r.id} className="px-5 py-3.5 text-sm">

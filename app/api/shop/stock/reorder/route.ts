@@ -5,6 +5,7 @@ import { NextResponse } from "next/server"
 import { requireShop } from "@/lib/access/guard"
 import { withAudit } from "@/lib/audit/run"
 import { setReorderPoint, StockError } from "@/lib/inventory/stock-actions"
+import { productIdOf, warehouseIdOf } from "@/lib/shared/resolve-public"
 import { parseCount } from "@/lib/inventory/stock-rules"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -24,8 +25,12 @@ export async function PATCH(req: Request) {
             if (!r.ok) return bad(r.error)
             point = r.value
         }
+        const productId = await productIdOf(guard.shop.id, b.productId)
+        if (!productId) return bad("Product not found", 404)
+        const warehouseId = await warehouseIdOf(guard.shop.id, b.warehouseId)
+        if (!warehouseId) return bad("Warehouse not found", 404)
         await withAudit(guard.actor, (tx) =>
-            setReorderPoint(tx, { shopId: guard.shop.id, productId: b.productId as string, warehouseId: b.warehouseId as string, reorderPoint: point })
+            setReorderPoint(tx, { shopId: guard.shop.id, productId, warehouseId, reorderPoint: point })
         )
         return NextResponse.json({ message: "Saved" })
     } catch (error) {

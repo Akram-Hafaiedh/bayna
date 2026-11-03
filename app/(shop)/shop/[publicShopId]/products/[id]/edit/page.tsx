@@ -44,7 +44,7 @@ async function EditProductContent({ params }: { params: Promise<{ publicShopId: 
     if (!product) notFound()
 
     // "Last changed by": the audit columns hold who and when (set by the database, not the app)
-    const stamp = await prisma.product.findUnique({ where: { id: product.id }, select: { updatedAt: true, updatedById: true } })
+    const stamp = await prisma.product.findUnique({ where: { publicProductId: product.id }, select: { updatedAt: true, updatedById: true } })
     const changer = stamp?.updatedById
         ? await prisma.user.findUnique({ where: { id: stamp.updatedById }, select: { name: true, email: true } })
         : null

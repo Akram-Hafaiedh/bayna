@@ -17,15 +17,19 @@ import {
     parseUnit,
 } from "@/lib/products/product-input"
 import { isProductStatus, shopMayChange } from "@/lib/products/product-status"
+import { productDto } from "@/lib/products/product-dto"
+import { resolveTaxIds } from "@/lib/pricing/taxes"
+import { isPublicId } from "@/lib/shared/public-id"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
-async function getOwnedProduct(productId: string, key: ShopPermission, req: Request) {
+async function getOwnedProduct(publicProductId: string, key: ShopPermission, req: Request) {
     const guard = await requireShop(key, req)
     if (!guard.ok) return { ok: false as const, error: guard.error, status: guard.status }
 
+    if (!isPublicId(publicProductId)) return { ok: false as const, error: "Product not found", status: 404 as const }
     const product = await prisma.product.findFirst({
-        where: { id: productId, shopId: guard.shop.id, deletedAt: null },
+        where: { publicProductId, shopId: guard.shop.id, deletedAt: null },
         include: {
             category: { select: { id: true, name: true } },
             catalogItem: { select: { id: true, name: true, slug: true } },
@@ -44,7 +48,7 @@ export async function GET(
         const { id } = await params
         const result = await getOwnedProduct(id, "product.listing.view", req)
         if (!result.ok) return bad(result.error, result.status)
-        return NextResponse.json({ product: result.product })
+        return NextResponse.json({ product: productDto(result.product) })
     } catch (error) {
         console.error("Get product error:", error)
         return bad("Something went wrong", 500)
@@ -143,8 +147,14 @@ export async function PATCH(
         // Which taxes the product carries is part of its price: same permission, and only a real change is checked
         const taxChoice = parseTaxChoice(body)
         if (!taxChoice.ok) return bad(taxChoice.error)
-        const carried = new Set((await prisma.productTax.findMany({ where: { productId: id }, select: { taxRateId: true } })).map((t) => t.taxRateId))
-        const wanted = taxChoice.value.taxIds
+        const carried = new Set((await prisma.productTax.findMany({ where: { productId: current.id }, select: { taxRateId: true } })).map((t) => t.taxRateId))
+        // The form sends the taxes' public ids; only this shop's own taxes are accepted
+        let wanted: string[] | undefined
+        if (taxChoice.value.taxIds !== undefined) {
+            const resolved = await resolveTaxIds(current.shopId, taxChoice.value.taxIds)
+            if (!resolved) return bad("Tax not found", 404)
+            wanted = resolved
+        }
         const taxesChanged =
             (wanted !== undefined && (wanted.length !== carried.size || wanted.some((t) => !carried.has(t)))) ||
             (taxChoice.value.taxExempt !== undefined && taxChoice.value.taxExempt !== current.taxExempt)
@@ -179,24 +189,24 @@ export async function PATCH(
         }
 
         const product = await withAudit(result.guard.actor, async (tx) => {
-            const updated = await tx.product.update({ where: { id }, data })
+            const updated = await tx.product.update({ where: { id: current.id }, data })
             let touched = false
             // The price with tax follows the price; a tax change below does the same work, so one change is one history row
             if (data.price !== undefined && Number(data.price) !== Number(current.price) && !taxesChanged) {
-                await recomputeProducts(tx, current.shopId, [id])
+                await recomputeProducts(tx, current.shopId, [current.id])
                 touched = true
             }
             if (taxesChanged) {
-                await setProductTaxes(tx, { shopId: current.shopId, productId: id, taxIds: taxChoice.value.taxIds, exempt: taxChoice.value.taxExempt })
+                await setProductTaxes(tx, { shopId: current.shopId, productId: current.id, taxIds: wanted, exempt: taxChoice.value.taxExempt })
                 touched = true
             }
             if (newStock !== undefined && newStock !== current.stock) {
-                await setTotalStock(tx, { shopId: current.shopId, productId: id, target: newStock })
+                await setTotalStock(tx, { shopId: current.shopId, productId: current.id, target: newStock })
                 touched = true
             }
-            return touched ? tx.product.findUniqueOrThrow({ where: { id } }) : updated
+            return touched ? tx.product.findUniqueOrThrow({ where: { id: current.id } }) : updated
         })
-        return NextResponse.json({ product })
+        return NextResponse.json({ product: productDto(product) })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
         if (error instanceof PricingError) return bad(error.message, error.status)
@@ -218,7 +228,7 @@ export async function DELETE(
         // It sits in the shop's Trash until someone with product.listing.restore brings it back.
         await withAudit(result.guard.actor, (tx) =>
             tx.product.update({
-                where: { id },
+                where: { id: result.product.id },
                 data: { deletedAt: new Date(), deletedById: result.guard.userId },
             })
         )

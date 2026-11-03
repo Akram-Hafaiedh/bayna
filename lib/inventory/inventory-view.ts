@@ -40,7 +40,7 @@ function searchClauses(q: string): Prisma.ProductWhereInput[] {
 }
 
 /** Ids of the shop's live products that sit at or below their reorder point (and are not at 0) in a live warehouse. */
-export async function lowStockProductIds(shopId: string, warehouseId: string | null): Promise<string[]> {
+export async function lowStockProductIds(shopId: string, publicWarehouseId: string | null): Promise<string[]> {
     const rows = await prisma.$queryRaw<{ productId: string }[]>(Prisma.sql`
         SELECT DISTINCT sl."productId"
           FROM "StockLevel" sl
@@ -51,7 +51,7 @@ export async function lowStockProductIds(shopId: string, warehouseId: string | n
            AND sl."quantity" > 0
            AND sl."reorderPoint" IS NOT NULL
            AND sl."quantity" <= sl."reorderPoint"
-           ${warehouseId ? Prisma.sql`AND sl."warehouseId" = ${warehouseId}` : Prisma.empty}`)
+           ${publicWarehouseId ? Prisma.sql`AND w."publicWarehouseId" = ${publicWarehouseId}` : Prisma.empty}`)
     return rows.map((r) => r.productId)
 }
 
@@ -59,8 +59,8 @@ export async function listInventory(shopId: string, q: InventoryQuery): Promise<
     const and: Prisma.ProductWhereInput[] = searchClauses(q.q)
     if (q.warehouseId) {
         // A warehouse is picked: judge its own quantity
-        if (q.stock === "out") and.push({ stockLevels: { none: { warehouseId: q.warehouseId, quantity: { gt: 0 } } } })
-        if (q.stock === "all") and.push({ stockLevels: { some: { warehouseId: q.warehouseId } } })
+        if (q.stock === "out") and.push({ stockLevels: { none: { warehouse: { publicWarehouseId: q.warehouseId }, quantity: { gt: 0 } } } })
+        if (q.stock === "all") and.push({ stockLevels: { some: { warehouse: { publicWarehouseId: q.warehouseId } } } })
     } else if (q.stock === "out") {
         and.push({ stock: { lte: 0 } })
     }
@@ -77,13 +77,13 @@ export async function listInventory(shopId: string, q: InventoryQuery): Promise<
         skip: (page - 1) * q.pageSize,
         take: q.pageSize,
         select: {
-            id: true, name: true, brand: true, sku: true, unit: true, stock: true,
-            stockLevels: { select: { warehouseId: true, quantity: true, reorderPoint: true } },
+            publicProductId: true, name: true, brand: true, sku: true, unit: true, stock: true,
+            stockLevels: { select: { warehouse: { select: { publicWarehouseId: true } }, quantity: true, reorderPoint: true } },
         },
     })
     const items: InventoryItem[] = rows.map((p) => ({
-        id: p.id, name: p.name, brand: p.brand, sku: p.sku, unit: p.unit, total: p.stock,
-        levels: Object.fromEntries(p.stockLevels.map((l) => [l.warehouseId, { quantity: l.quantity, reorderPoint: l.reorderPoint }])),
+        id: p.publicProductId, name: p.name, brand: p.brand, sku: p.sku, unit: p.unit, total: p.stock,
+        levels: Object.fromEntries(p.stockLevels.map((l) => [l.warehouse.publicWarehouseId, { quantity: l.quantity, reorderPoint: l.reorderPoint }])),
     }))
     return { items, total, page, pageSize: q.pageSize, pageCount }
 }

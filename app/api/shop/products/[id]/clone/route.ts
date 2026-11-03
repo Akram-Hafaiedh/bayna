@@ -11,6 +11,8 @@ import { withAudit } from "@/lib/audit/run"
 import { limitBlock } from "@/lib/plans/plan-limits"
 import { PricingError, setProductTaxes } from "@/lib/pricing/price-actions"
 import { recordPriceHistory } from "@/lib/pricing/price-history"
+import { productDto } from "@/lib/products/product-dto"
+import { isPublicId } from "@/lib/shared/public-id"
 import { cloneName } from "@/lib/products/product-clone"
 
 const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
@@ -27,8 +29,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             if (blocked) return bad(blocked, 403)
         }
 
+        if (!isPublicId(id)) return bad("Product not found", 404)
         const source = await prisma.product.findFirst({
-            where: { id, shopId, deletedAt: null },
+            where: { publicProductId: id, shopId, deletedAt: null },
             include: { taxes: { select: { taxRateId: true } } },
         })
         if (!source) return bad("Product not found", 404)
@@ -66,7 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             await recordPriceHistory(tx, shopId, [created.id]) // the first price (a no-op when the taxes above already did)
             return tx.product.findUniqueOrThrow({ where: { id: created.id } })
         })
-        return NextResponse.json({ product }, { status: 201 })
+        return NextResponse.json({ product: productDto(product) }, { status: 201 })
     } catch (error) {
         if (error instanceof PricingError) return bad(error.message, error.status)
         console.error("Clone product error:", error)

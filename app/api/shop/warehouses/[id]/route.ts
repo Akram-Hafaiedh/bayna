@@ -10,6 +10,8 @@ import { limitBlock } from "@/lib/plans/plan-limits"
 import {
     archiveWarehouse, deleteWarehouse, makeDefaultWarehouse, restoreWarehouse, StockError,
 } from "@/lib/inventory/stock-actions"
+import { warehouseDto } from "@/lib/inventory/warehouse-dto"
+import { warehouseIdOf } from "@/lib/shared/resolve-public"
 import { parseWarehouseFields } from "@/lib/inventory/warehouse-input"
 
 const bad = (error: string, status = 400, extra?: Record<string, unknown>) => NextResponse.json({ error, ...extra }, { status })
@@ -20,7 +22,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const guard = await requireShop("inventory.location.manage", req)
         if (!guard.ok) return bad(guard.error, guard.status)
 
-        const current = await prisma.warehouse.findFirst({ where: { id, shopId: guard.shop.id } })
+        const internalId = await warehouseIdOf(guard.shop.id, id)
+        const current = internalId ? await prisma.warehouse.findFirst({ where: { id: internalId, shopId: guard.shop.id } }) : null
         if (!current) return bad("Warehouse not found", 404)
 
         const body = await req.json().catch(() => null)
@@ -39,13 +42,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
 
         const warehouse = await withAudit(guard.actor, async (tx) => {
-            if (Object.keys(fields.value).length > 0) await tx.warehouse.update({ where: { id }, data: fields.value })
-            if (b.archived === true) await archiveWarehouse(tx, guard.shop.id, id)
-            if (b.archived === false) await restoreWarehouse(tx, guard.shop.id, id)
-            if (b.makeDefault === true) await makeDefaultWarehouse(tx, guard.shop.id, id)
-            return tx.warehouse.findUniqueOrThrow({ where: { id } })
+            if (Object.keys(fields.value).length > 0) await tx.warehouse.update({ where: { id: current.id }, data: fields.value })
+            if (b.archived === true) await archiveWarehouse(tx, guard.shop.id, current.id)
+            if (b.archived === false) await restoreWarehouse(tx, guard.shop.id, current.id)
+            if (b.makeDefault === true) await makeDefaultWarehouse(tx, guard.shop.id, current.id)
+            return tx.warehouse.findUniqueOrThrow({ where: { id: current.id } })
         })
-        return NextResponse.json({ warehouse })
+        return NextResponse.json({ warehouse: warehouseDto(warehouse) })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
         console.error("Update warehouse error:", error)
@@ -58,7 +61,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params
         const guard = await requireShop("inventory.location.manage", req)
         if (!guard.ok) return bad(guard.error, guard.status)
-        await withAudit(guard.actor, (tx) => deleteWarehouse(tx, guard.shop.id, id))
+        const internalId = await warehouseIdOf(guard.shop.id, id)
+        if (!internalId) return bad("Warehouse not found", 404)
+        await withAudit(guard.actor, (tx) => deleteWarehouse(tx, guard.shop.id, internalId))
         return NextResponse.json({ message: "Warehouse deleted" })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)

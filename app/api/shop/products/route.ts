@@ -11,6 +11,8 @@ import { openingStock, StockError } from "@/lib/inventory/stock-actions"
 import { PricingError, setProductTaxes } from "@/lib/pricing/price-actions"
 import { recordPriceHistory } from "@/lib/pricing/price-history"
 import { parseTaxChoice } from "@/lib/pricing/price-rules"
+import { resolveTaxIds } from "@/lib/pricing/taxes"
+import { productDto } from "@/lib/products/product-dto"
 import { parseProductFilters } from "@/lib/products/product-filters"
 import {
     parseMinOrderQty,
@@ -79,17 +81,17 @@ export async function POST(req: Request) {
 
             const existing = await prisma.product.findFirst({
                 where: { shopId, catalogItemId: catalog.id },
-                select: { id: true, deletedAt: true },
+                select: { publicProductId: true, deletedAt: true },
             })
             if (existing && !existing.deletedAt) {
-                return bad("You already list this catalogue item", 409, { productId: existing.id })
+                return bad("You already list this catalogue item", 409, { productId: existing.publicProductId })
             }
             // A shop lists a catalogue item at most once, so a removed listing blocks a new one.
             // It is restored from the Trash, never silently brought back by adding it again.
             if (existing) {
                 return bad("You removed this item earlier. Restore it from your Trash instead of adding it again.", 409, {
                     inTrash: true,
-                    productId: existing.id,
+                    productId: existing.publicProductId,
                 })
             }
         }
@@ -105,6 +107,12 @@ export async function POST(req: Request) {
         // Choosing the taxes of a product is part of its price
         if ((taxChoice.value.taxIds !== undefined || taxChoice.value.taxExempt !== undefined) && !guard.can("product.price.edit")) {
             return bad("You do not have permission to set prices and taxes", 403)
+        }
+        let taxIds: string[] | undefined
+        if (taxChoice.value.taxIds !== undefined) {
+            const resolved = await resolveTaxIds(shopId, taxChoice.value.taxIds)
+            if (!resolved) return bad("Tax not found", 404)
+            taxIds = resolved
         }
         const stock = parseStock(body.stock)
         const minOrderQty = parseMinOrderQty(body.minOrderQty)
@@ -208,7 +216,7 @@ export async function POST(req: Request) {
             })
             let touched = false
             if (taxChoice.value.taxIds !== undefined || taxChoice.value.taxExempt !== undefined) {
-                await setProductTaxes(tx, { shopId, productId: created.id, taxIds: taxChoice.value.taxIds, exempt: taxChoice.value.taxExempt })
+                await setProductTaxes(tx, { shopId, productId: created.id, taxIds, exempt: taxChoice.value.taxExempt })
                 touched = true
             }
             // The first price, with the price with tax the taxes above give it: one row, not an untaxed one then a taxed one
@@ -220,7 +228,7 @@ export async function POST(req: Request) {
             return touched ? tx.product.findUniqueOrThrow({ where: { id: created.id } }) : created
         })
 
-        return NextResponse.json({ product }, { status: 201 })
+        return NextResponse.json({ product: productDto(product) }, { status: 201 })
     } catch (error) {
         if (error instanceof StockError) return bad(error.message, error.status)
         if (error instanceof PricingError) return bad(error.message, error.status)
